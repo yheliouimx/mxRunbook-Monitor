@@ -1212,6 +1212,53 @@
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
 <script>
+// ============================================================
+// ARCHITECTURE CONTRACT  (Phase 0 — do not remove)
+// ============================================================
+// Intended module split (target state after refactor):
+//   dashboard/constants.js  — STATUS, STATUS_LABELS, HEALTH_META, RESERVED_KEYS, defaults
+//   dashboard/state.js      — single mutable state object (replaces loose globals below)
+//   dashboard/dom.js        — centralised DOM lookups
+//   dashboard/selectors.js  — pure derived-data helpers (normalizeStatus, getGlobalStats, …)
+//   dashboard/validation.js — browser-side JSON validation mirroring adapter/schema.py
+//   dashboard/persistence.js— loadInitialRunbook / saveDraft / loadFromServer / loadFromFile / reset
+//   dashboard/actions/      — tasks.js  issues.js  health.js
+//   dashboard/render/       — stats.js  timeline.js  categories.js  issues.js  summary.js
+//   dashboard/export/       — shared.js  canvas.js  theme.js  phone.js  email.js  gantt.js
+//   runbookDashboard.html   — final entry point: markup + CSS + <script type="module"> only
+//
+// Persistence policy (source of truth):
+//   1. runbook.json          — baseline template served from the server
+//   2. localStorage          — working draft for browser continuity across refreshes
+//   3. imported local file   — becomes the active in-memory working draft
+//   Reload from server explicitly replaces current in-memory data.
+//   Save persists working draft to localStorage AND downloads a file snapshot.
+//   Reserved keys: _issues (array), _health (string) — always round-trip with runbookData.
+//
+// UI contract: every phase must leave the dashboard visually and behaviourally identical.
+//
+// ── DUPLICATE INVENTORY (items to extract in Phases 1-2) ──────────────────
+// STATUS values  : "Not Started" / "In Progress" / "Completed" / "Blocking" / "Unneeded"
+//   → defined inline in normalizeStatus(), statusClass(), status popup, generateSummary()
+//   → EXTRACT TO: dashboard/constants.js → STATUS / STATUS_LABELS
+//
+// HEALTH labels  : { Green: "ON TRACK", Amber: "AT RISK", Red: "ROLLBACK" }
+//   → duplicated in renderHealthIndicator() and inside exportSnapshot, exportEmailSnapshot, exportGantt
+//   → EXTRACT TO: dashboard/constants.js → HEALTH_META
+//
+// HEALTH colors  : healthColors / healthCol — three separate inline definitions (lines 2179, 2527, 2836)
+//   → EXTRACT TO: dashboard/export/theme.js (export surfaces) + dashboard/constants.js (dashboard)
+//
+// drawText / drawRoundRect — defined THREE times inside exportSnapshot, exportEmailSnapshot, exportGantt
+//   → EXTRACT TO: dashboard/export/canvas.js
+//
+// Reserved keys  : "_issues" / "_health" — scattered across 8 call sites (lines 1270, 1395-1406, 1736-1746, 3054-3055)
+//   → EXTRACT TO: dashboard/constants.js → RESERVED_KEYS
+//
+// Export filters : phoneExportIssueFilter / emailExportIssueFilter — loose globals (lines 2074-2075)
+//   → EXTRACT TO: dashboard/state.js
+// ============================================================
+
 let runbookData = {};
 let projectConfig = {
     projectName: "Go-Live Runbook",
@@ -1277,7 +1324,7 @@ function renderHealthIndicator() {
         d.classList.toggle('active', d.dataset.health === healthStatus);
     });
     const ht = document.getElementById('healthText');
-    const labels = { Green: 'ON TRACK', Amber: 'AT RISK', Red: 'ROLLBACK' };
+    const labels = { Green: 'ON TRACK', Amber: 'AT RISK', Red: 'ROLLBACK' }; // EXTRACT: → HEALTH_META in dashboard/constants.js
     ht.textContent = labels[healthStatus] || healthStatus;
     ht.className = 'health-text ' + healthStatus.toLowerCase();
     // Update clock color to match health
@@ -1304,6 +1351,7 @@ function updateClock() {
         }) + " UK";
 }
 
+// EXTRACT: normalizeStatus → dashboard/selectors.js  (STATUS values → dashboard/constants.js)
 function normalizeStatus(s) {
     if (!s || s === "NaN") return "Not Started";
     const lower = s.toLowerCase().trim();
@@ -1314,6 +1362,7 @@ function normalizeStatus(s) {
     return "Not Started";
 }
 
+// EXTRACT: statusClass → dashboard/selectors.js
 function statusClass(s) {
     if (s === "Completed") return "done";
     if (s === "In Progress") return "inprogress";
@@ -1336,6 +1385,7 @@ function formatTimeShort(iso) {
     return d.toLocaleTimeString("en-GB", { hour:"2-digit", minute:"2-digit", hour12:false });
 }
 
+// EXTRACT: getEarliestTime → dashboard/selectors.js
 function getEarliestTime(tasks) {
     let earliest = null;
     for (const t of tasks) {
@@ -1347,6 +1397,7 @@ function getEarliestTime(tasks) {
     return earliest;
 }
 
+// EXTRACT: computeCategoryStatus → dashboard/selectors.js
 function computeCategoryStatus(tasks) {
     const done = tasks.filter(t => { const st = normalizeStatus(t.status); return st === "Completed" || st === "Unneeded"; }).length;
     const inProg = tasks.filter(t => normalizeStatus(t.status) === "In Progress").length;
@@ -1363,6 +1414,7 @@ function escapeHtml(text) {
     return div.innerHTML;
 }
 
+// EXTRACT: getUniqueTeams → dashboard/selectors.js
 function getUniqueTeams() {
     const teams = new Set();
     Object.entries(runbookData).forEach(([key, tasks]) => {
@@ -1387,7 +1439,16 @@ function matchesTeam(task) {
 }
 
 async function loadRunbook() {
-    // Try to load saved progress from localStorage first
+    // ── PERSISTENCE SOURCE-OF-TRUTH POLICY ──────────────────────────────────
+    // Priority order on startup:
+    //   1. localStorage ("runbook_progress") — working draft wins if present and valid
+    //   2. runbook.json (server fetch)       — baseline template fallback
+    // On manual "Reload from server": always fetches runbook.json, discards draft.
+    // On local file import: replaces in-memory runbookData, does NOT auto-save localStorage.
+    // On save: writes localStorage AND downloads runbook.json snapshot.
+    // Reserved keys _issues and _health are always read/written with runbookData.
+    // → Phase 3 will extract this block into dashboard/persistence.js :: loadInitialRunbook()
+    // ────────────────────────────────────────────────────────────────────────
     const saved = localStorage.getItem("runbook_progress");
     if (saved) {
         try {
@@ -1412,6 +1473,7 @@ async function loadRunbook() {
     render();
 }
 
+// EXTRACT: getGlobalStats → dashboard/selectors.js
 function getGlobalStats() {
     let total = 0, done = 0, inProg = 0, notStarted = 0, blocking = 0;
     Object.entries(runbookData).forEach(([key, tasks]) => {
@@ -1474,6 +1536,7 @@ function renderGlobalStats() {
     renderHealthIndicator();
 }
 
+// EXTRACT: matchesSearch → dashboard/selectors.js
 function matchesSearch(task) {
     if (!searchQuery) return true;
     const q = searchQuery.toLowerCase();
@@ -1481,6 +1544,7 @@ function matchesSearch(task) {
     return text.includes(q);
 }
 
+// EXTRACT: sortCategories → dashboard/selectors.js
 function sortCategories(categories) {
     if (sortMode === "completion") {
         return [...categories].sort((a, b) => {
@@ -1726,6 +1790,7 @@ function renderTimeline(categories) {
     timeline.appendChild(items);
 }
 
+// EXTRACT: resetRunbook → dashboard/persistence.js :: resetRunbook()
 function resetRunbook() {
     if (!confirm("⚠ WARNING: This will reset ALL task statuses back to \"Not Started\" and clear all issues.\n\nThis action cannot be undone.\n\nAre you sure?")) return;
     if (!confirm("FINAL CONFIRMATION: You are about to reset the ENTIRE runbook. Continue?")) return;
@@ -1741,9 +1806,10 @@ function resetRunbook() {
     showToast("Runbook has been reset");
 }
 
+// EXTRACT: saveToLocalStorage → dashboard/persistence.js :: saveDraft()
 function saveToLocalStorage() {
-    runbookData._issues = issues;
-    runbookData._health = healthStatus;
+    runbookData._issues = issues;  // EXTRACT: "_issues" → RESERVED_KEYS.issues
+    runbookData._health = healthStatus;  // EXTRACT: "_health" → RESERVED_KEYS.health
     localStorage.setItem("runbook_progress", JSON.stringify(runbookData));
     // Also save to local file (runbook.json)
     const blob = new Blob([JSON.stringify(runbookData, null, 2)], { type: "application/json" });
@@ -2071,8 +2137,8 @@ function copySummaryToClipboard() {
     });
 }
 
-let phoneExportIssueFilter = "open"; // "open" or "all"
-let emailExportIssueFilter = "open"; // "open" or "all"
+let phoneExportIssueFilter = "open"; // "open" or "all"  // EXTRACT: → dashboard/state.js
+let emailExportIssueFilter = "open"; // "open" or "all"  // EXTRACT: → dashboard/state.js
 
 function showExportIssueOptions(exportFn, filterSetter, title) {
     let modal = document.getElementById('exportIssueModal');
@@ -2131,6 +2197,7 @@ function exportSnapshot() {
     }
 
     // Helpers
+    // EXTRACT: drawText / drawRoundRect → dashboard/export/canvas.js (duplicate 1 of 3)
     const drawText = (text, x, y, font, color, align) => {
         ctx.fillStyle = color || "#fff";
         ctx.font = font || "32px Segoe UI, sans-serif";
@@ -2176,8 +2243,8 @@ function exportSnapshot() {
 
     // ── HEALTH INDICATOR ──
     Y += 40;
-    const healthColors = { Green: "#39ff14", Amber: "#ffa500", Red: "#ff3333" };
-    const healthLabels = { Green: "ON TRACK", Amber: "AT RISK", Red: "ROLLBACK" };
+    const healthColors = { Green: "#39ff14", Amber: "#ffa500", Red: "#ff3333" }; // EXTRACT: → dashboard/export/theme.js (duplicate 1 of 3)
+    const healthLabels = { Green: "ON TRACK", Amber: "AT RISK", Red: "ROLLBACK" }; // EXTRACT: → HEALTH_META (duplicate 1 of 3)
     const healthBgs = { Green: "#0a3a0a", Amber: "#3a2a00", Red: "#3a0a0a" };
     const healthBorders = { Green: "#39ff14", Amber: "#ffa500", Red: "#ff3333" };
     const hColor = healthColors[healthStatus];
@@ -2467,6 +2534,7 @@ function exportEmailSnapshot() {
     cv.width = W; cv.height = H;
     const ctx = cv.getContext("2d");
 
+    // EXTRACT: drawText / drawRoundRect → dashboard/export/canvas.js (duplicate 2 of 3)
     // Corporate light background
     ctx.fillStyle = "#ffffff";
     ctx.fillRect(0, 0, W, H);
@@ -2524,8 +2592,8 @@ function exportEmailSnapshot() {
     let Y = 155;
 
     // ── HEALTH BADGE ──
-    const healthCol = { Green: "#2e7d32", Amber: "#e65100", Red: "#c62828" };
-    const healthLbl = { Green: "ON TRACK", Amber: "AT RISK", Red: "ROLLBACK" };
+    const healthCol = { Green: "#2e7d32", Amber: "#e65100", Red: "#c62828" }; // EXTRACT: → dashboard/export/theme.js (duplicate 2 of 3)
+    const healthLbl = { Green: "ON TRACK", Amber: "AT RISK", Red: "ROLLBACK" }; // EXTRACT: → HEALTH_META (duplicate 2 of 3)
     const healthBg = { Green: "#e8f5e9", Amber: "#fff3e0", Red: "#ffebee" };
     const hc = healthCol[healthStatus];
     const hl = healthLbl[healthStatus];
@@ -2800,6 +2868,7 @@ function exportGantt() {
     ctx.fillStyle = "#ffffff";
     ctx.fillRect(0, 0, W, H);
 
+    // EXTRACT: drawText / drawRoundRect → dashboard/export/canvas.js (duplicate 3 of 3)
     const drawText = (text, x, y, font, color, align) => {
         ctx.fillStyle = color || "#1a1a2e";
         ctx.font = font || "20px Segoe UI, sans-serif";
@@ -2833,8 +2902,8 @@ function exportGantt() {
     ctx.fillRect(0, 106, W, 3);
 
     // ── Health badge ──
-    const healthCol = { Green:"#2e7d32", Amber:"#e65100", Red:"#c62828" };
-    const healthLbl = { Green:"ON TRACK", Amber:"AT RISK", Red:"ROLLBACK" };
+    const healthCol = { Green:"#2e7d32", Amber:"#e65100", Red:"#c62828" }; // EXTRACT: → dashboard/export/theme.js (duplicate 3 of 3)
+    const healthLbl = { Green:"ON TRACK", Amber:"AT RISK", Red:"ROLLBACK" }; // EXTRACT: → HEALTH_META (duplicate 3 of 3)
     const healthBg2 = { Green:"#e8f5e9", Amber:"#fff3e0", Red:"#ffebee" };
     drawRoundRect(20, 114, 220, 30, 15, healthBg2[healthStatus], healthCol[healthStatus]);
     ctx.beginPath(); ctx.arc(38, 129, 6, 0, Math.PI * 2); ctx.fillStyle = healthCol[healthStatus]; ctx.fill();

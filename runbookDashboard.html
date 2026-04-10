@@ -1211,7 +1211,7 @@
 <div class="toast" id="toast"></div>
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
-<script>
+<script type="module">
 // ============================================================
 // ARCHITECTURE CONTRACT  (Phase 0 — do not remove)
 // ============================================================
@@ -1259,38 +1259,21 @@
 //   → EXTRACT TO: dashboard/state.js
 // ============================================================
 
-let runbookData = {};
-let projectConfig = {
-    projectName: "Go-Live Runbook",
-    subtitle: "",
-    changeRef: "",
-    client: "",
-    environment: "",
-    release: "",
-    accentColor: "#003a2d"
-};
-let filterState = "all";
-let searchQuery = "";
-let teamFilter = "all";
-let sortMode = "timeline";
-let openCategories = new Set();
-let issues = [];
-let issueFormOpen = false;
-let issuesPanelOpen = true;
-let editingIssueId = null;
-let healthStatus = "Green";
+import { STATUS, STATUS_LABELS, HEALTH_META, RESERVED_KEYS, DEFAULT_PROJECT_CONFIG, SORT_MODES, EXPORT_FILTERS, HEALTH_STATUSES } from "./dashboard/constants.js";
+import { state } from "./dashboard/state.js";
+import { dom } from "./dashboard/dom.js";
 
 async function loadConfig() {
     try {
         const res = await fetch("config.json");
         const cfg = await res.json();
-        Object.assign(projectConfig, cfg);
+        Object.assign(state.projectConfig, cfg);
     } catch(e) { /* config.json optional — use defaults */ }
     applyConfig();
 }
 
 function applyConfig() {
-    const c = projectConfig;
+    const c = state.projectConfig;
     document.title = c.projectName + " - Go-Live Runbook Dashboard";
     const h1 = document.querySelector(".header h1");
     if (h1) h1.textContent = c.projectName + " - Go-Live Runbook";
@@ -1313,26 +1296,26 @@ function toggleTheme() {
 })();
 
 function setHealth(status) {
-    healthStatus = status;
-    runbookData._health = status;
+    state.healthStatus = status;
+    state.runbookData._health = status;
     renderHealthIndicator();
     renderGlobalStats();
 }
 
 function renderHealthIndicator() {
     document.querySelectorAll('.health-dot').forEach(d => {
-        d.classList.toggle('active', d.dataset.health === healthStatus);
+        d.classList.toggle('active', d.dataset.health === state.healthStatus);
     });
     const ht = document.getElementById('healthText');
     const labels = { Green: 'ON TRACK', Amber: 'AT RISK', Red: 'ROLLBACK' }; // EXTRACT: → HEALTH_META in dashboard/constants.js
-    ht.textContent = labels[healthStatus] || healthStatus;
-    ht.className = 'health-text ' + healthStatus.toLowerCase();
+    ht.textContent = labels[state.healthStatus] || state.healthStatus;
+    ht.className = 'health-text ' + state.healthStatus.toLowerCase();
     // Update clock color to match health
     const isLight = document.documentElement.getAttribute('data-theme') === 'light';
     const clockColors = isLight
         ? { Green: '#1b8a2a', Amber: '#b8860b', Red: '#c62828' }
         : { Green: '#39ff14', Amber: '#ffd700', Red: '#ff1744' };
-    document.getElementById('clock').style.color = clockColors[healthStatus] || clockColors.Green;
+    document.getElementById('clock').style.color = clockColors[state.healthStatus] || clockColors.Green;
 }
 
 function showToast(msg) {
@@ -1417,7 +1400,7 @@ function escapeHtml(text) {
 // EXTRACT: getUniqueTeams → dashboard/selectors.js
 function getUniqueTeams() {
     const teams = new Set();
-    Object.entries(runbookData).forEach(([key, tasks]) => {
+    Object.entries(state.runbookData).forEach(([key, tasks]) => {
         if (key.startsWith("_") || !Array.isArray(tasks)) return;
         tasks.forEach(t => { if (t.assignee) teams.add(t.assignee); });
     });
@@ -1434,8 +1417,8 @@ function populateTeamFilter() {
 }
 
 function matchesTeam(task) {
-    if (teamFilter === "all") return true;
-    return (task.assignee || "") === teamFilter;
+    if (state.teamFilter === "all") return true;
+    return (task.assignee || "") === state.teamFilter;
 }
 
 async function loadRunbook() {
@@ -1444,17 +1427,17 @@ async function loadRunbook() {
     //   1. localStorage ("runbook_progress") — working draft wins if present and valid
     //   2. runbook.json (server fetch)       — baseline template fallback
     // On manual "Reload from server": always fetches runbook.json, discards draft.
-    // On local file import: replaces in-memory runbookData, does NOT auto-save localStorage.
+    // On local file import: replaces in-memory state.runbookData, does NOT auto-save localStorage.
     // On save: writes localStorage AND downloads runbook.json snapshot.
-    // Reserved keys _issues and _health are always read/written with runbookData.
+    // Reserved keys _issues and _health are always read/written with state.runbookData.
     // → Phase 3 will extract this block into dashboard/persistence.js :: loadInitialRunbook()
     // ────────────────────────────────────────────────────────────────────────
     const saved = localStorage.getItem("runbook_progress");
     if (saved) {
         try {
-            runbookData = JSON.parse(saved);
-            issues = runbookData._issues || [];
-            healthStatus = runbookData._health || "Green";
+            state.runbookData = JSON.parse(saved);
+            state.issues = state.runbookData._issues || [];
+            state.healthStatus = state.runbookData._health || "Green";
             showToast("Loaded saved progress");
             render();
             return;
@@ -1462,9 +1445,9 @@ async function loadRunbook() {
     }
     try {
         const res = await fetch("runbook.json");
-        runbookData = await res.json();
-        issues = runbookData._issues || [];
-        healthStatus = runbookData._health || "Green";
+        state.runbookData = await res.json();
+        state.issues = state.runbookData._issues || [];
+        state.healthStatus = state.runbookData._health || "Green";
     } catch(e) {
         document.getElementById("container").innerHTML =
             '<div class="no-results">Failed to load runbook.json. Make sure the file is in the same directory.</div>';
@@ -1476,7 +1459,7 @@ async function loadRunbook() {
 // EXTRACT: getGlobalStats → dashboard/selectors.js
 function getGlobalStats() {
     let total = 0, done = 0, inProg = 0, notStarted = 0, blocking = 0;
-    Object.entries(runbookData).forEach(([key, tasks]) => {
+    Object.entries(state.runbookData).forEach(([key, tasks]) => {
         if (key.startsWith("_")) return;
         if (!Array.isArray(tasks)) return;
         tasks.forEach(t => {
@@ -1494,15 +1477,15 @@ function getGlobalStats() {
 function renderGlobalStats() {
     const { total, done, inProg, notStarted, blocking } = getGlobalStats();
     const pct = total > 0 ? Math.round((done / total) * 100) : 0;
-    const openIss = issues.filter(i => i.issueStatus === "Ongoing").length;
-    const blockIss = issues.filter(i => i.issueStatus === "Ongoing" && i.severity === "Blocking").length;
+    const openIss = state.issues.filter(i => i.issueStatus === "Ongoing").length;
+    const blockIss = state.issues.filter(i => i.issueStatus === "Ongoing" && i.severity === "Blocking").length;
     const totalBlocking = blocking + blockIss;
     const healthGradients = {
         Green: 'linear-gradient(90deg, #39ff14, #5bc0ff)',
         Amber: 'linear-gradient(90deg, #ffd700, #ff8c00)',
         Red:   'linear-gradient(90deg, #ff8c00, #ff1744)'
     };
-    const barGradient = healthGradients[healthStatus] || healthGradients.Green;
+    const barGradient = healthGradients[state.healthStatus] || healthGradients.Green;
     document.getElementById("globalStats").innerHTML = `
         <div class="stats-master">
             <div class="progress-fill" style="width:${pct}%;background:${barGradient}"></div>
@@ -1538,28 +1521,28 @@ function renderGlobalStats() {
 
 // EXTRACT: matchesSearch → dashboard/selectors.js
 function matchesSearch(task) {
-    if (!searchQuery) return true;
-    const q = searchQuery.toLowerCase();
+    if (!state.searchQuery) return true;
+    const q = state.searchQuery.toLowerCase();
     const text = ((task.item || "") + " " + (task.task || "") + " " + (task.assignee || "")).toLowerCase();
     return text.includes(q);
 }
 
 // EXTRACT: sortCategories → dashboard/selectors.js
 function sortCategories(categories) {
-    if (sortMode === "completion") {
+    if (state.sortMode === "completion") {
         return [...categories].sort((a, b) => {
-            const pA = runbookData[a].filter(t => { const st = normalizeStatus(t.status); return st === "Completed" || st === "Unneeded"; }).length / runbookData[a].length;
-            const pB = runbookData[b].filter(t => { const st = normalizeStatus(t.status); return st === "Completed" || st === "Unneeded"; }).length / runbookData[b].length;
+            const pA = state.runbookData[a].filter(t => { const st = normalizeStatus(t.status); return st === "Completed" || st === "Unneeded"; }).length / state.runbookData[a].length;
+            const pB = state.runbookData[b].filter(t => { const st = normalizeStatus(t.status); return st === "Completed" || st === "Unneeded"; }).length / state.runbookData[b].length;
             return pB - pA;
         });
     }
-    if (sortMode === "alpha") {
+    if (state.sortMode === "alpha") {
         return [...categories].sort((a, b) => a.localeCompare(b));
     }
     // timeline: sort by earliest task start time
     return [...categories].sort((a, b) => {
-        const tA = getEarliestTime(runbookData[a]);
-        const tB = getEarliestTime(runbookData[b]);
+        const tA = getEarliestTime(state.runbookData[a]);
+        const tB = getEarliestTime(state.runbookData[b]);
         if (!tA && !tB) return 0;
         if (!tA) return 1;
         if (!tB) return -1;
@@ -1575,27 +1558,27 @@ function render() {
     const container = document.getElementById("container");
     container.innerHTML = "";
 
-    let categories = sortCategories(Object.keys(runbookData).filter(k => !k.startsWith("_")));
+    let categories = sortCategories(Object.keys(state.runbookData).filter(k => !k.startsWith("_")));
     renderTimeline(categories);
 
     let anyVisible = false;
 
     categories.forEach(cat => {
-        const tasks = runbookData[cat];
+        const tasks = state.runbookData[cat];
         const catStatus = computeCategoryStatus(tasks);
 
         // Filter by category status
-        if (filterState !== "all" && filterState !== catStatus) return;
+        if (state.filterState !== "all" && state.filterState !== catStatus) return;
 
         // Filter by search — show category if any task matches
         const matchingTasks = tasks.filter(t => matchesSearch(t) && matchesTeam(t));
-        if ((searchQuery || teamFilter !== "all") && matchingTasks.length === 0) return;
+        if ((state.searchQuery || state.teamFilter !== "all") && matchingTasks.length === 0) return;
 
         anyVisible = true;
 
         const done = tasks.filter(t => { const st = normalizeStatus(t.status); return st === "Completed" || st === "Unneeded"; }).length;
         const pct = Math.round((done / tasks.length) * 100);
-        const isOpen = openCategories.has(cat);
+        const isOpen = state.openCategories.has(cat);
         const earliest = getEarliestTime(tasks);
         const timeRange = earliest ? formatTime(tasks.reduce((best, t) => {
             if (!t.startTime) return best;
@@ -1623,7 +1606,7 @@ function render() {
             </div>
             <div class="cat-progress"><div class="cat-progress-fill" style="width:${pct}%; background:${fillColor}"></div></div>
             <div class="tasks ${isOpen ? 'open' : ''}">
-                ${(searchQuery || teamFilter !== "all" ? matchingTasks : tasks).map((t, i) => {
+                ${(state.searchQuery || state.teamFilter !== "all" ? matchingTasks : tasks).map((t, i) => {
                     const realIdx = tasks.indexOf(t);
                     const ns = normalizeStatus(t.status);
                     const sc = statusClass(ns);
@@ -1653,8 +1636,8 @@ function render() {
 
         // Attach header click
         div.querySelector(".category-header").addEventListener("click", () => {
-            if (openCategories.has(cat)) openCategories.delete(cat);
-            else openCategories.add(cat);
+            if (state.openCategories.has(cat)) state.openCategories.delete(cat);
+            else state.openCategories.add(cat);
             render();
         });
 
@@ -1682,7 +1665,7 @@ function render() {
                     opt.title = s.label;
                     opt.addEventListener("click", (ev) => {
                         ev.stopPropagation();
-                        runbookData[c][idx].status = s.key;
+                        state.runbookData[c][idx].status = s.key;
                         popup.remove();
                         render();
                     });
@@ -1701,10 +1684,10 @@ function render() {
             completeAllBtn.addEventListener("click", (e) => {
                 e.stopPropagation();
                 const c = e.currentTarget.dataset.cat;
-                const pending = runbookData[c].filter(t => normalizeStatus(t.status) !== "Completed" && normalizeStatus(t.status) !== "Unneeded").length;
+                const pending = state.runbookData[c].filter(t => normalizeStatus(t.status) !== "Completed" && normalizeStatus(t.status) !== "Unneeded").length;
                 if (pending === 0) { showToast("All tasks already completed or unneeded"); return; }
                 if (!confirm(`Mark all ${pending} remaining tasks in "${c}" as Completed?`)) return;
-                runbookData[c].forEach(t => {
+                state.runbookData[c].forEach(t => {
                     if (normalizeStatus(t.status) !== "Unneeded") t.status = "Completed";
                 });
                 render();
@@ -1719,7 +1702,7 @@ function render() {
                 const span = e.currentTarget;
                 const c = span.dataset.cat;
                 const idx = parseInt(span.dataset.idx);
-                const current = runbookData[c][idx].assignee || "";
+                const current = state.runbookData[c][idx].assignee || "";
 
                 const input = document.createElement("input");
                 input.type = "text";
@@ -1745,7 +1728,7 @@ function render() {
 
                 const commit = () => {
                     const val = input.value.trim();
-                    runbookData[c][idx].assignee = val || undefined;
+                    state.runbookData[c][idx].assignee = val || undefined;
                     render();
                 };
                 input.addEventListener("blur", commit);
@@ -1769,7 +1752,7 @@ function renderTimeline(categories) {
     items.className = "timeline-items";
 
     categories.forEach(cat => {
-        const tasks = runbookData[cat];
+        const tasks = state.runbookData[cat];
         const s = computeCategoryStatus(tasks);
         const done = tasks.filter(t => { const st = normalizeStatus(t.status); return st === "Completed" || st === "Unneeded"; }).length;
 
@@ -1779,7 +1762,7 @@ function renderTimeline(categories) {
         el.title = cat + ": " + done + "/" + tasks.length + " completed";
 
         el.addEventListener("click", () => {
-            openCategories.add(cat);
+            state.openCategories.add(cat);
             render();
             const target = document.getElementById("cat-" + cat.replace(/[^a-zA-Z0-9]/g, "_"));
             if (target) target.scrollIntoView({ behavior: "smooth", block: "start" });
@@ -1794,13 +1777,13 @@ function renderTimeline(categories) {
 function resetRunbook() {
     if (!confirm("⚠ WARNING: This will reset ALL task statuses back to \"Not Started\" and clear all issues.\n\nThis action cannot be undone.\n\nAre you sure?")) return;
     if (!confirm("FINAL CONFIRMATION: You are about to reset the ENTIRE runbook. Continue?")) return;
-    Object.keys(runbookData).filter(k => !k.startsWith("_")).forEach(cat => {
-        runbookData[cat].forEach(t => { t.status = "Not Started"; });
+    Object.keys(state.runbookData).filter(k => !k.startsWith("_")).forEach(cat => {
+        state.runbookData[cat].forEach(t => { t.status = "Not Started"; });
     });
-    issues.length = 0;
-    runbookData._issues = [];
-    healthStatus = "Green";
-    runbookData._health = "Green";
+    state.issues.length = 0;
+    state.runbookData._issues = [];
+    state.healthStatus = "Green";
+    state.runbookData._health = "Green";
     localStorage.removeItem("runbook_progress");
     render();
     showToast("Runbook has been reset");
@@ -1808,11 +1791,11 @@ function resetRunbook() {
 
 // EXTRACT: saveToLocalStorage → dashboard/persistence.js :: saveDraft()
 function saveToLocalStorage() {
-    runbookData._issues = issues;  // EXTRACT: "_issues" → RESERVED_KEYS.issues
-    runbookData._health = healthStatus;  // EXTRACT: "_health" → RESERVED_KEYS.health
-    localStorage.setItem("runbook_progress", JSON.stringify(runbookData));
+    state.runbookData._issues = state.issues;  // EXTRACT: "_issues" → RESERVED_KEYS.issues
+    state.runbookData._health = state.healthStatus;  // EXTRACT: "_health" → RESERVED_KEYS.health
+    localStorage.setItem("runbook_progress", JSON.stringify(state.runbookData));
     // Also save to local file (runbook.json)
-    const blob = new Blob([JSON.stringify(runbookData, null, 2)], { type: "application/json" });
+    const blob = new Blob([JSON.stringify(state.runbookData, null, 2)], { type: "application/json" });
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
     a.href = url;
@@ -1824,13 +1807,13 @@ function saveToLocalStorage() {
 
 // ── ISSUES MANAGEMENT ──
 function getCategoryNames() {
-    return Object.keys(runbookData).filter(k => !k.startsWith("_"));
+    return Object.keys(state.runbookData).filter(k => !k.startsWith("_"));
 }
 
 function renderIssues() {
     const panel = document.getElementById("issuesPanel");
-    const openIssues = issues.filter(i => i.issueStatus === "Ongoing");
-    const closedIssues = issues.filter(i => i.issueStatus === "Closed");
+    const openIssues = state.issues.filter(i => i.issueStatus === "Ongoing");
+    const closedIssues = state.issues.filter(i => i.issueStatus === "Closed");
     const blockingOpen = openIssues.filter(i => i.severity === "Blocking").length;
 
     const catOptions = getCategoryNames().map(c =>
@@ -1839,22 +1822,22 @@ function renderIssues() {
 
     panel.innerHTML = `
     <div class="issues-panel">
-        <div class="issues-header" onclick="issuesPanelOpen = !issuesPanelOpen; document.getElementById('issuesList').style.display = issuesPanelOpen ? 'block' : 'none'; this.querySelector('.iss-chevron').classList.toggle('open', issuesPanelOpen);">
+        <div class="issues-header" onclick="toggleIssuesPanel(this)">
             <h2>
-                <span class="iss-chevron ${issuesPanelOpen !== false ? 'open' : ''}">&#9654;</span>
+                <span class="iss-chevron ${state.issuesPanelOpen !== false ? 'open' : ''}">&#9654;</span>
                 \u26A0\uFE0F Issues Log
                 <span class="issues-count">${openIssues.length} open${blockingOpen > 0 ? ' / ' + blockingOpen + ' blocking' : ''}</span>
             </h2>
             <button class="issue-btn save" onclick="event.stopPropagation(); toggleIssueForm()">
-                ${issueFormOpen ? 'Cancel' : '+ Log Issue'}
+                ${state.issueFormOpen ? 'Cancel' : '+ Log Issue'}
             </button>
         </div>
 
-        <div class="issue-add-form ${issueFormOpen ? 'open' : ''}" id="issueForm">
+        <div class="issue-add-form ${state.issueFormOpen ? 'open' : ''}" id="issueForm">
             <div class="issue-form-row">
                 <div class="issue-field" style="flex:2">
                     <label>Description</label>
-                    <textarea id="if_desc" placeholder="Describe the issue...">${editingIssueId !== null ? escapeHtml(issues.find(i=>i.id===editingIssueId)?.description||'') : ''}</textarea>
+                    <textarea id="if_desc" placeholder="Describe the issue...">${state.editingIssueId !== null ? escapeHtml(state.issues.find(i=>i.id===state.editingIssueId)?.description||'') : ''}</textarea>
                 </div>
             </div>
             <div class="issue-form-row">
@@ -1881,18 +1864,18 @@ function renderIssues() {
                 </div>
                 <div class="issue-field">
                     <label>Time</label>
-                    <input type="text" id="if_time" placeholder="HH:MM DD Mon" value="${editingIssueId !== null ? escapeHtml(issues.find(i=>i.id===editingIssueId)?.time||'') : getDefaultIssueTime()}" />
+                    <input type="text" id="if_time" placeholder="HH:MM DD Mon" value="${state.editingIssueId !== null ? escapeHtml(state.issues.find(i=>i.id===state.editingIssueId)?.time||'') : getDefaultIssueTime()}" />
                 </div>
             </div>
             <div class="issue-form-actions">
                 <button class="issue-btn" onclick="toggleIssueForm()">Cancel</button>
-                <button class="issue-btn save" onclick="saveIssue()">${editingIssueId !== null ? 'Update' : 'Add Issue'}</button>
+                <button class="issue-btn save" onclick="saveIssue()">${state.editingIssueId !== null ? 'Update' : 'Add Issue'}</button>
             </div>
         </div>
 
-        <div id="issuesList" style="display:${issuesPanelOpen ? 'block' : 'none'}">
-            ${issues.length === 0 ? '<div style="text-align:center;color:#555;padding:12px;font-size:0.85em">No issues logged yet</div>' : ''}
-            ${issues.map(iss => `
+        <div id="issuesList" style="display:${state.issuesPanelOpen ? 'block' : 'none'}">
+            ${state.issues.length === 0 ? '<div style="text-align:center;color:#555;padding:12px;font-size:0.85em">No state.issues logged yet</div>' : ''}
+            ${state.issues.map(iss => `
                 <div class="issue-card">
                     <div class="issue-severity ${iss.severity === 'Blocking' ? 'blocking' : 'non-blocking'}"></div>
                     <div class="issue-body">
@@ -1923,8 +1906,8 @@ function renderIssues() {
     `;
 
     // Restore select values if editing
-    if (issueFormOpen && editingIssueId !== null) {
-        const iss = issues.find(i => i.id === editingIssueId);
+    if (state.issueFormOpen && state.editingIssueId !== null) {
+        const iss = state.issues.find(i => i.id === state.editingIssueId);
         if (iss) {
             const catSel = document.getElementById('if_cat');
             const sevSel = document.getElementById('if_sev');
@@ -1945,8 +1928,8 @@ function getDefaultIssueTime() {
 }
 
 function toggleIssueForm() {
-    issueFormOpen = !issueFormOpen;
-    if (!issueFormOpen) editingIssueId = null;
+    state.issueFormOpen = !state.issueFormOpen;
+    if (!state.issueFormOpen) state.editingIssueId = null;
     renderIssues();
 }
 
@@ -1959,8 +1942,8 @@ function saveIssue() {
     const timeInput = document.getElementById('if_time');
     const timeStr = timeInput && timeInput.value.trim() ? timeInput.value.trim() : getDefaultIssueTime();
 
-    if (editingIssueId !== null) {
-        const iss = issues.find(i => i.id === editingIssueId);
+    if (state.editingIssueId !== null) {
+        const iss = state.issues.find(i => i.id === state.editingIssueId);
         if (iss) {
             iss.description = desc;
             iss.category = cat;
@@ -1968,9 +1951,9 @@ function saveIssue() {
             iss.issueStatus = st;
             iss.time = timeStr;
         }
-        editingIssueId = null;
+        state.editingIssueId = null;
     } else {
-        issues.push({
+        state.issues.push({
             id: Date.now(),
             description: desc,
             category: cat,
@@ -1979,31 +1962,31 @@ function saveIssue() {
             time: timeStr
         });
     }
-    issueFormOpen = false;
+    state.issueFormOpen = false;
     renderIssues();
     showToast('Issue saved');
 }
 
 function closeIssue(id) {
-    const iss = issues.find(i => i.id === id);
+    const iss = state.issues.find(i => i.id === id);
     if (iss) iss.issueStatus = 'Closed';
     renderIssues();
 }
 
 function reopenIssue(id) {
-    const iss = issues.find(i => i.id === id);
+    const iss = state.issues.find(i => i.id === id);
     if (iss) iss.issueStatus = 'Ongoing';
     renderIssues();
 }
 
 function editIssue(id) {
-    editingIssueId = id;
-    issueFormOpen = true;
+    state.editingIssueId = id;
+    state.issueFormOpen = true;
     renderIssues();
 }
 
 function deleteIssue(id) {
-    issues = issues.filter(i => i.id !== id);
+    state.issues = state.issues.filter(i => i.id !== id);
     renderIssues();
     showToast('Issue deleted');
 }
@@ -2013,12 +1996,12 @@ function generateSummary() {
     const { total, done, inProg, notStarted, blocking } = getGlobalStats();
     const pct = total > 0 ? Math.round((done / total) * 100) : 0;
     const now = new Date().toLocaleString("en-GB");
-    const accent = projectConfig.accentColor || '#003a2d';
+    const accent = state.projectConfig.accentColor || '#003a2d';
 
     let html = '';
     html += `<div style="font-family:Segoe UI,Calibri,Arial,sans-serif;background:#ffffff;color:#222222;padding:20px 28px;max-width:800px;">`;
     html += `<table style="width:100%;border:none;border-bottom:3px solid ${accent};padding-bottom:12px;margin-bottom:16px;"><tr>`;
-    html += `<td style="font-size:20px;font-weight:bold;color:${accent};padding:0;">${escapeHtml(projectConfig.projectName)}</td>`;
+    html += `<td style="font-size:20px;font-weight:bold;color:${accent};padding:0;">${escapeHtml(state.projectConfig.projectName)}</td>`;
     html += `<td style="text-align:right;font-size:12px;color:#888888;padding:0;">Go-Live Runbook Update<br/>${now}</td>`;
     html += `</tr></table>`;
 
@@ -2042,8 +2025,8 @@ function generateSummary() {
     html += `<table style="width:100%;border-collapse:collapse;font-size:13px;">`;
     html += `<tr style="background:${accent};color:#ffffff;"><th style="padding:8px 10px;text-align:left;font-weight:600;">Category</th><th style="padding:8px 6px;text-align:center;width:70px;">Progress</th><th style="padding:8px 6px;text-align:center;width:60px;">Status</th></tr>`;
 
-    Object.keys(runbookData).filter(k => !k.startsWith("_")).forEach((cat, ci) => {
-        const tasks = runbookData[cat];
+    Object.keys(state.runbookData).filter(k => !k.startsWith("_")).forEach((cat, ci) => {
+        const tasks = state.runbookData[cat];
         const d = tasks.filter(t => { const st = normalizeStatus(t.status); return st === "Completed" || st === "Unneeded"; }).length;
         const ip = tasks.filter(t => normalizeStatus(t.status) === "In Progress").length;
         const bl = tasks.filter(t => normalizeStatus(t.status) === "Blocking").length;
@@ -2078,9 +2061,9 @@ function generateSummary() {
     });
     html += `</table>`;
 
-    const openIss = issues.filter(i => i.issueStatus === "Ongoing");
-    const closedIss = issues.filter(i => i.issueStatus === "Closed");
-    if (issues.length > 0) {
+    const openIss = state.issues.filter(i => i.issueStatus === "Ongoing");
+    const closedIss = state.issues.filter(i => i.issueStatus === "Closed");
+    if (state.issues.length > 0) {
         html += `<div style="margin-top:20px;border-top:2px solid ${accent};padding-top:12px;">`;
         html += `<div style="font-size:14px;font-weight:bold;color:${accent};margin-bottom:10px;">Issues Log (${openIss.length} open, ${closedIss.length} closed)</div>`;
         html += `<table style="width:100%;border-collapse:collapse;font-size:12px;">`;
@@ -2104,7 +2087,7 @@ function generateSummary() {
         html += `</table></div>`;
     }
 
-    html += `<div style="margin-top:16px;padding-top:8px;border-top:1px solid #dddddd;font-size:11px;color:#aaaaaa;text-align:center;">Generated from Runbook Dashboard — ${escapeHtml(projectConfig.client || '')}</div>`;
+    html += `<div style="margin-top:16px;padding-top:8px;border-top:1px solid #dddddd;font-size:11px;color:#aaaaaa;text-align:center;">Generated from Runbook Dashboard — ${escapeHtml(state.projectConfig.client || '')}</div>`;
     html += `</div>`;
 
     box.innerHTML = `
@@ -2137,8 +2120,6 @@ function copySummaryToClipboard() {
     });
 }
 
-let phoneExportIssueFilter = "open"; // "open" or "all"  // EXTRACT: → dashboard/state.js
-let emailExportIssueFilter = "open"; // "open" or "all"  // EXTRACT: → dashboard/state.js
 
 function showExportIssueOptions(exportFn, filterSetter, title) {
     let modal = document.getElementById('exportIssueModal');
@@ -2149,7 +2130,7 @@ function showExportIssueOptions(exportFn, filterSetter, title) {
     modal.innerHTML = `
         <div style="background:var(--surface, #1a1a2e);border:1px solid var(--border, #333);border-radius:12px;padding:24px 32px;min-width:300px;text-align:center">
             <h3 style="margin:0 0 16px;color:var(--text, #fff);font-size:1.1em">${title} \u2014 Issues Filter</h3>
-            <p style="margin:0 0 16px;color:var(--text-dim, #888);font-size:0.9em">Which issues to include in the export?</p>
+            <p style="margin:0 0 16px;color:var(--text-dim, #888);font-size:0.9em">Which state.issues to include in the export?</p>
             <div style="display:flex;gap:10px;justify-content:center">
                 <button class="issue-btn save" id="expOptOpen">Open Only</button>
                 <button class="issue-btn save" id="expOptAll">All Issues</button>
@@ -2165,11 +2146,11 @@ function showExportIssueOptions(exportFn, filterSetter, title) {
 }
 
 function showPhoneExportOptions() {
-    showExportIssueOptions(exportSnapshot, (v) => { phoneExportIssueFilter = v; }, 'Phone Image');
+    showExportIssueOptions(exportSnapshot, (v) => { state.phoneExportIssueFilter = v; }, 'Phone Image');
 }
 
 function showEmailExportOptions() {
-    showExportIssueOptions(exportEmailSnapshot, (v) => { emailExportIssueFilter = v; }, 'Email Image');
+    showExportIssueOptions(exportEmailSnapshot, (v) => { state.emailExportIssueFilter = v; }, 'Email Image');
 }
 
 function exportSnapshot() {
@@ -2183,15 +2164,15 @@ function exportSnapshot() {
     // Background
     ctx.fillStyle = "#0a0a0f";
     ctx.fillRect(0, 0, W, H);
-    if (clientBgImg) {
+    if (state.clientBgImg) {
         ctx.save();
         ctx.globalAlpha = 0.15;
-        const bAr = clientBgImg.width / clientBgImg.height;
+        const bAr = state.clientBgImg.width / state.clientBgImg.height;
         const cAr = W / H;
         let dw, dh, dx, dy;
         if (bAr > cAr) { dh = H; dw = H * bAr; dx = (W - dw) / 2; dy = 0; }
         else { dw = W; dh = W / bAr; dx = 0; dy = (H - dh) / 2; }
-        ctx.drawImage(clientBgImg, dx, dy, dw, dh);
+        ctx.drawImage(state.clientBgImg, dx, dy, dw, dh);
         ctx.globalAlpha = 1.0;
         ctx.restore();
     }
@@ -2214,14 +2195,14 @@ function exportSnapshot() {
     let Y = 60;
 
     // ── LOGO ──
-    if (clientLogoImg) {
+    if (state.clientLogoImg) {
         const logoSize = 120;
         const logoX = 40;
         ctx.save();
         ctx.beginPath();
         ctx.roundRect(logoX, Y, logoSize, logoSize, 10);
         ctx.clip();
-        ctx.drawImage(clientLogoImg, logoX, Y, logoSize, logoSize);
+        ctx.drawImage(state.clientLogoImg, logoX, Y, logoSize, logoSize);
         ctx.restore();
         ctx.strokeStyle = "#333";
         ctx.lineWidth = 1;
@@ -2229,9 +2210,9 @@ function exportSnapshot() {
     }
 
     // ── TITLE ──
-    drawText(projectConfig.projectName, W/2, Y+=50, "bold 48px Segoe UI, sans-serif", "#ffffff");
+    drawText(state.projectConfig.projectName, W/2, Y+=50, "bold 48px Segoe UI, sans-serif", "#ffffff");
     drawText("Go-Live Runbook", W/2, Y+=56, "bold 44px Segoe UI, sans-serif", "#ffffff");
-    drawText([projectConfig.subtitle, projectConfig.changeRef].filter(Boolean).join(" | "), W/2, Y+=46, "28px Segoe UI, sans-serif", "#888888");
+    drawText([state.projectConfig.subtitle, state.projectConfig.changeRef].filter(Boolean).join(" | "), W/2, Y+=46, "28px Segoe UI, sans-serif", "#888888");
 
     // Timestamp
     const now = new Date();
@@ -2247,15 +2228,15 @@ function exportSnapshot() {
     const healthLabels = { Green: "ON TRACK", Amber: "AT RISK", Red: "ROLLBACK" }; // EXTRACT: → HEALTH_META (duplicate 1 of 3)
     const healthBgs = { Green: "#0a3a0a", Amber: "#3a2a00", Red: "#3a0a0a" };
     const healthBorders = { Green: "#39ff14", Amber: "#ffa500", Red: "#ff3333" };
-    const hColor = healthColors[healthStatus];
-    const hLabel = healthLabels[healthStatus];
+    const hColor = healthColors[state.healthStatus];
+    const hLabel = healthLabels[state.healthStatus];
 
     // Big health badge
     const badgeW = 380, badgeH = 60, badgeR = 30;
     const badgeX = (W - badgeW) / 2;
-    drawRoundRect(badgeX, Y, badgeW, badgeH, badgeR, healthBgs[healthStatus], healthBorders[healthStatus]);
+    drawRoundRect(badgeX, Y, badgeW, badgeH, badgeR, healthBgs[state.healthStatus], healthBorders[state.healthStatus]);
     ctx.lineWidth = 3;
-    ctx.strokeStyle = healthBorders[healthStatus];
+    ctx.strokeStyle = healthBorders[state.healthStatus];
     ctx.stroke();
     // Health dot
     ctx.beginPath();
@@ -2278,15 +2259,15 @@ function exportSnapshot() {
     // ── STATS ──
     const { total, done, inProg, notStarted, blocking } = getGlobalStats();
     const pct = total > 0 ? Math.round((done / total) * 100) : 0;
-    const openIssSnap = issues.filter(i => i.issueStatus === "Ongoing").length;
-    const blockIssSnap = issues.filter(i => i.issueStatus === "Ongoing" && i.severity === "Blocking").length;
+    const openIssSnap = state.issues.filter(i => i.issueStatus === "Ongoing").length;
+    const blockIssSnap = state.issues.filter(i => i.issueStatus === "Ongoing" && i.severity === "Blocking").length;
     const totalBlocking = blocking + blockIssSnap;
 
     // ── MASTER STATUS PROGRESS BAR ──
     const masterW = W - 120, masterH = 70, masterR = 16;
     const masterX = 60;
     const phoneGradColors = { Green: ['#39ff14','#5bc0ff'], Amber: ['#ffd700','#ff8c00'], Red: ['#ff8c00','#ff1744'] };
-    const pgc = phoneGradColors[healthStatus] || phoneGradColors.Green;
+    const pgc = phoneGradColors[state.healthStatus] || phoneGradColors.Green;
     // Background track
     drawRoundRect(masterX, Y, masterW, masterH, masterR, "#1a1a2e", "#333333");
     // Gradient fill
@@ -2359,11 +2340,11 @@ function exportSnapshot() {
     ctx.textAlign = "left";
 
     Y += 24;
-    const categories = Object.keys(runbookData).filter(k => !k.startsWith("_"));
+    const categories = Object.keys(state.runbookData).filter(k => !k.startsWith("_"));
     const sortedCats = sortCategories(categories);
 
     sortedCats.forEach(cat => {
-        const tasks = runbookData[cat];
+        const tasks = state.runbookData[cat];
         const d = tasks.filter(t => normalizeStatus(t.status) === "Completed").length;
         const ip = tasks.filter(t => normalizeStatus(t.status) === "In Progress").length;
         const catPct = Math.round((d / tasks.length) * 100);
@@ -2408,7 +2389,7 @@ function exportSnapshot() {
     // ── ACTIVE ASSIGNEES ──
     const activeAssignees = {};
     sortedCats.forEach(cat => {
-        runbookData[cat].forEach(t => {
+        state.runbookData[cat].forEach(t => {
             if (normalizeStatus(t.status) === "In Progress" && t.assignee) {
                 if (!activeAssignees[t.assignee]) activeAssignees[t.assignee] = 0;
                 activeAssignees[t.assignee]++;
@@ -2441,9 +2422,9 @@ function exportSnapshot() {
     }
 
     // ── ISSUES SECTION ──
-    const openIssues = issues.filter(i => i.issueStatus === "Ongoing");
-    const closedIssues = issues.filter(i => i.issueStatus === "Closed");
-    const allIssues = phoneExportIssueFilter === "open" ? openIssues : [...openIssues, ...closedIssues];
+    const openIssues = state.issues.filter(i => i.issueStatus === "Ongoing");
+    const closedIssues = state.issues.filter(i => i.issueStatus === "Closed");
+    const allIssues = state.phoneExportIssueFilter === "open" ? openIssues : [...openIssues, ...closedIssues];
 
     if (allIssues.length > 0) {
         Y += 30;
@@ -2513,7 +2494,7 @@ function exportSnapshot() {
     cv.toBlob(blob => {
         if (navigator.share && navigator.canShare && navigator.canShare({ files: [new File([blob], "runbook_status.png", { type: "image/png" })] })) {
             const file = new File([blob], "runbook_status.png", { type: "image/png" });
-            navigator.share({ title: projectConfig.projectName + " Status", files: [file] }).catch(() => {});
+            navigator.share({ title: state.projectConfig.projectName + " Status", files: [file] }).catch(() => {});
         } else {
             const url = URL.createObjectURL(blob);
             const a = document.createElement("a");
@@ -2538,15 +2519,15 @@ function exportEmailSnapshot() {
     // Corporate light background
     ctx.fillStyle = "#ffffff";
     ctx.fillRect(0, 0, W, H);
-    if (clientBgImg) {
+    if (state.clientBgImg) {
         ctx.save();
         ctx.globalAlpha = 0.08;
-        const bAr = clientBgImg.width / clientBgImg.height;
+        const bAr = state.clientBgImg.width / state.clientBgImg.height;
         const cAr = W / H;
         let dw, dh, dx, dy;
         if (bAr > cAr) { dh = H; dw = H * bAr; dx = (W - dw) / 2; dy = 0; }
         else { dw = W; dh = W / bAr; dx = 0; dy = (H - dh) / 2; }
-        ctx.drawImage(clientBgImg, dx, dy, dw, dh);
+        ctx.drawImage(state.clientBgImg, dx, dy, dw, dh);
         ctx.globalAlpha = 1.0;
         ctx.restore();
     }
@@ -2566,14 +2547,14 @@ function exportEmailSnapshot() {
     };
 
     // ── TOP BAR (corporate accent strip) ──
-    ctx.fillStyle = projectConfig.accentColor;
+    ctx.fillStyle = state.projectConfig.accentColor;
     ctx.fillRect(0, 0, W, 80);
-    if (clientLogoImg) {
+    if (state.clientLogoImg) {
         const lS = 52;
         ctx.save(); ctx.beginPath(); ctx.roundRect(18, 14, lS, lS, 8); ctx.clip();
-        ctx.drawImage(clientLogoImg, 18, 14, lS, lS); ctx.restore();
+        ctx.drawImage(state.clientLogoImg, 18, 14, lS, lS); ctx.restore();
     }
-    drawText(projectConfig.projectName.toUpperCase() + " — GO-LIVE RUNBOOK", W/2, 50, "bold 30px Segoe UI, sans-serif", "#ffffff");
+    drawText(state.projectConfig.projectName.toUpperCase() + " — GO-LIVE RUNBOOK", W/2, 50, "bold 30px Segoe UI, sans-serif", "#ffffff");
 
     // ── SUBTITLE BAR ──
     ctx.fillStyle = "#f4f5f7";
@@ -2583,10 +2564,10 @@ function exportEmailSnapshot() {
         weekday:"short", day:"2-digit", month:"short", year:"numeric",
         hour:"2-digit", minute:"2-digit", second:"2-digit", hour12:false
     }) + " UK";
-    drawText([projectConfig.subtitle, projectConfig.changeRef, timeStr].filter(Boolean).join("  |  "), W/2, 112, "22px Segoe UI, sans-serif", "#555555");
+    drawText([state.projectConfig.subtitle, state.projectConfig.changeRef, timeStr].filter(Boolean).join("  |  "), W/2, 112, "22px Segoe UI, sans-serif", "#555555");
 
     // Thin accent line
-    ctx.fillStyle = projectConfig.accentColor;
+    ctx.fillStyle = state.projectConfig.accentColor;
     ctx.fillRect(0, 130, W, 3);
 
     let Y = 155;
@@ -2595,9 +2576,9 @@ function exportEmailSnapshot() {
     const healthCol = { Green: "#2e7d32", Amber: "#e65100", Red: "#c62828" }; // EXTRACT: → dashboard/export/theme.js (duplicate 2 of 3)
     const healthLbl = { Green: "ON TRACK", Amber: "AT RISK", Red: "ROLLBACK" }; // EXTRACT: → HEALTH_META (duplicate 2 of 3)
     const healthBg = { Green: "#e8f5e9", Amber: "#fff3e0", Red: "#ffebee" };
-    const hc = healthCol[healthStatus];
-    const hl = healthLbl[healthStatus];
-    const hb = healthBg[healthStatus];
+    const hc = healthCol[state.healthStatus];
+    const hl = healthLbl[state.healthStatus];
+    const hb = healthBg[state.healthStatus];
 
     const badgeW = 260, badgeH = 42, badgeX = 60;
     drawRoundRect(badgeX, Y, badgeW, badgeH, 21, hb, hc);
@@ -2610,15 +2591,15 @@ function exportEmailSnapshot() {
     // ── STATS ──
     const { total, done, inProg, notStarted, blocking } = getGlobalStats();
     const pct = total > 0 ? Math.round((done / total) * 100) : 0;
-    const openIssSnap = issues.filter(i => i.issueStatus === "Ongoing").length;
-    const blockIssSnap = issues.filter(i => i.issueStatus === "Ongoing" && i.severity === "Blocking").length;
+    const openIssSnap = state.issues.filter(i => i.issueStatus === "Ongoing").length;
+    const blockIssSnap = state.issues.filter(i => i.issueStatus === "Ongoing" && i.severity === "Blocking").length;
     const totalBlocking = blocking + blockIssSnap;
 
     // ── MASTER STATUS PROGRESS BAR ──
     const emMasterW = W - 120, emMasterH = 50, emMasterR = 10;
     const emMasterX = 60;
     const emGradColors = { Green: ['#2e7d32','#1565c0'], Amber: ['#f9a825','#e65100'], Red: ['#e65100','#c62828'] };
-    const egc = emGradColors[healthStatus] || emGradColors.Green;
+    const egc = emGradColors[state.healthStatus] || emGradColors.Green;
     // Background track
     drawRoundRect(emMasterX, Y, emMasterW, emMasterH, emMasterR, "#e8e8e8", "#d0d0d0");
     // Gradient fill
@@ -2687,7 +2668,7 @@ function exportEmailSnapshot() {
     drawText("PHASE TIMELINE", W/2, Y + 6, "bold 16px Segoe UI, sans-serif", "#888888");
     Y += 24;
 
-    const categories = Object.keys(runbookData).filter(k => !k.startsWith("_"));
+    const categories = Object.keys(state.runbookData).filter(k => !k.startsWith("_"));
     const sortedCats = sortCategories(categories);
     const cols = 2;
     const colW = (W - 140) / cols;
@@ -2699,7 +2680,7 @@ function exportEmailSnapshot() {
         const rx = 70 + col * (colW + 10);
         const ry = Y + row * (rowH + 6);
 
-        const tasks = runbookData[cat];
+        const tasks = state.runbookData[cat];
         const d = tasks.filter(t => normalizeStatus(t.status) === "Completed").length;
         const catPct = Math.round((d / tasks.length) * 100);
         const s = computeCategoryStatus(tasks);
@@ -2736,7 +2717,7 @@ function exportEmailSnapshot() {
     // ── ACTIVE ASSIGNEES (compact for email) ──
     const emailActiveAssignees = {};
     sortedCats.forEach(cat => {
-        runbookData[cat].forEach(t => {
+        state.runbookData[cat].forEach(t => {
             if (normalizeStatus(t.status) === "In Progress" && t.assignee) {
                 if (!emailActiveAssignees[t.assignee]) emailActiveAssignees[t.assignee] = 0;
                 emailActiveAssignees[t.assignee]++;
@@ -2764,15 +2745,15 @@ function exportEmailSnapshot() {
     }
 
     // ── ISSUES SECTION (compact for email) ──
-    const emailOpenIssues = issues.filter(i => i.issueStatus === "Ongoing");
-    const emailClosedIssues = issues.filter(i => i.issueStatus === "Closed");
-    const emailIssueList = emailExportIssueFilter === "open" ? emailOpenIssues : [...emailOpenIssues, ...emailClosedIssues];
+    const emailOpenIssues = state.issues.filter(i => i.issueStatus === "Ongoing");
+    const emailClosedIssues = state.issues.filter(i => i.issueStatus === "Closed");
+    const emailIssueList = state.emailExportIssueFilter === "open" ? emailOpenIssues : [...emailOpenIssues, ...emailClosedIssues];
     if (emailIssueList.length > 0) {
         ctx.strokeStyle = "#e0e0e0";
         ctx.beginPath(); ctx.moveTo(60, Y); ctx.lineTo(W-60, Y); ctx.stroke();
         Y += 24;
         const blockOp = emailOpenIssues.filter(i => i.severity === "Blocking").length;
-        const emailIssTitle = emailExportIssueFilter === "open"
+        const emailIssTitle = state.emailExportIssueFilter === "open"
             ? `OPEN ISSUES: ${emailOpenIssues.length}${blockOp > 0 ? '  (' + blockOp + ' blocking)' : ''}`
             : `ISSUES LOG: ${emailIssueList.length} (${emailOpenIssues.length} open, ${emailClosedIssues.length} closed)`;
         drawText(emailIssTitle, W/2, Y, "bold 16px Segoe UI, sans-serif", "#e65100");
@@ -2812,7 +2793,7 @@ function exportEmailSnapshot() {
     }
     // Bottom accent bar
     const fY = Math.max(footerY, cv.height - 40);
-    ctx.fillStyle = projectConfig.accentColor;
+    ctx.fillStyle = state.projectConfig.accentColor;
     ctx.fillRect(0, fY + 10, W, 30);
     drawText("Generated from Runbook Dashboard", W/2, fY + 30, "16px Segoe UI, sans-serif", "#ffffff", "center");
 
@@ -2831,13 +2812,13 @@ function exportEmailSnapshot() {
 function exportGantt() {
     showToast("Generating Gantt chart...");
 
-    const categories = Object.keys(runbookData).filter(k => !k.startsWith("_"));
+    const categories = Object.keys(state.runbookData).filter(k => !k.startsWith("_"));
     const sortedCats = sortCategories(categories);
 
     // Compute time bounds from all tasks
     let globalMin = Infinity, globalMax = -Infinity;
     sortedCats.forEach(cat => {
-        runbookData[cat].forEach(t => {
+        state.runbookData[cat].forEach(t => {
             if (t.startTime) { const d = new Date(t.startTime).getTime(); if (!isNaN(d) && d < globalMin) globalMin = d; }
             if (t.endTime) { const d = new Date(t.endTime).getTime(); if (!isNaN(d) && d > globalMax) globalMax = d; }
         });
@@ -2883,31 +2864,31 @@ function exportGantt() {
     };
 
     // ── TOP BAR ──
-    ctx.fillStyle = projectConfig.accentColor;
+    ctx.fillStyle = state.projectConfig.accentColor;
     ctx.fillRect(0, 0, W, 70);
-    if (clientLogoImg) {
+    if (state.clientLogoImg) {
         const lS = 46;
         ctx.save(); ctx.beginPath(); ctx.roundRect(16, 12, lS, lS, 7); ctx.clip();
-        ctx.drawImage(clientLogoImg, 16, 12, lS, lS); ctx.restore();
+        ctx.drawImage(state.clientLogoImg, 16, 12, lS, lS); ctx.restore();
     }
-    drawText(projectConfig.projectName.toUpperCase() + " — GANTT CHART", W / 2, 44, "bold 28px Segoe UI, sans-serif", "#ffffff", "center");
+    drawText(state.projectConfig.projectName.toUpperCase() + " — GANTT CHART", W / 2, 44, "bold 28px Segoe UI, sans-serif", "#ffffff", "center");
 
     // Subtitle
     const now = new Date();
     const ts = now.toLocaleString("en-GB", { weekday:"short", day:"2-digit", month:"short", year:"numeric", hour:"2-digit", minute:"2-digit", hour12:false }) + " UK";
     ctx.fillStyle = "#f4f5f7";
     ctx.fillRect(0, 70, W, 36);
-    drawText([projectConfig.subtitle, projectConfig.changeRef, ts].filter(Boolean).join("  |  "), W / 2, 94, "18px Segoe UI, sans-serif", "#555555", "center");
-    ctx.fillStyle = projectConfig.accentColor;
+    drawText([state.projectConfig.subtitle, state.projectConfig.changeRef, ts].filter(Boolean).join("  |  "), W / 2, 94, "18px Segoe UI, sans-serif", "#555555", "center");
+    ctx.fillStyle = state.projectConfig.accentColor;
     ctx.fillRect(0, 106, W, 3);
 
     // ── Health badge ──
     const healthCol = { Green:"#2e7d32", Amber:"#e65100", Red:"#c62828" }; // EXTRACT: → dashboard/export/theme.js (duplicate 3 of 3)
     const healthLbl = { Green:"ON TRACK", Amber:"AT RISK", Red:"ROLLBACK" }; // EXTRACT: → HEALTH_META (duplicate 3 of 3)
     const healthBg2 = { Green:"#e8f5e9", Amber:"#fff3e0", Red:"#ffebee" };
-    drawRoundRect(20, 114, 220, 30, 15, healthBg2[healthStatus], healthCol[healthStatus]);
-    ctx.beginPath(); ctx.arc(38, 129, 6, 0, Math.PI * 2); ctx.fillStyle = healthCol[healthStatus]; ctx.fill();
-    drawText("GO-LIVE: " + healthLbl[healthStatus], 130, 135, "bold 14px Segoe UI, sans-serif", healthCol[healthStatus], "center");
+    drawRoundRect(20, 114, 220, 30, 15, healthBg2[state.healthStatus], healthCol[state.healthStatus]);
+    ctx.beginPath(); ctx.arc(38, 129, 6, 0, Math.PI * 2); ctx.fillStyle = healthCol[state.healthStatus]; ctx.fill();
+    drawText("GO-LIVE: " + healthLbl[state.healthStatus], 130, 135, "bold 14px Segoe UI, sans-serif", healthCol[state.healthStatus], "center");
 
     // ── Overall stats badge ──
     const { total, done, inProg, notStarted, blocking } = getGlobalStats();
@@ -2976,7 +2957,7 @@ function exportGantt() {
     const barsY = axisY + axisH + 20;
 
     sortedCats.forEach((cat, i) => {
-        const tasks = runbookData[cat];
+        const tasks = state.runbookData[cat];
         const ry = barsY + i * (rowH + rowGap);
 
         // Category time bounds
@@ -3087,7 +3068,7 @@ function exportGantt() {
     drawText("Current Time", lx + 28, legY + 24, "14px Segoe UI, sans-serif", "#c62828", "left");
 
     // ── FOOTER ──
-    ctx.fillStyle = projectConfig.accentColor;
+    ctx.fillStyle = state.projectConfig.accentColor;
     ctx.fillRect(0, H - 28, W, 28);
     drawText("Generated from Runbook Dashboard", W / 2, H - 10, "14px Segoe UI, sans-serif", "#ffffff", "center");
 
@@ -3104,7 +3085,7 @@ function exportGantt() {
 }
 
 function exportJSON() {
-    const exportData = Object.assign({}, runbookData, { _issues: issues, _health: healthStatus });
+    const exportData = Object.assign({}, state.runbookData, { _issues: state.issues, _health: state.healthStatus });
     const blob = new Blob([JSON.stringify(exportData, null, 2)], { type: "application/json" });
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
@@ -3119,11 +3100,11 @@ function applyLoadedRunbook(fresh) {
     if (!fresh || typeof fresh !== "object" || Array.isArray(fresh)) {
         throw new Error("Invalid JSON structure");
     }
-    runbookData = fresh;
-    issues = runbookData._issues || [];
-    healthStatus = runbookData._health || "Green";
-    issueFormOpen = false;
-    editingIssueId = null;
+    state.runbookData = fresh;
+    state.issues = state.runbookData._issues || [];
+    state.healthStatus = state.runbookData._health || "Green";
+    state.issueFormOpen = false;
+    state.editingIssueId = null;
     render();
 }
 
@@ -3165,12 +3146,12 @@ function handleRunbookFileSelected(event) {
 }
 
 function expandAll() {
-    Object.keys(runbookData).filter(k => !k.startsWith("_")).forEach(cat => openCategories.add(cat));
+    Object.keys(state.runbookData).filter(k => !k.startsWith("_")).forEach(cat => state.openCategories.add(cat));
     render();
 }
 
 function collapseAll() {
-    openCategories.clear();
+    state.openCategories.clear();
     render();
 }
 
@@ -3179,23 +3160,23 @@ document.querySelectorAll(".filterBtn").forEach(btn => {
     btn.addEventListener("click", () => {
         document.querySelectorAll(".filterBtn").forEach(b => b.classList.remove("active"));
         btn.classList.add("active");
-        filterState = btn.dataset.filter;
+        state.filterState = btn.dataset.filter;
         render();
     });
 });
 
 document.getElementById("searchBox").addEventListener("input", (e) => {
-    searchQuery = e.target.value.trim();
+    state.searchQuery = e.target.value.trim();
     render();
 });
 
 document.getElementById("teamFilter").addEventListener("change", (e) => {
-    teamFilter = e.target.value;
+    state.teamFilter = e.target.value;
     render();
 });
 
 document.getElementById("sortSelect").addEventListener("change", (e) => {
-    sortMode = e.target.value;
+    state.sortMode = e.target.value;
     render();
 });
 
@@ -3208,8 +3189,6 @@ document.addEventListener("keydown", (e) => {
 });
 
 // ── LOGO & BACKGROUND DETECTION ──
-let clientLogoImg = null;
-let clientBgImg = null;
 
 function setFavicon(src) {
     const link = document.getElementById('favicon');
@@ -3222,7 +3201,7 @@ function detectAssets() {
     function loadLogo(src) {
         const img = new Image();
         img.onload = () => {
-            clientLogoImg = img;
+            state.clientLogoImg = img;
             const el = document.getElementById('clientLogo');
             el.src = src;
             el.classList.remove('hidden');
@@ -3234,47 +3213,65 @@ function detectAssets() {
     function loadBg(src) {
         const bgImg = new Image();
         bgImg.onload = () => {
-            clientBgImg = bgImg;
+            state.clientBgImg = bgImg;
             document.getElementById('bgOverlay').style.backgroundImage = 'url(' + src + ')';
         };
         bgImg.src = src;
     }
 
     // 1st priority: explicit paths from config.json (works without a server)
-    if (projectConfig.logoFile) loadLogo('assets/' + projectConfig.logoFile);
-    if (projectConfig.backgroundFile) loadBg('assets/' + projectConfig.backgroundFile);
+    if (state.projectConfig.logoFile) loadLogo('assets/' + state.projectConfig.logoFile);
+    if (state.projectConfig.backgroundFile) loadBg('assets/' + state.projectConfig.backgroundFile);
 
     // 2nd priority: auto-detect via directory listing (requires Python server)
-    if (!projectConfig.logoFile || !projectConfig.backgroundFile) {
+    if (!state.projectConfig.logoFile || !state.projectConfig.backgroundFile) {
         fetch('assets/')
             .then(r => r.ok ? r.text() : '')
             .then(html => {
                 if (!html) return;
-                if (!projectConfig.logoFile) {
+                if (!state.projectConfig.logoFile) {
                     const m = html.match(/href="([^"]*clientLogo[^"]*\.(png|jpg|jpeg|svg|webp))"/i);
                     if (m) loadLogo('assets/' + m[1].replace(/.*\//, ''));
                 }
-                if (!projectConfig.backgroundFile) {
+                if (!state.projectConfig.backgroundFile) {
                     const m = html.match(/href="([^"]*background[^"]*\.(png|jpg|jpeg|svg|webp))"/i);
                     if (m) loadBg('assets/' + m[1].replace(/.*\//, ''));
                 }
             })
             .catch(() => {
                 // 3rd priority: guess exact names
-                if (!projectConfig.logoFile) {
+                if (!state.projectConfig.logoFile) {
                     exts.forEach(ext => loadLogo('assets/clientLogo.' + ext));
                 }
-                if (!projectConfig.backgroundFile) {
+                if (!state.projectConfig.backgroundFile) {
                     exts.forEach(ext => loadBg('assets/background.' + ext));
                 }
             });
     }
 }
 
+function toggleIssuesPanel(el) {
+    state.issuesPanelOpen = !state.issuesPanelOpen;
+    document.getElementById('issuesList').style.display = state.issuesPanelOpen ? 'block' : 'none';
+    el.querySelector('.iss-chevron').classList.toggle('open', state.issuesPanelOpen);
+}
+
 // INIT
 updateClock();
 setInterval(updateClock, 1000);
 loadConfig().then(() => { detectAssets(); loadRunbook(); });
+
+// Expose to global scope for HTML onclick attributes
+// (Phase 9 will move these to addEventListener)
+Object.assign(window, {
+  toggleTheme, setHealth, showPhoneExportOptions, showEmailExportOptions,
+  exportGantt, generateSummary, copySummaryToClipboard,
+  saveToLocalStorage, exportJSON, resetRunbook,
+  reloadRunbookJSON, triggerFileRunbookLoad, handleRunbookFileSelected,
+  expandAll, collapseAll,
+  toggleIssueForm, saveIssue, closeIssue, reopenIssue, editIssue, deleteIssue,
+  toggleIssuesPanel,
+});
 </script>
 
 </body>

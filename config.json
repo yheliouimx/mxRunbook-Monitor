@@ -1,0 +1,11 @@
+{
+  "projectName": "Fermat Treasury Migration",
+  "subtitle": "Day 0 - Weekend Release (SoE)",
+  "changeRef": "CHG2736681",
+  "client": "Lloyds Banking Group",
+  "environment": "MAS_PROD",
+  "release": "release_mas_2.2",
+  "accentColor": "#003a2d",
+  "logoFile": "clientLogo-lloyds.png",
+  "backgroundFile": "Murex_background6.jpg"
+}

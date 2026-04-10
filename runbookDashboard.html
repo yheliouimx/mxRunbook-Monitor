@@ -1,0 +1,3212 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Go-Live Runbook Dashboard</title>
+<link rel="icon" id="favicon" type="image/png" href="">
+<style>
+    :root {
+        --bg: #0a0a0f;
+        --text: #e0e0e0;
+        --text-muted: #888;
+        --text-dim: #555;
+        --card-bg: #111;
+        --card-border: #222;
+        --card-hover: #151515;
+        --input-bg: #111;
+        --input-border: #333;
+        --row-bg: #0d0d0d;
+        --row-border: #1a1a1a;
+        --row-hover: #141418;
+        --bar-bg: #1a1a1a;
+        --divider: #222;
+        --green: #39ff14;
+        --amber: #ffa500;
+        --red: #ff3333;
+        --yellow: #ffd84a;
+        --pink: #ff6b6b;
+        --blue: #5bc0ff;
+        --orange: #ff9944;
+        --green-bg: #0d3d0d;
+        --green-text: #7bff7b;
+        --amber-bg: #3d3000;
+        --red-bg: #3a0a0a;
+        --red-text: #ff8888;
+        --completed-text: #64ff64;
+        --item-label-color: #8888dd;
+        --stat-total: #ffffff;
+        --stat-done: #39ff14;
+        --stat-inprog: #ffd84a;
+        --stat-notstarted: #aaaaaa;
+        --stat-pct: #5bc0ff;
+        --stat-issues: #ff9944;
+        --stat-blocking: #ff3333;
+        --progress-from: #39ff14;
+        --progress-to: #5bc0ff;
+        --health-green: #39ff14;
+        --health-green-bg: #0a3a0a;
+        --health-amber: #ffa500;
+        --health-amber-bg: #3a2a00;
+        --health-red: #ff3333;
+        --health-red-bg: #3a0a0a;
+        --dot-done: #39ff14;
+        --dot-inprog: #ffd84a;
+        --dot-notstarted: #aaaaaa;
+        --btn-done-bg: #0a2a0a;
+        --btn-done-border: #39ff14;
+        --btn-done-color: #39ff14;
+        --btn-inprog-bg: #2a2500;
+        --btn-inprog-border: #ffd84a;
+        --btn-inprog-color: #ffd84a;
+        --btn-notstarted-bg: #1a1a1a;
+        --btn-notstarted-border: #aaaaaa;
+        --btn-notstarted-color: #aaaaaa;
+        --stat-blocked: #ff3333;
+        --stat-unneeded: #888888;
+        --dot-blocked: #ff3333;
+        --dot-unneeded: #666666;
+        --btn-blocked-bg: #3a0a0a;
+        --btn-blocked-border: #ff3333;
+        --btn-blocked-color: #ff3333;
+        --btn-unneeded-bg: #1a1a1a;
+        --btn-unneeded-border: #666666;
+        --btn-unneeded-color: #666666;
+        --blocked-text: #ffffff;
+        --unneeded-text: #666666;
+        --blocked-bg: #1a1a1a;
+        --blocked-tag-text: #ffffff;
+        --unneeded-bg: #1a1a1a;
+        --unneeded-tag-text: #888888;
+        --issue-form-bg: #0d0d12;
+        --btn-bg: #181818;
+        --btn-border: #333;
+        --action-bg: #181818;
+        --action-border: #333;
+        --toast-bg: #1a3a1a;
+        --toast-border: #2a5a2a;
+        --toast-text: #7bff7b;
+    }
+    [data-theme="light"] {
+        --bg: #f4f5f7;
+        --text: #1a1a2e;
+        --text-muted: #555;
+        --text-dim: #888;
+        --card-bg: #ffffff;
+        --card-border: #ddd;
+        --card-hover: #f0f0f0;
+        --input-bg: #fff;
+        --input-border: #ccc;
+        --row-bg: #fafafa;
+        --row-border: #e8e8e8;
+        --row-hover: #f0f0f5;
+        --bar-bg: #e0e0e0;
+        --divider: #ddd;
+        --green-bg: #e8f5e9;
+        --green-text: #2e7d32;
+        --amber-bg: #fff8e1;
+        --red-bg: #ffebee;
+        --red-text: #c62828;
+        --issue-form-bg: #f5f5fa;
+        --btn-bg: #f0f0f0;
+        --btn-border: #ccc;
+        --action-bg: #f5f5f5;
+        --action-border: #ccc;
+        --toast-bg: #e8f5e9;
+        --toast-border: #a5d6a7;
+        --toast-text: #2e7d32;
+        --green: #2e7d32;
+        --amber: #e65100;
+        --red: #c62828;
+        --yellow: #e65100;
+        --pink: #c62828;
+        --blue: #1565c0;
+        --orange: #e65100;
+        --completed-text: #2e7d32;
+        --item-label-color: #5c5c99;
+        --stat-total: #1a1a2e;
+        --stat-done: #2e7d32;
+        --stat-inprog: #e65100;
+        --stat-notstarted: #777777;
+        --stat-pct: #1565c0;
+        --stat-issues: #e65100;
+        --stat-blocking: #c62828;
+        --progress-from: #2e7d32;
+        --progress-to: #1565c0;
+        --health-green: #2e7d32;
+        --health-green-bg: #e8f5e9;
+        --health-amber: #e65100;
+        --health-amber-bg: #fff3e0;
+        --health-red: #c62828;
+        --health-red-bg: #ffebee;
+        --dot-done: #2e7d32;
+        --dot-inprog: #e65100;
+        --dot-notstarted: #999999;
+        --btn-done-bg: #e8f5e9;
+        --btn-done-border: #2e7d32;
+        --btn-done-color: #2e7d32;
+        --btn-inprog-bg: #fff3e0;
+        --btn-inprog-border: #e65100;
+        --btn-inprog-color: #e65100;
+        --btn-notstarted-bg: #f0f0f0;
+        --btn-notstarted-border: #999999;
+        --btn-notstarted-color: #999999;
+        --stat-blocked: #c62828;
+        --stat-unneeded: #757575;
+        --dot-blocked: #c62828;
+        --dot-unneeded: #9e9e9e;
+        --btn-blocked-bg: #ffebee;
+        --btn-blocked-border: #c62828;
+        --btn-blocked-color: #c62828;
+        --btn-unneeded-bg: #f5f5f5;
+        --btn-unneeded-border: #9e9e9e;
+        --btn-unneeded-color: #9e9e9e;
+        --blocked-text: #1a1a1a;
+        --unneeded-text: #9e9e9e;
+        --blocked-bg: #e0e0e0;
+        --blocked-tag-text: #1a1a1a;
+        --unneeded-bg: #f5f5f5;
+        --unneeded-tag-text: #757575;
+    }
+
+    *, *::before, *::after { box-sizing: border-box; }
+
+    body {
+        background: var(--bg);
+        color: var(--text);
+        font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+        margin: 0;
+        padding: 20px 30px;
+        line-height: 1.5;
+        transition: background 0.3s, color 0.3s;
+    }
+
+    /* BACKGROUND IMAGE */
+    .bg-overlay {
+        position: fixed;
+        top: 0; left: 0; right: 0; bottom: 0;
+        z-index: -1;
+        background-size: cover;
+        background-position: center center;
+        background-repeat: no-repeat;
+        background-attachment: fixed;
+        opacity: 0.80;
+        pointer-events: none;
+    }
+    [data-theme="light"] .bg-overlay { opacity: 0.80; }
+
+    /* HEADER */
+    .header {
+        text-align: center;
+        margin-bottom: 30px;
+        padding-bottom: 20px;
+        border-bottom: 1px solid var(--divider);
+        position: relative;
+    }
+    [data-theme="light"] .header {
+        background: rgba(255,255,255,0.7);
+        backdrop-filter: blur(6px);
+        -webkit-backdrop-filter: blur(6px);
+        border-radius: 14px;
+        padding: 20px 20px 20px;
+        margin: -10px -10px 30px;
+    }
+    .header-row {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 16px;
+        margin-bottom: 6px;
+    }
+    .client-logo {
+        width: 54px;
+        height: 54px;
+        object-fit: contain;
+        flex-shrink: 0;
+        border-radius: 6px;
+    }
+    .client-logo.hidden { display: none; }
+    .header h1 {
+        margin: 0;
+        font-size: 1.6em;
+        color: var(--text);
+        letter-spacing: 0.5px;
+    }
+    .header .subtitle {
+        color: var(--text-muted);
+        font-size: 0.9em;
+    }
+    .header .clock {
+        margin-top: 8px;
+        font-size: 1.1em;
+        color: var(--green);
+        font-family: 'Consolas', 'Courier New', monospace;
+        transition: color 0.3s ease;
+    }
+
+    /* HEALTH INDICATOR */
+    .health-bar {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 14px;
+        margin-top: 14px;
+    }
+    .health-label {
+        font-size: 0.82em;
+        color: var(--text-muted);
+        text-transform: uppercase;
+        letter-spacing: 1px;
+    }
+    .health-indicator {
+        display: flex;
+        gap: 6px;
+    }
+    .health-dot {
+        min-width: 44px;
+        height: 38px;
+        padding: 0 10px;
+        border-radius: 19px;
+        border: 3px solid var(--input-border);
+        cursor: pointer;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 0.7em;
+        font-weight: bold;
+        transition: all 0.2s;
+        opacity: 0.3;
+        user-select: none;
+        white-space: nowrap;
+    }
+    .health-dot:hover { opacity: 0.7; transform: scale(1.1); }
+    .health-dot.active { opacity: 1; transform: scale(1.15); box-shadow: 0 0 16px rgba(255,255,255,0.15); }
+    .health-dot.green { background: var(--health-green-bg); border-color: var(--health-green); color: var(--health-green); }
+    .health-dot.green.active { box-shadow: 0 0 20px rgba(57,255,20,0.3); }
+    .health-dot.amber { background: var(--health-amber-bg); border-color: var(--health-amber); color: var(--health-amber); }
+    .health-dot.amber.active { box-shadow: 0 0 20px rgba(255,165,0,0.3); }
+    .health-dot.red { background: var(--health-red-bg); border-color: var(--health-red); color: var(--health-red); }
+    .health-dot.red.active { box-shadow: 0 0 20px rgba(255,51,51,0.3); }
+    .health-text {
+        font-size: 1em;
+        font-weight: 700;
+        letter-spacing: 1px;
+    }
+    .health-text.green { color: var(--health-green); }
+    .health-text.amber { color: var(--health-amber); }
+    .health-text.red { color: var(--health-red); }
+
+    /* GLOBAL STATS */
+    .global-stats {
+        margin-bottom: 24px;
+    }
+    .stats-master {
+        position: relative;
+        margin-bottom: 16px;
+        height: 52px;
+        background: var(--card-bg);
+        border: 1px solid var(--card-border);
+        border-radius: 12px;
+        overflow: hidden;
+    }
+    .stats-master .progress-fill {
+        position: absolute;
+        top: 0; left: 0; bottom: 0;
+        border-radius: 12px 0 0 12px;
+        transition: width 0.5s ease, background 0.4s ease;
+    }
+    .stats-master .progress-text {
+        position: absolute;
+        top: 0; left: 0; right: 0; bottom: 0;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 16px;
+        z-index: 1;
+    }
+    .stats-master .master-pct {
+        font-size: 1.8em;
+        font-weight: bold;
+        color: #fff;
+        text-shadow: 0 1px 4px rgba(0,0,0,0.6);
+        line-height: 1;
+    }
+    .stats-master .master-label {
+        font-size: 0.75em;
+        color: rgba(255,255,255,0.85);
+        text-transform: uppercase;
+        letter-spacing: 1px;
+        text-shadow: 0 1px 3px rgba(0,0,0,0.5);
+    }
+    .stats-master .master-detail {
+        font-size: 1em;
+        color: #fff;
+        text-shadow: 0 1px 3px rgba(0,0,0,0.5);
+    }
+    .stats-groups {
+        display: flex;
+        gap: 16px;
+    }
+    .stats-group {
+        flex: 1;
+        display: flex;
+        gap: 10px;
+    }
+    .stats-group-label {
+        font-size: 0.7em;
+        color: var(--text);
+        font-weight: 700;
+        text-transform: uppercase;
+        letter-spacing: 1px;
+        margin-bottom: 6px;
+        text-align: center;
+    }
+    .stat-card {
+        background: var(--card-bg);
+        border: 1px solid var(--card-border);
+        border-radius: 10px;
+        padding: 14px 20px;
+        text-align: center;
+        flex: 1;
+        min-width: 0;
+    }
+    .stat-card .stat-value {
+        font-size: 1.8em;
+        font-weight: bold;
+    }
+    .stat-card .stat-label {
+        font-size: 0.7em;
+        color: var(--text-muted);
+        text-transform: uppercase;
+        letter-spacing: 1px;
+        margin-top: 2px;
+    }
+    @media (max-width: 700px) {
+        .stats-groups { flex-direction: column; }
+        .stats-master { flex-direction: column; gap: 8px; padding: 14px 20px; }
+    }
+    .stat-card.issues .stat-value { color: var(--stat-issues); }
+    .stat-card.blocking .stat-value { color: var(--stat-blocking); }
+    .stat-card.total .stat-value { color: var(--stat-total); }
+    .stat-card.done .stat-value { color: var(--stat-done); }
+    .stat-card.inprog .stat-value { color: var(--stat-inprog); }
+    .stat-card.notstarted .stat-value { color: var(--stat-notstarted); }
+    .stat-card.pct .stat-value { color: var(--stat-pct); }
+    .stat-card.blocked .stat-value { color: var(--stat-blocked); }
+    .stat-card.unneeded .stat-value { color: var(--stat-unneeded); }
+
+    /* GLOBAL PROGRESS */
+    .global-progress {
+        margin-bottom: 24px;
+    }
+    .global-progress-bar {
+        width: 100%;
+        background: var(--bar-bg);
+        height: 18px;
+        border-radius: 10px;
+        overflow: hidden;
+        position: relative;
+    }
+    .global-progress-fill {
+        height: 100%;
+        background: linear-gradient(90deg, var(--progress-from), var(--progress-to));
+        transition: width 0.5s ease;
+        border-radius: 10px;
+    }
+    .global-progress-label {
+        position: absolute;
+        top: 0;
+        left: 0;
+        right: 0;
+        height: 18px;
+        line-height: 18px;
+        text-align: center;
+        font-size: 0.7em;
+        font-weight: bold;
+        color: #fff;
+        text-shadow: 0 0 4px rgba(0,0,0,0.8);
+    }
+
+    /* CONTROLS */
+    .controls {
+        display: flex;
+        gap: 10px;
+        margin-bottom: 20px;
+        flex-wrap: wrap;
+        align-items: center;
+    }
+    .filter-group {
+        display: flex;
+        gap: 4px;
+    }
+    .filterBtn {
+        background: var(--card-bg);
+        border: 1px solid var(--input-border);
+        padding: 7px 14px;
+        border-radius: 6px;
+        cursor: pointer;
+        color: var(--text-muted);
+        font-size: 0.85em;
+        transition: all 0.2s;
+        user-select: none;
+    }
+    .filterBtn:hover { background: var(--bar-bg); color: var(--text); }
+    .filterBtn.active { background: var(--input-border); color: var(--text); border-color: var(--text-dim); }
+
+    .search-box {
+        flex: 1;
+        min-width: 200px;
+        max-width: 400px;
+        padding: 7px 14px;
+        border-radius: 6px;
+        border: 1px solid var(--input-border);
+        background: var(--input-bg);
+        color: var(--text);
+        font-size: 0.85em;
+        outline: none;
+    }
+    .search-box:focus { border-color: var(--blue); }
+    .search-box::placeholder { color: var(--text-dim); }
+
+    .sort-select {
+        padding: 7px 12px;
+        border-radius: 6px;
+        border: 1px solid var(--input-border);
+        background: var(--input-bg);
+        color: var(--text);
+        font-size: 0.85em;
+        cursor: pointer;
+        outline: none;
+    }
+
+    /* TIMELINE */
+    #timeline {
+        margin-bottom: 24px;
+        padding: 16px;
+        background: var(--card-bg);
+        border: 1px solid var(--card-border);
+        border-radius: 10px;
+    }
+    #timeline strong {
+        display: block;
+        margin-bottom: 10px;
+        color: var(--text-muted);
+        font-size: 0.85em;
+        text-transform: uppercase;
+        letter-spacing: 1px;
+    }
+    .timeline-items {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 6px;
+    }
+    .timelineItem {
+        padding: 6px 14px;
+        border-radius: 6px;
+        font-size: 0.78em;
+        cursor: pointer;
+        transition: transform 0.15s, box-shadow 0.15s;
+        white-space: nowrap;
+    }
+    .timelineItem:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 4px 12px rgba(0,0,0,0.4);
+    }
+    .tl-done { background: var(--green-bg); color: var(--green-text); }
+    .tl-inprogress { background: var(--amber-bg); color: var(--yellow); }
+    .tl-notstarted { background: var(--red-bg); color: var(--red-text); }
+    .tl-blocked { background: var(--blocked-bg); color: var(--blocked-tag-text); }
+    .tl-unneeded { background: var(--unneeded-bg); color: var(--unneeded-tag-text); }
+
+    /* CATEGORY CARDS */
+    .category {
+        background: var(--card-bg);
+        border: 1px solid var(--card-border);
+        border-radius: 10px;
+        margin-bottom: 14px;
+        overflow: hidden;
+        transition: border-color 0.2s;
+    }
+    .category:hover { border-color: var(--input-border); }
+    .category-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        cursor: pointer;
+        padding: 14px 18px;
+        gap: 12px;
+        user-select: none;
+    }
+    .category-header:hover { background: var(--card-hover); }
+    .cat-left {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        flex: 1;
+        min-width: 0;
+    }
+    .cat-chevron {
+        font-size: 0.7em;
+        color: var(--text-dim);
+        transition: transform 0.25s;
+        flex-shrink: 0;
+    }
+    .cat-chevron.open { transform: rotate(90deg); }
+    .cat-name {
+        font-weight: 600;
+        font-size: 0.95em;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+    }
+    .cat-right {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        flex-shrink: 0;
+    }
+    .cat-time {
+        font-size: 0.72em;
+        color: var(--text-dim);
+        font-family: 'Consolas', monospace;
+    }
+    .status-tag {
+        padding: 3px 10px;
+        border-radius: 6px;
+        font-size: 0.72em;
+        font-weight: 600;
+        white-space: nowrap;
+    }
+    .tag-done { background: var(--green-bg); color: var(--green-text); }
+    .tag-inprogress { background: var(--amber-bg); color: var(--yellow); }
+    .tag-notstarted { background: var(--red-bg); color: var(--red-text); }
+    .tag-blocked { background: var(--blocked-bg); color: var(--blocked-tag-text); }
+    .tag-unneeded { background: var(--unneeded-bg); color: var(--unneeded-tag-text); }
+
+    .cat-progress {
+        margin: 0 18px 0 18px;
+        height: 5px;
+        background: var(--bar-bg);
+        border-radius: 5px;
+        overflow: hidden;
+    }
+    .cat-progress-fill {
+        height: 100%;
+        transition: width 0.4s ease;
+        border-radius: 5px;
+    }
+
+    /* TASK LIST */
+    .tasks {
+        display: none;
+        padding: 4px 18px 14px;
+    }
+    .tasks.open { display: block; }
+
+    .task-row {
+        display: flex;
+        align-items: flex-start;
+        gap: 10px;
+        padding: 10px 12px;
+        margin: 3px 0;
+        border-radius: 6px;
+        background: var(--row-bg);
+        border: 1px solid var(--row-border);
+        transition: background 0.15s;
+        cursor: default;
+    }
+    .task-row:hover { background: var(--row-hover); }
+    .task-row.completed { opacity: 0.6; }
+
+    .task-status-btn {
+        margin-top: 2px;
+        width: 22px;
+        height: 22px;
+        border-radius: 50%;
+        border: 2px solid var(--input-border);
+        cursor: pointer;
+        flex-shrink: 0;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 0.65em;
+        font-weight: bold;
+        transition: all 0.15s;
+        user-select: none;
+    }
+    .task-status-btn { position: relative; }
+    .task-status-btn:hover { transform: scale(1.15); }
+    .task-status-btn.s-notstarted { background: var(--btn-notstarted-bg); border-color: var(--btn-notstarted-border); color: var(--btn-notstarted-color); }
+    .task-status-btn.s-inprogress { background: var(--btn-inprog-bg); border-color: var(--btn-inprog-border); color: var(--btn-inprog-color); }
+    .task-status-btn.s-done { background: var(--btn-done-bg); border-color: var(--btn-done-border); color: var(--btn-done-color); }
+    .task-status-btn.s-blocked { background: var(--btn-blocked-bg); border-color: var(--btn-blocked-border); color: var(--btn-blocked-color); }
+    .task-status-btn.s-unneeded { background: var(--btn-unneeded-bg); border-color: var(--btn-unneeded-border); color: var(--btn-unneeded-color); }
+
+    /* Status dropdown popup */
+    .status-popup {
+        position: absolute;
+        top: 0; left: 28px;
+        background: var(--card-bg);
+        border: 1px solid var(--card-border);
+        border-radius: 8px;
+        box-shadow: 0 4px 16px rgba(0,0,0,0.35);
+        z-index: 100;
+        padding: 4px;
+        display: flex;
+        gap: 4px;
+        white-space: nowrap;
+    }
+    .status-popup .sp-opt {
+        width: 24px; height: 24px;
+        border-radius: 50%;
+        border: 2px solid transparent;
+        cursor: pointer;
+        display: flex; align-items: center; justify-content: center;
+        font-size: 0.65em; font-weight: bold;
+        transition: transform 0.12s;
+    }
+    .status-popup .sp-opt:hover { transform: scale(1.25); }
+    .status-popup .sp-opt.sp-notstarted { background: var(--btn-notstarted-bg); border-color: var(--btn-notstarted-border); color: var(--btn-notstarted-color); }
+    .status-popup .sp-opt.sp-inprogress { background: var(--btn-inprog-bg); border-color: var(--btn-inprog-border); color: var(--btn-inprog-color); }
+    .status-popup .sp-opt.sp-done { background: var(--btn-done-bg); border-color: var(--btn-done-border); color: var(--btn-done-color); }
+    .status-popup .sp-opt.sp-blocked { background: var(--btn-blocked-bg); border-color: var(--btn-blocked-border); color: var(--btn-blocked-color); }
+    .status-popup .sp-opt.sp-unneeded { background: var(--btn-unneeded-bg); border-color: var(--btn-unneeded-border); color: var(--btn-unneeded-color); }
+
+    /* Category complete-all button */
+    .cat-complete-all {
+        padding: 2px 8px;
+        border-radius: 5px;
+        font-size: 0.68em;
+        font-weight: 600;
+        cursor: pointer;
+        border: 1px solid var(--green-text);
+        background: var(--green-bg);
+        color: var(--green-text);
+        white-space: nowrap;
+        transition: filter 0.15s;
+    }
+    .cat-complete-all:hover { filter: brightness(1.3); }
+
+    /* Reset button */
+    .reset-zone {
+        margin-top: 40px;
+        padding: 20px 0;
+        text-align: center;
+        border-top: 1px solid var(--card-border);
+    }
+    .reset-btn {
+        padding: 8px 24px;
+        border-radius: 6px;
+        font-size: 0.8em;
+        font-weight: 600;
+        cursor: pointer;
+        border: 1px solid #c62828;
+        background: transparent;
+        color: #c62828;
+        opacity: 0.6;
+        transition: all 0.2s;
+    }
+    .reset-btn:hover { background: #c62828; color: #fff; opacity: 1; }
+
+    .task-content {
+        flex: 1;
+        min-width: 0;
+    }
+    .task-item-label {
+        display: inline-block;
+        background: var(--row-border);
+        color: var(--item-label-color);
+        padding: 1px 8px;
+        border-radius: 4px;
+        font-size: 0.72em;
+        margin-right: 6px;
+        font-weight: 600;
+    }
+    .task-text {
+        font-size: 0.88em;
+        white-space: pre-line;
+        word-break: break-word;
+    }
+    .task-row.completed .task-text {
+        text-decoration: line-through;
+        color: var(--completed-text);
+    }
+    .task-row.blocked .task-text {
+        text-decoration: line-through;
+        color: var(--blocked-text);
+    }
+    .task-row.blocked { opacity: 0.7; }
+    .task-row.unneeded .task-text {
+        text-decoration: line-through;
+        color: var(--unneeded-text);
+    }
+    .task-row.unneeded { opacity: 0.5; }
+
+    .task-meta {
+        display: flex;
+        gap: 8px;
+        align-items: center;
+        flex-shrink: 0;
+    }
+    .task-time {
+        font-size: 0.7em;
+        color: var(--text-dim);
+        font-family: 'Consolas', monospace;
+        white-space: nowrap;
+    }
+    .task-status-dot {
+        width: 10px;
+        height: 10px;
+        border-radius: 50%;
+        flex-shrink: 0;
+    }
+    .dot-done { background: var(--dot-done); }
+    .dot-inprogress { background: var(--dot-inprog); animation: pulse 1.5s infinite; }
+    .dot-notstarted { background: var(--dot-notstarted); }
+    .dot-blocked { background: var(--dot-blocked); }
+    .dot-unneeded { background: var(--dot-unneeded); }
+
+    @keyframes pulse {
+        0%, 100% { opacity: 1; }
+        50% { opacity: 0.4; }
+    }
+
+    /* ACTIONS */
+    .actions {
+        display: flex;
+        gap: 10px;
+        margin-top: 20px;
+        flex-wrap: wrap;
+    }
+    .action-btn {
+        background: var(--action-bg);
+        border: 1px solid var(--action-border);
+        padding: 10px 18px;
+        color: var(--text-muted);
+        cursor: pointer;
+        border-radius: 8px;
+        font-size: 0.85em;
+        transition: all 0.2s;
+    }
+    .action-btn:hover { background: var(--card-hover); color: var(--text); border-color: var(--text-dim); }
+    .action-btn.primary { background: var(--green-bg); border-color: var(--green-text); color: var(--green-text); }
+    .action-btn.primary:hover { background: var(--green-bg); filter: brightness(1.2); }
+    .action-btn.share { background: var(--card-bg); border-color: var(--blue); color: var(--blue); }
+    .action-btn.share:hover { filter: brightness(1.1); }
+
+    #snapshot-area {
+        padding: 20px 30px 16px;
+        margin: -20px -30px 0;
+    }
+
+    /* SUMMARY */
+    #summaryBox {
+        margin-top: 16px;
+        padding: 0;
+        background: var(--card-bg);
+        border: 1px solid var(--card-border);
+        border-radius: 10px;
+        font-size: 0.9em;
+        display: none;
+        overflow: hidden;
+    }
+    #summaryBox .summary-toolbar {
+        display: flex;
+        justify-content: flex-end;
+        gap: 8px;
+        padding: 10px 16px;
+        border-bottom: 1px solid var(--card-border);
+        background: var(--row-bg);
+    }
+    #summaryBox .summary-toolbar button {
+        padding: 4px 14px;
+        border-radius: 5px;
+        border: 1px solid var(--btn-border);
+        background: var(--btn-bg);
+        color: var(--text-muted);
+        cursor: pointer;
+        font-size: 0.82em;
+    }
+    #summaryBox .summary-toolbar button:hover { background: var(--card-hover); }
+    #summaryBox .summary-toolbar button.copy-btn { border-color: var(--green-text); color: var(--green-text); background: var(--green-bg); }
+    #summaryBox .summary-body {
+        padding: 16px;
+    }
+
+    /* TOAST */
+    .toast {
+        position: fixed;
+        bottom: 30px;
+        right: 30px;
+        background: var(--toast-bg);
+        color: var(--toast-text);
+        border: 1px solid var(--toast-border);
+        padding: 12px 20px;
+        border-radius: 8px;
+        font-size: 0.85em;
+        opacity: 0;
+        transform: translateY(20px);
+        transition: all 0.3s;
+        pointer-events: none;
+        z-index: 100;
+    }
+    .toast.show {
+        opacity: 1;
+        transform: translateY(0);
+    }
+
+    /* NO RESULTS */
+    .no-results {
+        text-align: center;
+        padding: 40px;
+        color: var(--text-dim);
+        font-size: 0.95em;
+    }
+
+    /* ASSIGNEE */
+    .task-assignee {
+        display: inline-block;
+        background: var(--card-border);
+        color: var(--blue);
+        padding: 1px 8px;
+        border-radius: 4px;
+        font-size: 0.68em;
+        font-weight: 500;
+        white-space: nowrap;
+        max-width: 160px;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        cursor: pointer;
+        transition: background 0.15s;
+        vertical-align: middle;
+    }
+    .task-assignee:hover { background: var(--input-border); }
+    .task-assignee-edit {
+        padding: 2px 6px;
+        border-radius: 4px;
+        border: 1px solid var(--blue);
+        background: var(--input-bg);
+        color: var(--text);
+        font-size: 0.72em;
+        font-family: inherit;
+        outline: none;
+        width: 140px;
+    }
+    .team-select {
+        padding: 7px 12px;
+        border-radius: 6px;
+        border: 1px solid var(--input-border);
+        background: var(--input-bg);
+        color: var(--text);
+        font-size: 0.85em;
+        cursor: pointer;
+        outline: none;
+    }
+
+    /* TIME INDICATOR */
+    .time-overdue { color: var(--pink) !important; }
+    .time-current { color: var(--yellow) !important; }
+    .time-upcoming { color: var(--blue) !important; }
+
+    /* ISSUES PANEL */
+    .issues-panel {
+        background: var(--card-bg);
+        border: 1px solid var(--card-border);
+        border-radius: 10px;
+        padding: 18px;
+        margin-bottom: 20px;
+    }
+    .issues-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 14px;
+        cursor: pointer;
+        user-select: none;
+    }
+    .iss-chevron {
+        font-size: 0.7em;
+        color: var(--text-dim);
+        transition: transform 0.25s;
+        display: inline-block;
+    }
+    .iss-chevron.open { transform: rotate(90deg); }
+    .issues-header h2 {
+        margin: 0;
+        font-size: 1em;
+        color: var(--orange);
+        display: flex;
+        align-items: center;
+        gap: 8px;
+    }
+    .issues-count {
+        background: var(--amber-bg);
+        color: var(--orange);
+        padding: 2px 10px;
+        border-radius: 10px;
+        font-size: 0.75em;
+        font-weight: 600;
+    }
+    .issue-add-form {
+        display: none;
+        background: var(--issue-form-bg);
+        border: 1px solid var(--card-border);
+        border-radius: 8px;
+        padding: 14px;
+        margin-bottom: 14px;
+    }
+    .issue-add-form.open { display: block; }
+    .issue-form-row {
+        display: flex;
+        gap: 10px;
+        margin-bottom: 8px;
+        flex-wrap: wrap;
+    }
+    .issue-form-row label {
+        font-size: 0.75em;
+        color: var(--text-muted);
+        display: block;
+        margin-bottom: 3px;
+    }
+    .issue-field {
+        flex: 1;
+        min-width: 140px;
+    }
+    .issue-field input, .issue-field select, .issue-field textarea {
+        width: 100%;
+        padding: 7px 10px;
+        border-radius: 6px;
+        border: 1px solid var(--input-border);
+        background: var(--input-bg);
+        color: var(--text);
+        font-size: 0.82em;
+        font-family: inherit;
+        outline: none;
+    }
+    .issue-field textarea {
+        resize: vertical;
+        min-height: 50px;
+    }
+    .issue-field input:focus, .issue-field select:focus, .issue-field textarea:focus {
+        border-color: var(--orange);
+    }
+    .issue-form-actions {
+        display: flex;
+        gap: 8px;
+        justify-content: flex-end;
+    }
+    .issue-btn {
+        padding: 6px 16px;
+        border-radius: 6px;
+        border: 1px solid var(--btn-border);
+        background: var(--btn-bg);
+        color: var(--text-muted);
+        cursor: pointer;
+        font-size: 0.82em;
+    }
+    .issue-btn.save { background: var(--amber-bg); border-color: var(--orange); color: var(--orange); }
+    .issue-btn.save:hover { background: var(--amber-bg); filter: brightness(1.2); }
+
+    .issue-card {
+        background: var(--issue-form-bg);
+        border: 1px solid var(--card-border);
+        border-radius: 8px;
+        padding: 12px 14px;
+        margin-bottom: 8px;
+        display: flex;
+        gap: 10px;
+        align-items: flex-start;
+    }
+    .issue-card .issue-severity {
+        width: 6px;
+        min-height: 40px;
+        border-radius: 3px;
+        flex-shrink: 0;
+        margin-top: 2px;
+    }
+    .issue-severity.blocking { background: var(--health-red); }
+    .issue-severity.non-blocking { background: var(--health-amber); }
+    .issue-body { flex: 1; min-width: 0; }
+    .issue-title-row {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        gap: 8px;
+        margin-bottom: 4px;
+    }
+    .issue-desc {
+        font-size: 0.88em;
+        font-weight: 600;
+        color: var(--text);
+        word-break: break-word;
+    }
+    .issue-tags {
+        display: flex;
+        gap: 6px;
+        flex-shrink: 0;
+        align-items: center;
+    }
+    .issue-tag {
+        padding: 2px 8px;
+        border-radius: 4px;
+        font-size: 0.68em;
+        font-weight: 600;
+    }
+    .issue-tag.blocking { background: var(--red-bg); color: var(--red-text); }
+    .issue-tag.non-blocking { background: var(--amber-bg); color: var(--yellow); }
+    .issue-tag.ongoing { background: var(--amber-bg); color: var(--yellow); }
+    .issue-tag.closed { background: var(--green-bg); color: var(--green-text); }
+    .issue-meta {
+        font-size: 0.72em;
+        color: var(--text-dim);
+        margin-top: 4px;
+    }
+    .issue-meta span { margin-right: 12px; }
+    .issue-actions {
+        display: flex;
+        gap: 6px;
+        margin-top: 6px;
+    }
+    .issue-actions button {
+        padding: 3px 10px;
+        border-radius: 4px;
+        border: 1px solid var(--btn-border);
+        background: var(--btn-bg);
+        color: var(--text-muted);
+        cursor: pointer;
+        font-size: 0.72em;
+    }
+    .issue-actions button:hover { color: var(--text); border-color: var(--text-dim); }
+    .issue-actions button.close-btn { color: var(--green-text); }
+    .issue-actions button.reopen-btn { color: var(--yellow); }
+    .issue-actions button.del-btn { color: var(--pink); }
+
+    /* THEME TOGGLE */
+    .theme-toggle {
+        background: var(--card-bg);
+        border: 1px solid var(--card-border);
+        border-radius: 20px;
+        width: 48px;
+        height: 26px;
+        cursor: pointer;
+        display: flex;
+        align-items: center;
+        padding: 2px;
+        transition: background 0.3s;
+    }
+    .theme-toggle-knob {
+        width: 22px;
+        height: 22px;
+        border-radius: 50%;
+        background: var(--text);
+        transition: transform 0.3s;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 12px;
+    }
+    [data-theme="light"] .theme-toggle-knob {
+        transform: translateX(22px);
+    }
+    .theme-toggle-label {
+        font-size: 0.7em;
+        color: var(--text-muted);
+        margin-right: 8px;
+    }
+    .theme-toggle-wrap {
+        position: absolute;
+        top: 20px;
+        right: 30px;
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        z-index: 10;
+    }
+</style>
+</head>
+
+<body>
+
+<div class="theme-toggle-wrap">
+    <span class="theme-toggle-label">🌙</span>
+    <div class="theme-toggle" id="themeToggle" onclick="toggleTheme()" title="Toggle light/dark mode">
+        <div class="theme-toggle-knob"></div>
+    </div>
+    <span class="theme-toggle-label">☀️</span>
+</div>
+
+<div class="bg-overlay" id="bgOverlay"></div>
+
+<div id="snapshot-area">
+
+<div class="header">
+    <div class="header-row">
+        <img id="clientLogo" class="client-logo hidden" alt="Client Logo">
+        <h1>Go-Live Runbook</h1>
+    </div>
+    <div class="subtitle"></div>
+    <div class="clock" id="clock"></div>
+    <div class="health-bar">
+        <span class="health-label">Go-Live Health:</span>
+        <div class="health-indicator">
+            <div class="health-dot green" data-health="Green" onclick="setHealth('Green')" title="Green - On Track">GO</div>
+            <div class="health-dot amber" data-health="Amber" onclick="setHealth('Amber')" title="Amber - At Risk">AT RISK</div>
+            <div class="health-dot red" data-health="Red" onclick="setHealth('Red')" title="Red - Rollback">STOP</div>
+        </div>
+        <span class="health-text" id="healthText"></span>
+    </div>
+</div>
+
+<div class="global-stats" id="globalStats"></div>
+
+<div id="timeline"></div>
+
+</div><!-- end snapshot-area -->
+
+<div class="controls">
+    <div class="filter-group">
+        <div class="filterBtn active" data-filter="all">All</div>
+        <div class="filterBtn" data-filter="done">Completed</div>
+        <div class="filterBtn" data-filter="inprogress">In Progress</div>
+        <div class="filterBtn" data-filter="notstarted">Not Started</div>
+        <div class="filterBtn" data-filter="blocked">Blocking</div>
+        <div class="filterBtn" data-filter="unneeded">Unneeded</div>
+    </div>
+    <input type="text" class="search-box" id="searchBox" placeholder="Search tasks...">
+    <select class="team-select" id="teamFilter">
+        <option value="all">All Teams</option>
+    </select>
+    <select class="sort-select" id="sortSelect">
+        <option value="timeline">Sort: Timeline</option>
+        <option value="completion">Sort: Completion %</option>
+        <option value="alpha">Sort: A-Z</option>
+    </select>
+</div>
+
+<div id="issuesPanel"></div>
+
+<div id="container"></div>
+
+<div class="actions">
+    <button class="action-btn primary" onclick="saveToLocalStorage()">Save Progress</button>
+    <button class="action-btn" onclick="reloadRunbookJSON()">Reload runbook.json</button>
+    <button class="action-btn" onclick="triggerFileRunbookLoad()">Load JSON File</button>
+    <button class="action-btn share" onclick="showPhoneExportOptions()"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-2px;margin-right:4px"><rect x="5" y="2" width="14" height="20" rx="2" ry="2"/><line x1="12" y1="18" x2="12.01" y2="18"/></svg>Phone Image</button>
+    <button class="action-btn share" onclick="showEmailExportOptions()"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-2px;margin-right:4px"><rect x="2" y="4" width="20" height="16" rx="2"/><polyline points="22,4 12,13 2,4"/></svg>Email Image</button>
+    <button class="action-btn share" onclick="exportGantt()"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-2px;margin-right:4px"><line x1="4" y1="6" x2="16" y2="6"/><line x1="8" y1="10" x2="20" y2="10"/><line x1="6" y1="14" x2="18" y2="14"/><line x1="4" y1="18" x2="14" y2="18"/><line x1="2" y1="3" x2="2" y2="21"/></svg>Gantt Chart</button>
+    <button class="action-btn" onclick="generateSummary()">Generate Summary</button>
+    <button class="action-btn" onclick="exportJSON()">Export JSON</button>
+    <button class="action-btn" onclick="expandAll()">Expand All</button>
+    <button class="action-btn" onclick="collapseAll()">Collapse All</button>
+</div>
+
+<input id="runbookFileInput" type="file" accept="application/json,.json" style="display:none" onchange="handleRunbookFileSelected(event)">
+
+<div id="summaryBox"></div>
+
+<div class="reset-zone">
+    <button class="reset-btn" onclick="resetRunbook()">⚠ Reset Entire Runbook</button>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+<script>
+let runbookData = {};
+let projectConfig = {
+    projectName: "Go-Live Runbook",
+    subtitle: "",
+    changeRef: "",
+    client: "",
+    environment: "",
+    release: "",
+    accentColor: "#003a2d"
+};
+let filterState = "all";
+let searchQuery = "";
+let teamFilter = "all";
+let sortMode = "timeline";
+let openCategories = new Set();
+let issues = [];
+let issueFormOpen = false;
+let issuesPanelOpen = true;
+let editingIssueId = null;
+let healthStatus = "Green";
+
+async function loadConfig() {
+    try {
+        const res = await fetch("config.json");
+        const cfg = await res.json();
+        Object.assign(projectConfig, cfg);
+    } catch(e) { /* config.json optional — use defaults */ }
+    applyConfig();
+}
+
+function applyConfig() {
+    const c = projectConfig;
+    document.title = c.projectName + " - Go-Live Runbook Dashboard";
+    const h1 = document.querySelector(".header h1");
+    if (h1) h1.textContent = c.projectName + " - Go-Live Runbook";
+    const sub = document.querySelector(".subtitle");
+    if (sub) sub.textContent = [c.subtitle, c.changeRef].filter(Boolean).join(" | ");
+}
+
+function toggleTheme() {
+    const html = document.documentElement;
+    const current = html.getAttribute("data-theme");
+    const next = current === "light" ? "dark" : "light";
+    html.setAttribute("data-theme", next);
+    localStorage.setItem("runbook_theme", next);
+    renderHealthIndicator();
+}
+
+(function initTheme() {
+    const saved = localStorage.getItem("runbook_theme");
+    if (saved === "light") document.documentElement.setAttribute("data-theme", "light");
+})();
+
+function setHealth(status) {
+    healthStatus = status;
+    runbookData._health = status;
+    renderHealthIndicator();
+    renderGlobalStats();
+}
+
+function renderHealthIndicator() {
+    document.querySelectorAll('.health-dot').forEach(d => {
+        d.classList.toggle('active', d.dataset.health === healthStatus);
+    });
+    const ht = document.getElementById('healthText');
+    const labels = { Green: 'ON TRACK', Amber: 'AT RISK', Red: 'ROLLBACK' };
+    ht.textContent = labels[healthStatus] || healthStatus;
+    ht.className = 'health-text ' + healthStatus.toLowerCase();
+    // Update clock color to match health
+    const isLight = document.documentElement.getAttribute('data-theme') === 'light';
+    const clockColors = isLight
+        ? { Green: '#1b8a2a', Amber: '#b8860b', Red: '#c62828' }
+        : { Green: '#39ff14', Amber: '#ffd700', Red: '#ff1744' };
+    document.getElementById('clock').style.color = clockColors[healthStatus] || clockColors.Green;
+}
+
+function showToast(msg) {
+    const t = document.getElementById("toast");
+    t.textContent = msg;
+    t.classList.add("show");
+    setTimeout(() => t.classList.remove("show"), 2500);
+}
+
+function updateClock() {
+    const now = new Date();
+    document.getElementById("clock").textContent =
+        now.toLocaleString("en-GB", {
+            weekday: "short", day: "2-digit", month: "short", year: "numeric",
+            hour: "2-digit", minute: "2-digit", second: "2-digit", hour12: false
+        }) + " UK";
+}
+
+function normalizeStatus(s) {
+    if (!s || s === "NaN") return "Not Started";
+    const lower = s.toLowerCase().trim();
+    if (lower === "completed" || lower === "done") return "Completed";
+    if (lower.includes("progress")) return "In Progress";
+    if (lower === "blocked" || lower === "blocking") return "Blocking";
+    if (lower === "unneeded" || lower === "not needed" || lower === "n/a") return "Unneeded";
+    return "Not Started";
+}
+
+function statusClass(s) {
+    if (s === "Completed") return "done";
+    if (s === "In Progress") return "inprogress";
+    if (s === "Blocking") return "blocked";
+    if (s === "Unneeded") return "unneeded";
+    return "notstarted";
+}
+
+function formatTime(iso) {
+    if (!iso) return "";
+    const d = new Date(iso);
+    if (isNaN(d)) return "";
+    return d.toLocaleString("en-GB", { month:"short", day:"2-digit", hour:"2-digit", minute:"2-digit", hour12:false });
+}
+
+function formatTimeShort(iso) {
+    if (!iso) return "";
+    const d = new Date(iso);
+    if (isNaN(d)) return "";
+    return d.toLocaleTimeString("en-GB", { hour:"2-digit", minute:"2-digit", hour12:false });
+}
+
+function getEarliestTime(tasks) {
+    let earliest = null;
+    for (const t of tasks) {
+        if (t.startTime) {
+            const d = new Date(t.startTime);
+            if (!isNaN(d) && (!earliest || d < earliest)) earliest = d;
+        }
+    }
+    return earliest;
+}
+
+function computeCategoryStatus(tasks) {
+    const done = tasks.filter(t => { const st = normalizeStatus(t.status); return st === "Completed" || st === "Unneeded"; }).length;
+    const inProg = tasks.filter(t => normalizeStatus(t.status) === "In Progress").length;
+    const blocking = tasks.filter(t => normalizeStatus(t.status) === "Blocking").length;
+    if (done === tasks.length) return "done";
+    if (blocking > 0) return "blocked";
+    if (done > 0 || inProg > 0) return "inprogress";
+    return "notstarted";
+}
+
+function escapeHtml(text) {
+    const div = document.createElement("div");
+    div.textContent = text;
+    return div.innerHTML;
+}
+
+function getUniqueTeams() {
+    const teams = new Set();
+    Object.entries(runbookData).forEach(([key, tasks]) => {
+        if (key.startsWith("_") || !Array.isArray(tasks)) return;
+        tasks.forEach(t => { if (t.assignee) teams.add(t.assignee); });
+    });
+    return [...teams].sort((a, b) => a.localeCompare(b));
+}
+
+function populateTeamFilter() {
+    const sel = document.getElementById("teamFilter");
+    const current = sel.value;
+    const teams = getUniqueTeams();
+    sel.innerHTML = '<option value="all">All Teams</option>' +
+        teams.map(t => `<option value="${escapeHtml(t)}">${escapeHtml(t)}</option>`).join("");
+    sel.value = current;
+}
+
+function matchesTeam(task) {
+    if (teamFilter === "all") return true;
+    return (task.assignee || "") === teamFilter;
+}
+
+async function loadRunbook() {
+    // Try to load saved progress from localStorage first
+    const saved = localStorage.getItem("runbook_progress");
+    if (saved) {
+        try {
+            runbookData = JSON.parse(saved);
+            issues = runbookData._issues || [];
+            healthStatus = runbookData._health || "Green";
+            showToast("Loaded saved progress");
+            render();
+            return;
+        } catch(e) { /* fall through to fetch */ }
+    }
+    try {
+        const res = await fetch("runbook.json");
+        runbookData = await res.json();
+        issues = runbookData._issues || [];
+        healthStatus = runbookData._health || "Green";
+    } catch(e) {
+        document.getElementById("container").innerHTML =
+            '<div class="no-results">Failed to load runbook.json. Make sure the file is in the same directory.</div>';
+        return;
+    }
+    render();
+}
+
+function getGlobalStats() {
+    let total = 0, done = 0, inProg = 0, notStarted = 0, blocking = 0;
+    Object.entries(runbookData).forEach(([key, tasks]) => {
+        if (key.startsWith("_")) return;
+        if (!Array.isArray(tasks)) return;
+        tasks.forEach(t => {
+            total++;
+            const s = normalizeStatus(t.status);
+            if (s === "Completed" || s === "Unneeded") done++;
+            else if (s === "In Progress") inProg++;
+            else if (s === "Blocking") blocking++;
+            else notStarted++;
+        });
+    });
+    return { total, done, inProg, notStarted, blocking };
+}
+
+function renderGlobalStats() {
+    const { total, done, inProg, notStarted, blocking } = getGlobalStats();
+    const pct = total > 0 ? Math.round((done / total) * 100) : 0;
+    const openIss = issues.filter(i => i.issueStatus === "Ongoing").length;
+    const blockIss = issues.filter(i => i.issueStatus === "Ongoing" && i.severity === "Blocking").length;
+    const totalBlocking = blocking + blockIss;
+    const healthGradients = {
+        Green: 'linear-gradient(90deg, #39ff14, #5bc0ff)',
+        Amber: 'linear-gradient(90deg, #ffd700, #ff8c00)',
+        Red:   'linear-gradient(90deg, #ff8c00, #ff1744)'
+    };
+    const barGradient = healthGradients[healthStatus] || healthGradients.Green;
+    document.getElementById("globalStats").innerHTML = `
+        <div class="stats-master">
+            <div class="progress-fill" style="width:${pct}%;background:${barGradient}"></div>
+            <div class="progress-text">
+                <div class="master-pct">${pct}%</div>
+                <div>
+                    <div class="master-detail">${done} / ${total} tasks completed</div>
+                    <div class="master-label">Overall Completion</div>
+                </div>
+            </div>
+        </div>
+        <div class="stats-groups">
+            <div style="flex:1">
+                <div class="stats-group-label">Tasks</div>
+                <div class="stats-group">
+                    <div class="stat-card total"><div class="stat-value">${total}</div><div class="stat-label">Total</div></div>
+                    <div class="stat-card done"><div class="stat-value">${done}</div><div class="stat-label">Done</div></div>
+                    <div class="stat-card inprog"><div class="stat-value">${inProg}</div><div class="stat-label">In Prog</div></div>
+                    <div class="stat-card notstarted"><div class="stat-value">${notStarted}</div><div class="stat-label">Not Started</div></div>
+                </div>
+            </div>
+            <div style="flex:0 0 auto">
+                <div class="stats-group-label">Issues</div>
+                <div class="stats-group">
+                    <div class="stat-card issues"><div class="stat-value">${openIss}</div><div class="stat-label">Open</div></div>
+                    <div class="stat-card blocking"><div class="stat-value">${totalBlocking}</div><div class="stat-label">Blocked</div></div>
+                </div>
+            </div>
+        </div>
+    `;
+    renderHealthIndicator();
+}
+
+function matchesSearch(task) {
+    if (!searchQuery) return true;
+    const q = searchQuery.toLowerCase();
+    const text = ((task.item || "") + " " + (task.task || "") + " " + (task.assignee || "")).toLowerCase();
+    return text.includes(q);
+}
+
+function sortCategories(categories) {
+    if (sortMode === "completion") {
+        return [...categories].sort((a, b) => {
+            const pA = runbookData[a].filter(t => { const st = normalizeStatus(t.status); return st === "Completed" || st === "Unneeded"; }).length / runbookData[a].length;
+            const pB = runbookData[b].filter(t => { const st = normalizeStatus(t.status); return st === "Completed" || st === "Unneeded"; }).length / runbookData[b].length;
+            return pB - pA;
+        });
+    }
+    if (sortMode === "alpha") {
+        return [...categories].sort((a, b) => a.localeCompare(b));
+    }
+    // timeline: sort by earliest task start time
+    return [...categories].sort((a, b) => {
+        const tA = getEarliestTime(runbookData[a]);
+        const tB = getEarliestTime(runbookData[b]);
+        if (!tA && !tB) return 0;
+        if (!tA) return 1;
+        if (!tB) return -1;
+        return tA - tB;
+    });
+}
+
+function render() {
+    renderGlobalStats();
+    renderIssues();
+    populateTeamFilter();
+
+    const container = document.getElementById("container");
+    container.innerHTML = "";
+
+    let categories = sortCategories(Object.keys(runbookData).filter(k => !k.startsWith("_")));
+    renderTimeline(categories);
+
+    let anyVisible = false;
+
+    categories.forEach(cat => {
+        const tasks = runbookData[cat];
+        const catStatus = computeCategoryStatus(tasks);
+
+        // Filter by category status
+        if (filterState !== "all" && filterState !== catStatus) return;
+
+        // Filter by search — show category if any task matches
+        const matchingTasks = tasks.filter(t => matchesSearch(t) && matchesTeam(t));
+        if ((searchQuery || teamFilter !== "all") && matchingTasks.length === 0) return;
+
+        anyVisible = true;
+
+        const done = tasks.filter(t => { const st = normalizeStatus(t.status); return st === "Completed" || st === "Unneeded"; }).length;
+        const pct = Math.round((done / tasks.length) * 100);
+        const isOpen = openCategories.has(cat);
+        const earliest = getEarliestTime(tasks);
+        const timeRange = earliest ? formatTime(tasks.reduce((best, t) => {
+            if (!t.startTime) return best;
+            const d = new Date(t.startTime);
+            return (!best || d < best) ? d : best;
+        }, null).toISOString()) : "";
+
+        const fillColor = pct === 100 ? "#39ff14" : pct > 0 ? "#ffd84a" : "#ff6b6b";
+
+        const div = document.createElement("div");
+        div.className = "category";
+        div.id = "cat-" + cat.replace(/[^a-zA-Z0-9]/g, "_");
+
+        div.innerHTML = `
+            <div class="category-header" data-cat="${escapeHtml(cat)}">
+                <div class="cat-left">
+                    <span class="cat-chevron ${isOpen ? 'open' : ''}">&#9654;</span>
+                    <span class="cat-name">${escapeHtml(cat)}</span>
+                </div>
+                <div class="cat-right">
+                    <span class="cat-time">${timeRange}</span>
+                    <button class="cat-complete-all" data-cat="${escapeHtml(cat)}" title="Mark all tasks in this category as Completed">✓ All</button>
+                    <span class="status-tag tag-${catStatus}">${done}/${tasks.length}</span>
+                </div>
+            </div>
+            <div class="cat-progress"><div class="cat-progress-fill" style="width:${pct}%; background:${fillColor}"></div></div>
+            <div class="tasks ${isOpen ? 'open' : ''}">
+                ${(searchQuery || teamFilter !== "all" ? matchingTasks : tasks).map((t, i) => {
+                    const realIdx = tasks.indexOf(t);
+                    const ns = normalizeStatus(t.status);
+                    const sc = statusClass(ns);
+                    const timeStr = t.startTime
+                        ? formatTimeShort(t.startTime) + (t.endTime ? " - " + formatTimeShort(t.endTime) : "")
+                        : "";
+                    return `
+                    <div class="task-row ${ns === 'Completed' ? 'completed' : ns === 'Blocking' ? 'blocked' : ns === 'Unneeded' ? 'unneeded' : ''}">
+                        <div class="task-status-btn s-${sc}" title="Click to cycle status"
+                            data-cat="${escapeHtml(cat)}" data-idx="${realIdx}">
+                            ${ns === 'Completed' ? '✓' : ns === 'In Progress' ? '▶' : ns === 'Blocking' ? '✕' : ns === 'Unneeded' ? '—' : ''}
+                        </div>
+                        <div class="task-content">
+                            ${t.item ? '<span class="task-item-label">' + escapeHtml(t.item) + '</span>' : ''}
+                            <span class="task-text">${escapeHtml(t.task)}</span>
+                            ${t.assignee ? '<span class="task-assignee" title="Click to edit assignee" data-cat="' + escapeHtml(cat) + '" data-idx="' + realIdx + '">' + escapeHtml(t.assignee) + '</span>' : '<span class="task-assignee" title="Click to assign" data-cat="' + escapeHtml(cat) + '" data-idx="' + realIdx + '" style="opacity:0.4;border:1px dashed var(--input-border)">+ assign</span>'}
+                        </div>
+                        <div class="task-meta">
+                            ${timeStr ? '<span class="task-time">' + timeStr + '</span>' : ''}
+                            <span class="task-status-dot dot-${sc}"></span>
+                        </div>
+                    </div>`;
+                }).join("")}
+            </div>
+        `;
+        container.appendChild(div);
+
+        // Attach header click
+        div.querySelector(".category-header").addEventListener("click", () => {
+            if (openCategories.has(cat)) openCategories.delete(cat);
+            else openCategories.add(cat);
+            render();
+        });
+
+        // Attach status button clicks — show status popup
+        div.querySelectorAll(".task-status-btn").forEach(btn => {
+            btn.addEventListener("click", (e) => {
+                e.stopPropagation();
+                // Remove any existing popup
+                document.querySelectorAll(".status-popup").forEach(p => p.remove());
+                const c = e.currentTarget.dataset.cat;
+                const idx = parseInt(e.currentTarget.dataset.idx);
+                const popup = document.createElement("div");
+                popup.className = "status-popup";
+                const statuses = [
+                    { key: "Not Started", label: "Not Started", cls: "sp-notstarted", icon: "" },
+                    { key: "In Progress", label: "In Progress", cls: "sp-inprogress", icon: "▶" },
+                    { key: "Completed",   label: "Completed",   cls: "sp-done",       icon: "✓" },
+                    { key: "Blocking",    label: "Blocked",     cls: "sp-blocked",    icon: "✕" },
+                    { key: "Unneeded",    label: "Unneeded",    cls: "sp-unneeded",   icon: "—" }
+                ];
+                statuses.forEach(s => {
+                    const opt = document.createElement("div");
+                    opt.className = "sp-opt " + s.cls;
+                    opt.textContent = s.icon;
+                    opt.title = s.label;
+                    opt.addEventListener("click", (ev) => {
+                        ev.stopPropagation();
+                        runbookData[c][idx].status = s.key;
+                        popup.remove();
+                        render();
+                    });
+                    popup.appendChild(opt);
+                });
+                e.currentTarget.appendChild(popup);
+                // Close popup on outside click
+                const closePopup = (ev) => { if (!popup.contains(ev.target)) { popup.remove(); document.removeEventListener("click", closePopup); } };
+                setTimeout(() => document.addEventListener("click", closePopup), 0);
+            });
+        });
+
+        // Attach category complete-all button
+        const completeAllBtn = div.querySelector(".cat-complete-all");
+        if (completeAllBtn) {
+            completeAllBtn.addEventListener("click", (e) => {
+                e.stopPropagation();
+                const c = e.currentTarget.dataset.cat;
+                const pending = runbookData[c].filter(t => normalizeStatus(t.status) !== "Completed" && normalizeStatus(t.status) !== "Unneeded").length;
+                if (pending === 0) { showToast("All tasks already completed or unneeded"); return; }
+                if (!confirm(`Mark all ${pending} remaining tasks in "${c}" as Completed?`)) return;
+                runbookData[c].forEach(t => {
+                    if (normalizeStatus(t.status) !== "Unneeded") t.status = "Completed";
+                });
+                render();
+                showToast(`All tasks in "${c}" marked as Completed`);
+            });
+        }
+
+        // Attach assignee click-to-edit
+        div.querySelectorAll(".task-assignee").forEach(badge => {
+            badge.addEventListener("click", (e) => {
+                e.stopPropagation();
+                const span = e.currentTarget;
+                const c = span.dataset.cat;
+                const idx = parseInt(span.dataset.idx);
+                const current = runbookData[c][idx].assignee || "";
+
+                const input = document.createElement("input");
+                input.type = "text";
+                input.className = "task-assignee-edit";
+                input.value = current;
+                input.placeholder = "Assignee name...";
+
+                // Build datalist from existing teams for autocomplete
+                const dlId = "dl_teams_" + Date.now();
+                const dl = document.createElement("datalist");
+                dl.id = dlId;
+                getUniqueTeams().forEach(t => {
+                    const opt = document.createElement("option");
+                    opt.value = t;
+                    dl.appendChild(opt);
+                });
+                input.setAttribute("list", dlId);
+
+                span.replaceWith(input);
+                input.parentElement.appendChild(dl);
+                input.focus();
+                input.select();
+
+                const commit = () => {
+                    const val = input.value.trim();
+                    runbookData[c][idx].assignee = val || undefined;
+                    render();
+                };
+                input.addEventListener("blur", commit);
+                input.addEventListener("keydown", (ev) => {
+                    if (ev.key === "Enter") { ev.preventDefault(); commit(); }
+                    if (ev.key === "Escape") { render(); }
+                });
+            });
+        });
+    });
+
+    if (!anyVisible) {
+        container.innerHTML = '<div class="no-results">No categories match the current filter / search.</div>';
+    }
+}
+
+function renderTimeline(categories) {
+    const timeline = document.getElementById("timeline");
+    timeline.innerHTML = "<strong>Phase Timeline</strong>";
+    const items = document.createElement("div");
+    items.className = "timeline-items";
+
+    categories.forEach(cat => {
+        const tasks = runbookData[cat];
+        const s = computeCategoryStatus(tasks);
+        const done = tasks.filter(t => { const st = normalizeStatus(t.status); return st === "Completed" || st === "Unneeded"; }).length;
+
+        const el = document.createElement("span");
+        el.className = "timelineItem tl-" + s;
+        el.textContent = cat + " (" + done + "/" + tasks.length + ")";
+        el.title = cat + ": " + done + "/" + tasks.length + " completed";
+
+        el.addEventListener("click", () => {
+            openCategories.add(cat);
+            render();
+            const target = document.getElementById("cat-" + cat.replace(/[^a-zA-Z0-9]/g, "_"));
+            if (target) target.scrollIntoView({ behavior: "smooth", block: "start" });
+        });
+
+        items.appendChild(el);
+    });
+    timeline.appendChild(items);
+}
+
+function resetRunbook() {
+    if (!confirm("⚠ WARNING: This will reset ALL task statuses back to \"Not Started\" and clear all issues.\n\nThis action cannot be undone.\n\nAre you sure?")) return;
+    if (!confirm("FINAL CONFIRMATION: You are about to reset the ENTIRE runbook. Continue?")) return;
+    Object.keys(runbookData).filter(k => !k.startsWith("_")).forEach(cat => {
+        runbookData[cat].forEach(t => { t.status = "Not Started"; });
+    });
+    issues.length = 0;
+    runbookData._issues = [];
+    healthStatus = "Green";
+    runbookData._health = "Green";
+    localStorage.removeItem("runbook_progress");
+    render();
+    showToast("Runbook has been reset");
+}
+
+function saveToLocalStorage() {
+    runbookData._issues = issues;
+    runbookData._health = healthStatus;
+    localStorage.setItem("runbook_progress", JSON.stringify(runbookData));
+    // Also save to local file (runbook.json)
+    const blob = new Blob([JSON.stringify(runbookData, null, 2)], { type: "application/json" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = "runbook.json";
+    a.click();
+    URL.revokeObjectURL(url);
+    showToast("Progress saved to runbook.json");
+}
+
+// ── ISSUES MANAGEMENT ──
+function getCategoryNames() {
+    return Object.keys(runbookData).filter(k => !k.startsWith("_"));
+}
+
+function renderIssues() {
+    const panel = document.getElementById("issuesPanel");
+    const openIssues = issues.filter(i => i.issueStatus === "Ongoing");
+    const closedIssues = issues.filter(i => i.issueStatus === "Closed");
+    const blockingOpen = openIssues.filter(i => i.severity === "Blocking").length;
+
+    const catOptions = getCategoryNames().map(c =>
+        `<option value="${escapeHtml(c)}">${escapeHtml(c)}</option>`
+    ).join("");
+
+    panel.innerHTML = `
+    <div class="issues-panel">
+        <div class="issues-header" onclick="issuesPanelOpen = !issuesPanelOpen; document.getElementById('issuesList').style.display = issuesPanelOpen ? 'block' : 'none'; this.querySelector('.iss-chevron').classList.toggle('open', issuesPanelOpen);">
+            <h2>
+                <span class="iss-chevron ${issuesPanelOpen !== false ? 'open' : ''}">&#9654;</span>
+                \u26A0\uFE0F Issues Log
+                <span class="issues-count">${openIssues.length} open${blockingOpen > 0 ? ' / ' + blockingOpen + ' blocking' : ''}</span>
+            </h2>
+            <button class="issue-btn save" onclick="event.stopPropagation(); toggleIssueForm()">
+                ${issueFormOpen ? 'Cancel' : '+ Log Issue'}
+            </button>
+        </div>
+
+        <div class="issue-add-form ${issueFormOpen ? 'open' : ''}" id="issueForm">
+            <div class="issue-form-row">
+                <div class="issue-field" style="flex:2">
+                    <label>Description</label>
+                    <textarea id="if_desc" placeholder="Describe the issue...">${editingIssueId !== null ? escapeHtml(issues.find(i=>i.id===editingIssueId)?.description||'') : ''}</textarea>
+                </div>
+            </div>
+            <div class="issue-form-row">
+                <div class="issue-field">
+                    <label>Phase / Category</label>
+                    <select id="if_cat">
+                        <option value="General">General</option>
+                        ${catOptions}
+                    </select>
+                </div>
+                <div class="issue-field">
+                    <label>Severity</label>
+                    <select id="if_sev">
+                        <option value="Blocking">\u{1F534} Blocking</option>
+                        <option value="Non-Blocking">\u{1F7E0} Non-Blocking</option>
+                    </select>
+                </div>
+                <div class="issue-field">
+                    <label>Status</label>
+                    <select id="if_status">
+                        <option value="Ongoing">Ongoing</option>
+                        <option value="Closed">Closed</option>
+                    </select>
+                </div>
+                <div class="issue-field">
+                    <label>Time</label>
+                    <input type="text" id="if_time" placeholder="HH:MM DD Mon" value="${editingIssueId !== null ? escapeHtml(issues.find(i=>i.id===editingIssueId)?.time||'') : getDefaultIssueTime()}" />
+                </div>
+            </div>
+            <div class="issue-form-actions">
+                <button class="issue-btn" onclick="toggleIssueForm()">Cancel</button>
+                <button class="issue-btn save" onclick="saveIssue()">${editingIssueId !== null ? 'Update' : 'Add Issue'}</button>
+            </div>
+        </div>
+
+        <div id="issuesList" style="display:${issuesPanelOpen ? 'block' : 'none'}">
+            ${issues.length === 0 ? '<div style="text-align:center;color:#555;padding:12px;font-size:0.85em">No issues logged yet</div>' : ''}
+            ${issues.map(iss => `
+                <div class="issue-card">
+                    <div class="issue-severity ${iss.severity === 'Blocking' ? 'blocking' : 'non-blocking'}"></div>
+                    <div class="issue-body">
+                        <div class="issue-title-row">
+                            <span class="issue-desc">${escapeHtml(iss.description)}</span>
+                            <div class="issue-tags">
+                                <span class="issue-tag ${iss.severity === 'Blocking' ? 'blocking' : 'non-blocking'}">${iss.severity}</span>
+                                <span class="issue-tag ${iss.issueStatus === 'Ongoing' ? 'ongoing' : 'closed'}">${iss.issueStatus}</span>
+                            </div>
+                        </div>
+                        <div class="issue-meta">
+                            <span>\u{1F4C1} ${escapeHtml(iss.category)}</span>
+                            <span>\u{1F552} ${iss.time}</span>
+                        </div>
+                        <div class="issue-actions">
+                            ${iss.issueStatus === 'Ongoing'
+                                ? '<button class="close-btn" onclick="closeIssue('+iss.id+')">\u2713 Close</button>'
+                                : '<button class="reopen-btn" onclick="reopenIssue('+iss.id+')">\u21BA Reopen</button>'
+                            }
+                            <button onclick="editIssue(${iss.id})">\u270E Edit</button>
+                            <button class="del-btn" onclick="deleteIssue(${iss.id})">\u2715 Delete</button>
+                        </div>
+                    </div>
+                </div>
+            `).join('')}
+        </div>
+    </div>
+    `;
+
+    // Restore select values if editing
+    if (issueFormOpen && editingIssueId !== null) {
+        const iss = issues.find(i => i.id === editingIssueId);
+        if (iss) {
+            const catSel = document.getElementById('if_cat');
+            const sevSel = document.getElementById('if_sev');
+            const stSel = document.getElementById('if_status');
+            if (catSel) catSel.value = iss.category;
+            if (sevSel) sevSel.value = iss.severity;
+            if (stSel) stSel.value = iss.issueStatus;
+            const timeFld = document.getElementById('if_time');
+            if (timeFld) timeFld.value = iss.time || '';
+        }
+    }
+}
+
+function getDefaultIssueTime() {
+    const now = new Date();
+    return now.toLocaleTimeString('en-GB', { hour:'2-digit', minute:'2-digit', hour12:false })
+        + ' ' + now.toLocaleDateString('en-GB', { day:'2-digit', month:'short' });
+}
+
+function toggleIssueForm() {
+    issueFormOpen = !issueFormOpen;
+    if (!issueFormOpen) editingIssueId = null;
+    renderIssues();
+}
+
+function saveIssue() {
+    const desc = document.getElementById('if_desc').value.trim();
+    if (!desc) { showToast('Please enter a description'); return; }
+    const cat = document.getElementById('if_cat').value;
+    const sev = document.getElementById('if_sev').value;
+    const st = document.getElementById('if_status').value;
+    const timeInput = document.getElementById('if_time');
+    const timeStr = timeInput && timeInput.value.trim() ? timeInput.value.trim() : getDefaultIssueTime();
+
+    if (editingIssueId !== null) {
+        const iss = issues.find(i => i.id === editingIssueId);
+        if (iss) {
+            iss.description = desc;
+            iss.category = cat;
+            iss.severity = sev;
+            iss.issueStatus = st;
+            iss.time = timeStr;
+        }
+        editingIssueId = null;
+    } else {
+        issues.push({
+            id: Date.now(),
+            description: desc,
+            category: cat,
+            severity: sev,
+            issueStatus: st,
+            time: timeStr
+        });
+    }
+    issueFormOpen = false;
+    renderIssues();
+    showToast('Issue saved');
+}
+
+function closeIssue(id) {
+    const iss = issues.find(i => i.id === id);
+    if (iss) iss.issueStatus = 'Closed';
+    renderIssues();
+}
+
+function reopenIssue(id) {
+    const iss = issues.find(i => i.id === id);
+    if (iss) iss.issueStatus = 'Ongoing';
+    renderIssues();
+}
+
+function editIssue(id) {
+    editingIssueId = id;
+    issueFormOpen = true;
+    renderIssues();
+}
+
+function deleteIssue(id) {
+    issues = issues.filter(i => i.id !== id);
+    renderIssues();
+    showToast('Issue deleted');
+}
+
+function generateSummary() {
+    const box = document.getElementById("summaryBox");
+    const { total, done, inProg, notStarted, blocking } = getGlobalStats();
+    const pct = total > 0 ? Math.round((done / total) * 100) : 0;
+    const now = new Date().toLocaleString("en-GB");
+    const accent = projectConfig.accentColor || '#003a2d';
+
+    let html = '';
+    html += `<div style="font-family:Segoe UI,Calibri,Arial,sans-serif;background:#ffffff;color:#222222;padding:20px 28px;max-width:800px;">`;
+    html += `<table style="width:100%;border:none;border-bottom:3px solid ${accent};padding-bottom:12px;margin-bottom:16px;"><tr>`;
+    html += `<td style="font-size:20px;font-weight:bold;color:${accent};padding:0;">${escapeHtml(projectConfig.projectName)}</td>`;
+    html += `<td style="text-align:right;font-size:12px;color:#888888;padding:0;">Go-Live Runbook Update<br/>${now}</td>`;
+    html += `</tr></table>`;
+
+    const pctColor = pct === 100 ? '#2e7d32' : pct >= 50 ? '#1565c0' : '#e65100';
+    html += `<table style="width:100%;border-collapse:collapse;margin-bottom:16px;"><tr>`;
+    html += `<td style="padding:12px;background:#f5f5f5;border-radius:6px;text-align:center;">`;
+    html += `<span style="font-size:32px;font-weight:bold;color:${pctColor};">${pct}%</span>`;
+    html += `<span style="font-size:14px;color:#555555;margin-left:12px;">${done} / ${total} tasks completed</span>`;
+    html += `</td></tr></table>`;
+
+    html += `<table style="width:100%;border-collapse:collapse;margin-bottom:20px;"><tr>`;
+    html += `<td style="text-align:center;padding:8px;background:#e8f5e9;border-radius:4px;"><b style="font-size:18px;color:#2e7d32;">${done}</b><br/><span style="font-size:11px;color:#666;">DONE</span></td>`;
+    html += `<td style="width:6px;"></td>`;
+    html += `<td style="text-align:center;padding:8px;background:#fff3e0;border-radius:4px;"><b style="font-size:18px;color:#e65100;">${inProg}</b><br/><span style="font-size:11px;color:#666;">IN PROGRESS</span></td>`;
+    html += `<td style="width:6px;"></td>`;
+    html += `<td style="text-align:center;padding:8px;background:#fafafa;border-radius:4px;"><b style="font-size:18px;color:#555;">${notStarted}</b><br/><span style="font-size:11px;color:#666;">NOT STARTED</span></td>`;
+    html += `<td style="width:6px;"></td>`;
+    html += `<td style="text-align:center;padding:8px;background:#ffebee;border-radius:4px;"><b style="font-size:18px;color:#c62828;">${blocking}</b><br/><span style="font-size:11px;color:#666;">BLOCKING</span></td>`;
+    html += `</tr></table>`;
+
+    html += `<table style="width:100%;border-collapse:collapse;font-size:13px;">`;
+    html += `<tr style="background:${accent};color:#ffffff;"><th style="padding:8px 10px;text-align:left;font-weight:600;">Category</th><th style="padding:8px 6px;text-align:center;width:70px;">Progress</th><th style="padding:8px 6px;text-align:center;width:60px;">Status</th></tr>`;
+
+    Object.keys(runbookData).filter(k => !k.startsWith("_")).forEach((cat, ci) => {
+        const tasks = runbookData[cat];
+        const d = tasks.filter(t => { const st = normalizeStatus(t.status); return st === "Completed" || st === "Unneeded"; }).length;
+        const ip = tasks.filter(t => normalizeStatus(t.status) === "In Progress").length;
+        const bl = tasks.filter(t => normalizeStatus(t.status) === "Blocking").length;
+        const p = Math.round((d / tasks.length) * 100);
+        const marker = bl > 0 ? "BLOCKING" : d === tasks.length ? "DONE" : ip > 0 ? "IN PROGRESS" : "NOT STARTED";
+        const markerColor = bl > 0 ? '#c62828' : d === tasks.length ? '#2e7d32' : ip > 0 ? '#e65100' : '#888888';
+        const rowBg = ci % 2 === 0 ? '#ffffff' : '#f9f9f9';
+
+        html += `<tr style="background:${rowBg};border-bottom:1px solid #eeeeee;">`;
+        html += `<td style="padding:7px 10px;font-weight:600;">${escapeHtml(cat)}</td>`;
+        html += `<td style="padding:7px 6px;text-align:center;">${d}/${tasks.length} (${p}%)</td>`;
+        html += `<td style="padding:7px 6px;text-align:center;"><span style="background:${markerColor};color:#ffffff;padding:2px 8px;border-radius:3px;font-size:11px;font-weight:600;">${marker}</span></td>`;
+        html += `</tr>`;
+
+        tasks.forEach(t => {
+            const s = normalizeStatus(t.status);
+            if (s !== "Completed" && s !== "Unneeded") {
+                const sColor = s === "In Progress" ? '#e65100' : s === "Blocking" ? '#c62828' : '#888888';
+                const sIcon = s === "In Progress" ? '▶' : s === "Blocking" ? '✕' : '•';
+                const firstLine = t.task.split("\n")[0];
+                const time = t.startTime ? formatTimeShort(t.startTime) : '';
+                const who = t.assignee || '';
+                html += `<tr style="background:${rowBg};border-bottom:1px solid #f5f5f5;">`;
+                html += `<td style="padding:3px 10px 3px 30px;color:#555;font-size:12px;"><span style="color:${sColor};">${sIcon}</span> ${escapeHtml(firstLine)}`;
+                if (who) html += ` <span style="color:#888;font-style:italic;">@${escapeHtml(who)}</span>`;
+                html += `</td>`;
+                html += `<td style="padding:3px 6px;text-align:center;font-size:11px;color:#888;">${time}</td>`;
+                html += `<td style="padding:3px 6px;text-align:center;"><span style="color:${sColor};font-size:11px;font-weight:600;">${s.toUpperCase()}</span></td>`;
+                html += `</tr>`;
+            }
+        });
+    });
+    html += `</table>`;
+
+    const openIss = issues.filter(i => i.issueStatus === "Ongoing");
+    const closedIss = issues.filter(i => i.issueStatus === "Closed");
+    if (issues.length > 0) {
+        html += `<div style="margin-top:20px;border-top:2px solid ${accent};padding-top:12px;">`;
+        html += `<div style="font-size:14px;font-weight:bold;color:${accent};margin-bottom:10px;">Issues Log (${openIss.length} open, ${closedIss.length} closed)</div>`;
+        html += `<table style="width:100%;border-collapse:collapse;font-size:12px;">`;
+
+        const renderIssueRows = (list, label) => {
+            if (list.length === 0) return;
+            html += `<tr><td colspan="4" style="padding:6px 10px;font-weight:bold;color:#555;background:#f5f5f5;font-size:11px;text-transform:uppercase;letter-spacing:1px;">${label}</td></tr>`;
+            list.forEach(iss => {
+                const isBlk = iss.severity === "Blocking";
+                const sevColor = isBlk ? '#c62828' : '#e65100';
+                html += `<tr style="border-bottom:1px solid #eeeeee;">`;
+                html += `<td style="padding:5px 10px;width:4px;background:${sevColor};">&nbsp;</td>`;
+                html += `<td style="padding:5px 10px;">${escapeHtml(iss.description)}</td>`;
+                html += `<td style="padding:5px 8px;text-align:center;white-space:nowrap;"><span style="background:${sevColor};color:#fff;padding:1px 6px;border-radius:3px;font-size:10px;font-weight:600;">${isBlk ? 'BLOCKING' : 'NON-BLOCKING'}</span></td>`;
+                html += `<td style="padding:5px 8px;text-align:right;white-space:nowrap;color:#888;font-size:11px;">${escapeHtml(iss.time || '')}</td>`;
+                html += `</tr>`;
+            });
+        };
+        renderIssueRows(openIss, 'Ongoing');
+        renderIssueRows(closedIss, 'Closed');
+        html += `</table></div>`;
+    }
+
+    html += `<div style="margin-top:16px;padding-top:8px;border-top:1px solid #dddddd;font-size:11px;color:#aaaaaa;text-align:center;">Generated from Runbook Dashboard — ${escapeHtml(projectConfig.client || '')}</div>`;
+    html += `</div>`;
+
+    box.innerHTML = `
+        <div class="summary-toolbar">
+            <button class="copy-btn" onclick="copySummaryToClipboard()">Copy to Clipboard</button>
+            <button onclick="document.getElementById('summaryBox').style.display='none'">Close</button>
+        </div>
+        <div class="summary-body" id="summaryBody">${html}</div>
+    `;
+    box.style.display = "block";
+    box.scrollIntoView({ behavior: "smooth" });
+}
+
+function copySummaryToClipboard() {
+    const body = document.getElementById("summaryBody");
+    const htmlContent = body.innerHTML;
+    const blob = new Blob([htmlContent], { type: 'text/html' });
+    const item = new ClipboardItem({ 'text/html': blob, 'text/plain': new Blob([body.innerText], { type: 'text/plain' }) });
+    navigator.clipboard.write([item]).then(() => {
+        showToast("Summary copied — paste into Outlook!");
+    }).catch(() => {
+        const range = document.createRange();
+        range.selectNodeContents(body);
+        const sel = window.getSelection();
+        sel.removeAllRanges();
+        sel.addRange(range);
+        document.execCommand('copy');
+        sel.removeAllRanges();
+        showToast("Summary copied (fallback)");
+    });
+}
+
+let phoneExportIssueFilter = "open"; // "open" or "all"
+let emailExportIssueFilter = "open"; // "open" or "all"
+
+function showExportIssueOptions(exportFn, filterSetter, title) {
+    let modal = document.getElementById('exportIssueModal');
+    if (modal) modal.remove();
+    modal = document.createElement('div');
+    modal.id = 'exportIssueModal';
+    modal.style.cssText = 'position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.7);display:flex;align-items:center;justify-content:center;z-index:9999';
+    modal.innerHTML = `
+        <div style="background:var(--surface, #1a1a2e);border:1px solid var(--border, #333);border-radius:12px;padding:24px 32px;min-width:300px;text-align:center">
+            <h3 style="margin:0 0 16px;color:var(--text, #fff);font-size:1.1em">${title} \u2014 Issues Filter</h3>
+            <p style="margin:0 0 16px;color:var(--text-dim, #888);font-size:0.9em">Which issues to include in the export?</p>
+            <div style="display:flex;gap:10px;justify-content:center">
+                <button class="issue-btn save" id="expOptOpen">Open Only</button>
+                <button class="issue-btn save" id="expOptAll">All Issues</button>
+                <button class="issue-btn" id="expOptCancel">Cancel</button>
+            </div>
+        </div>
+    `;
+    document.body.appendChild(modal);
+    modal.querySelector('#expOptOpen').addEventListener('click', () => { filterSetter('open'); modal.remove(); exportFn(); });
+    modal.querySelector('#expOptAll').addEventListener('click', () => { filterSetter('all'); modal.remove(); exportFn(); });
+    modal.querySelector('#expOptCancel').addEventListener('click', () => { modal.remove(); });
+    modal.addEventListener('click', (e) => { if (e.target === modal) modal.remove(); });
+}
+
+function showPhoneExportOptions() {
+    showExportIssueOptions(exportSnapshot, (v) => { phoneExportIssueFilter = v; }, 'Phone Image');
+}
+
+function showEmailExportOptions() {
+    showExportIssueOptions(exportEmailSnapshot, (v) => { emailExportIssueFilter = v; }, 'Email Image');
+}
+
+function exportSnapshot() {
+    showToast("Generating image...");
+
+    const W = 1080, H = 1920;
+    const cv = document.createElement("canvas");
+    cv.width = W; cv.height = H;
+    const ctx = cv.getContext("2d");
+
+    // Background
+    ctx.fillStyle = "#0a0a0f";
+    ctx.fillRect(0, 0, W, H);
+    if (clientBgImg) {
+        ctx.save();
+        ctx.globalAlpha = 0.15;
+        const bAr = clientBgImg.width / clientBgImg.height;
+        const cAr = W / H;
+        let dw, dh, dx, dy;
+        if (bAr > cAr) { dh = H; dw = H * bAr; dx = (W - dw) / 2; dy = 0; }
+        else { dw = W; dh = W / bAr; dx = 0; dy = (H - dh) / 2; }
+        ctx.drawImage(clientBgImg, dx, dy, dw, dh);
+        ctx.globalAlpha = 1.0;
+        ctx.restore();
+    }
+
+    // Helpers
+    const drawText = (text, x, y, font, color, align) => {
+        ctx.fillStyle = color || "#fff";
+        ctx.font = font || "32px Segoe UI, sans-serif";
+        ctx.textAlign = align || "center";
+        ctx.fillText(text, x, y);
+    };
+    const drawRoundRect = (x, y, w, h, r, fill, stroke) => {
+        ctx.beginPath();
+        ctx.roundRect(x, y, w, h, r);
+        if (fill) { ctx.fillStyle = fill; ctx.fill(); }
+        if (stroke) { ctx.strokeStyle = stroke; ctx.lineWidth = 2; ctx.stroke(); }
+    };
+
+    let Y = 60;
+
+    // ── LOGO ──
+    if (clientLogoImg) {
+        const logoSize = 120;
+        const logoX = 40;
+        ctx.save();
+        ctx.beginPath();
+        ctx.roundRect(logoX, Y, logoSize, logoSize, 10);
+        ctx.clip();
+        ctx.drawImage(clientLogoImg, logoX, Y, logoSize, logoSize);
+        ctx.restore();
+        ctx.strokeStyle = "#333";
+        ctx.lineWidth = 1;
+        ctx.beginPath(); ctx.roundRect(logoX, Y, logoSize, logoSize, 10); ctx.stroke();
+    }
+
+    // ── TITLE ──
+    drawText(projectConfig.projectName, W/2, Y+=50, "bold 48px Segoe UI, sans-serif", "#ffffff");
+    drawText("Go-Live Runbook", W/2, Y+=56, "bold 44px Segoe UI, sans-serif", "#ffffff");
+    drawText([projectConfig.subtitle, projectConfig.changeRef].filter(Boolean).join(" | "), W/2, Y+=46, "28px Segoe UI, sans-serif", "#888888");
+
+    // Timestamp
+    const now = new Date();
+    const timeStr = now.toLocaleString("en-GB", {
+        weekday:"short", day:"2-digit", month:"short", year:"numeric",
+        hour:"2-digit", minute:"2-digit", second:"2-digit", hour12:false
+    }) + " UK";
+    drawText(timeStr, W/2, Y+=50, "bold 30px Consolas, monospace", "#39ff14");
+
+    // ── HEALTH INDICATOR ──
+    Y += 40;
+    const healthColors = { Green: "#39ff14", Amber: "#ffa500", Red: "#ff3333" };
+    const healthLabels = { Green: "ON TRACK", Amber: "AT RISK", Red: "ROLLBACK" };
+    const healthBgs = { Green: "#0a3a0a", Amber: "#3a2a00", Red: "#3a0a0a" };
+    const healthBorders = { Green: "#39ff14", Amber: "#ffa500", Red: "#ff3333" };
+    const hColor = healthColors[healthStatus];
+    const hLabel = healthLabels[healthStatus];
+
+    // Big health badge
+    const badgeW = 380, badgeH = 60, badgeR = 30;
+    const badgeX = (W - badgeW) / 2;
+    drawRoundRect(badgeX, Y, badgeW, badgeH, badgeR, healthBgs[healthStatus], healthBorders[healthStatus]);
+    ctx.lineWidth = 3;
+    ctx.strokeStyle = healthBorders[healthStatus];
+    ctx.stroke();
+    // Health dot
+    ctx.beginPath();
+    ctx.arc(badgeX + 36, Y + badgeH/2, 12, 0, Math.PI * 2);
+    ctx.fillStyle = hColor;
+    ctx.fill();
+    drawText("GO-LIVE: " + hLabel, badgeX + badgeW/2 + 10, Y + 38, "bold 28px Segoe UI, sans-serif", hColor);
+
+    Y += badgeH + 10;
+
+    Y += 10;
+
+    // ── Divider ──
+    ctx.strokeStyle = "#222";
+    ctx.lineWidth = 1;
+    ctx.beginPath(); ctx.moveTo(60, Y); ctx.lineTo(W-60, Y); ctx.stroke();
+
+    Y += 20;
+
+    // ── STATS ──
+    const { total, done, inProg, notStarted, blocking } = getGlobalStats();
+    const pct = total > 0 ? Math.round((done / total) * 100) : 0;
+    const openIssSnap = issues.filter(i => i.issueStatus === "Ongoing").length;
+    const blockIssSnap = issues.filter(i => i.issueStatus === "Ongoing" && i.severity === "Blocking").length;
+    const totalBlocking = blocking + blockIssSnap;
+
+    // ── MASTER STATUS PROGRESS BAR ──
+    const masterW = W - 120, masterH = 70, masterR = 16;
+    const masterX = 60;
+    const phoneGradColors = { Green: ['#39ff14','#5bc0ff'], Amber: ['#ffd700','#ff8c00'], Red: ['#ff8c00','#ff1744'] };
+    const pgc = phoneGradColors[healthStatus] || phoneGradColors.Green;
+    // Background track
+    drawRoundRect(masterX, Y, masterW, masterH, masterR, "#1a1a2e", "#333333");
+    // Gradient fill
+    if (pct > 0) {
+        const fillW = Math.max(masterR * 2, masterW * pct / 100);
+        drawRoundRect(masterX, Y, fillW, masterH, masterR, null);
+        const grad = ctx.createLinearGradient(masterX, 0, masterX + fillW, 0);
+        grad.addColorStop(0, pgc[0]);
+        grad.addColorStop(1, pgc[1]);
+        ctx.fillStyle = grad;
+        ctx.fill();
+    }
+    // Text overlay
+    drawText(pct + "%", masterX + masterW / 2 - 80, Y + 48, "bold 44px Segoe UI, sans-serif", "#ffffff", "center");
+    drawText(`${done} / ${total} tasks completed`, masterX + masterW / 2 + 30, Y + 38, "24px Segoe UI, sans-serif", "#ffffff", "left");
+    drawText("OVERALL COMPLETION", masterX + masterW / 2 + 30, Y + 58, "bold 14px Segoe UI, sans-serif", "rgba(255,255,255,0.7)", "left");
+    Y += masterH + 20;
+
+    // ── TASK STATS (left) + ISSUE STATS (right) ──
+    const gapBetween = 20;
+    const leftW = (W - 120 - gapBetween) * 0.65;
+    const rightW = (W - 120 - gapBetween) * 0.35;
+    const groupH = 100, groupR = 14;
+    const leftX = 60, rightX = leftX + leftW + gapBetween;
+
+    // Group label: Tasks
+    drawText("TASKS", leftX + leftW / 2, Y, "bold 16px Segoe UI, sans-serif", "#666666");
+    // Group label: Issues
+    drawText("ISSUES", rightX + rightW / 2, Y, "bold 16px Segoe UI, sans-serif", "#666666");
+    Y += 12;
+
+    // Task cards
+    const taskStats = [
+        { value: total, label: "TOTAL", color: "#ffffff" },
+        { value: done, label: "DONE", color: "#39ff14" },
+        { value: inProg, label: "IN PROG", color: "#ffd84a" },
+        { value: notStarted, label: "NOT START", color: "#ff6b6b" }
+    ];
+    const tcW = (leftW - 30) / 4, tcGap = 10;
+    taskStats.forEach((s, i) => {
+        const cx = leftX + i * (tcW + tcGap);
+        drawRoundRect(cx, Y, tcW, groupH, groupR, "#111111", "#222222");
+        drawText(String(s.value), cx + tcW/2, Y + 48, "bold 40px Segoe UI, sans-serif", s.color);
+        drawText(s.label, cx + tcW/2, Y + 76, "bold 14px Segoe UI, sans-serif", "#888888");
+    });
+
+    // Issue cards
+    const issStats = [
+        { value: openIssSnap, label: "OPEN", color: "#ff9944" },
+        { value: totalBlocking, label: "BLOCKING", color: "#ff3333" }
+    ];
+    const icW = (rightW - 10) / 2, icGap = 10;
+    issStats.forEach((s, i) => {
+        const cx = rightX + i * (icW + icGap);
+        drawRoundRect(cx, Y, icW, groupH, groupR, "#111111", "#222222");
+        drawText(String(s.value), cx + icW/2, Y + 48, "bold 40px Segoe UI, sans-serif", s.color);
+        drawText(s.label, cx + icW/2, Y + 76, "bold 14px Segoe UI, sans-serif", "#888888");
+    });
+
+    Y += groupH + 30;
+
+    // ── Divider ──
+    ctx.strokeStyle = "#222";
+    ctx.beginPath(); ctx.moveTo(60, Y); ctx.lineTo(W-60, Y); ctx.stroke();
+
+    Y += 40;
+
+    // ── PHASE TIMELINE (vertical list) ──
+    drawText("PHASE TIMELINE", W/2, Y, "bold 24px Segoe UI, sans-serif", "#888888");
+    ctx.textAlign = "left";
+
+    Y += 24;
+    const categories = Object.keys(runbookData).filter(k => !k.startsWith("_"));
+    const sortedCats = sortCategories(categories);
+
+    sortedCats.forEach(cat => {
+        const tasks = runbookData[cat];
+        const d = tasks.filter(t => normalizeStatus(t.status) === "Completed").length;
+        const ip = tasks.filter(t => normalizeStatus(t.status) === "In Progress").length;
+        const catPct = Math.round((d / tasks.length) * 100);
+        const s = computeCategoryStatus(tasks);
+
+        const rowX = 80, rowW = W - 160, rowH = 60;
+        Y += 8;
+
+        // Phase row background
+        const bgColor = s === "done" ? "#0d2d0d" : s === "inprogress" ? "#2d2500" : "#2a0a0a";
+        const borderColor = s === "done" ? "#1a5a1a" : s === "inprogress" ? "#5a4a00" : "#5a1a1a";
+        drawRoundRect(rowX, Y, rowW, rowH, 10, bgColor, borderColor);
+
+        // Status dot
+        const dotColor = s === "done" ? "#39ff14" : s === "inprogress" ? "#ffd84a" : "#ff6b6b";
+        ctx.beginPath();
+        ctx.arc(rowX + 28, Y + rowH/2, 8, 0, Math.PI * 2);
+        ctx.fillStyle = dotColor;
+        ctx.fill();
+
+        // Category name
+        const catColor = s === "done" ? "#7bff7b" : s === "inprogress" ? "#ffd84a" : "#ff8888";
+        drawText(cat, rowX + 50, Y + 25, "bold 24px Segoe UI, sans-serif", catColor, "left");
+
+        // Count + mini progress
+        const countStr = `${d}/${tasks.length}`;
+        drawText(countStr, rowX + 50, Y + 48, "20px Consolas, monospace", "#aaaaaa", "left");
+
+        // Mini progress bar
+        const mpX = rowX + 170, mpW = rowW - 280, mpH = 8, mpY = Y + 40;
+        drawRoundRect(mpX, mpY, mpW, mpH, 4, "#1a1a1a");
+        if (catPct > 0) {
+            drawRoundRect(mpX, mpY, Math.max(8, mpW * catPct / 100), mpH, 4, dotColor);
+        }
+
+        // Percentage
+        drawText(catPct + "%", rowX + rowW - 45, Y + 37, "bold 24px Segoe UI, sans-serif", catColor, "center");
+
+        Y += rowH;
+    });
+
+    // ── ACTIVE ASSIGNEES ──
+    const activeAssignees = {};
+    sortedCats.forEach(cat => {
+        runbookData[cat].forEach(t => {
+            if (normalizeStatus(t.status) === "In Progress" && t.assignee) {
+                if (!activeAssignees[t.assignee]) activeAssignees[t.assignee] = 0;
+                activeAssignees[t.assignee]++;
+            }
+        });
+    });
+    const activeList = Object.entries(activeAssignees).sort((a, b) => b[1] - a[1]);
+    if (activeList.length > 0) {
+        Y += 24;
+        ctx.strokeStyle = "#222";
+        ctx.beginPath(); ctx.moveTo(60, Y); ctx.lineTo(W-60, Y); ctx.stroke();
+        Y += 30;
+        drawText("ACTIVE ASSIGNEES", W/2, Y, "bold 22px Segoe UI, sans-serif", "#888888");
+        Y += 16;
+        const cols2 = 2, tagW2 = (W - 180) / cols2;
+        activeList.slice(0, 8).forEach((entry, i) => {
+            const col = i % cols2;
+            const row = Math.floor(i / cols2);
+            const tx = 90 + col * tagW2;
+            const ty = Y + row * 34;
+            drawRoundRect(tx, ty, tagW2 - 10, 28, 6, "#111122", "#333355");
+            drawText(entry[0], tx + 10, ty + 19, "18px Segoe UI, sans-serif", "#5bc0ff", "left");
+            drawText(entry[1] + " active", tx + tagW2 - 20, ty + 19, "bold 16px Segoe UI, sans-serif", "#ffd84a", "right");
+        });
+        Y += Math.ceil(Math.min(activeList.length, 8) / cols2) * 34 + 6;
+        if (activeList.length > 8) {
+            drawText(`... and ${activeList.length - 8} more`, W/2, Y + 10, "18px Segoe UI, sans-serif", "#555555");
+            Y += 24;
+        }
+    }
+
+    // ── ISSUES SECTION ──
+    const openIssues = issues.filter(i => i.issueStatus === "Ongoing");
+    const closedIssues = issues.filter(i => i.issueStatus === "Closed");
+    const allIssues = phoneExportIssueFilter === "open" ? openIssues : [...openIssues, ...closedIssues];
+
+    if (allIssues.length > 0) {
+        Y += 30;
+        ctx.strokeStyle = "#222";
+        ctx.beginPath(); ctx.moveTo(60, Y); ctx.lineTo(W-60, Y); ctx.stroke();
+        Y += 36;
+
+        const blockingOpen = openIssues.filter(i => i.severity === "Blocking").length;
+        let issueTitle = `ISSUES LOG (${openIssues.length} open`;
+        if (blockingOpen > 0) issueTitle += ` / ${blockingOpen} blocking`;
+        issueTitle += ")";
+        drawText(issueTitle, W/2, Y, "bold 24px Segoe UI, sans-serif", "#ff9944");
+        Y += 16;
+
+        allIssues.forEach(iss => {
+            if (Y > H - 100) return; // prevent overflow
+            Y += 8;
+            const iRowX = 80, iRowW = W - 160, iRowH = 66;
+            const isOpen = iss.issueStatus === "Ongoing";
+            const isBlocking = iss.severity === "Blocking";
+
+            // Card background
+            drawRoundRect(iRowX, Y, iRowW, iRowH, 8, "#0d0d12", "#222222");
+
+            // Severity bar
+            const barColor = isBlocking ? "#ff3333" : "#ffa500";
+            drawRoundRect(iRowX + 6, Y + 8, 5, iRowH - 16, 3, barColor);
+
+            // Description (truncate)
+            const descStr = iss.description.length > 55 ? iss.description.substring(0, 52) + "..." : iss.description;
+            const descColor = isOpen ? "#eeeeee" : "#888888";
+            const descFont = isOpen ? "bold 22px Segoe UI, sans-serif" : "22px Segoe UI, sans-serif";
+            drawText(descStr, iRowX + 24, Y + 26, descFont, descColor, "left");
+
+            // Meta line
+            const metaStr = `${iss.category}  \u00B7  ${iss.time}`;
+            drawText(metaStr, iRowX + 24, Y + 50, "18px Segoe UI, sans-serif", "#666666", "left");
+
+            // Tags on right
+            const sevTag = isBlocking ? "BLOCKING" : "NON-BLOCKING";
+            const sevColor = isBlocking ? "#ff6b6b" : "#ffa500";
+            const stTag = isOpen ? "ONGOING" : "CLOSED";
+            const stColor = isOpen ? "#ffd84a" : "#7bff7b";
+
+            drawText(stTag, iRowX + iRowW - 16, Y + 26, "bold 16px Segoe UI, sans-serif", stColor, "right");
+            drawText(sevTag, iRowX + iRowW - 16, Y + 48, "bold 14px Segoe UI, sans-serif", sevColor, "right");
+
+            Y += iRowH;
+        });
+    }
+
+    // ── Footer ──
+    Y = Math.max(Y + 40, H - 50);
+    // Dynamically resize canvas if content overflows
+    if (Y + 50 > H) {
+        const newH = Y + 60;
+        const imgData = ctx.getImageData(0, 0, W, H);
+        cv.height = newH;
+        ctx.fillStyle = "#0a0a0f";
+        ctx.fillRect(0, 0, W, newH);
+        ctx.putImageData(imgData, 0, 0);
+        Y = newH - 50;
+    }
+    drawText("Generated from Runbook Dashboard", W/2, Y, "22px Segoe UI, sans-serif", "#444444", "center");
+
+    // ── Export ──
+    cv.toBlob(blob => {
+        if (navigator.share && navigator.canShare && navigator.canShare({ files: [new File([blob], "runbook_status.png", { type: "image/png" })] })) {
+            const file = new File([blob], "runbook_status.png", { type: "image/png" });
+            navigator.share({ title: projectConfig.projectName + " Status", files: [file] }).catch(() => {});
+        } else {
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement("a");
+            a.href = url;
+            a.download = "runbook_status_" + new Date().toISOString().slice(0,16).replace(/[:T]/g, "-") + ".png";
+            a.click();
+            URL.revokeObjectURL(url);
+        }
+        showToast("Image ready!");
+    }, "image/png");
+}
+
+function exportEmailSnapshot() {
+    showToast("Generating corporate image...");
+
+    const W = 1920, H = 1080;
+    const cv = document.createElement("canvas");
+    cv.width = W; cv.height = H;
+    const ctx = cv.getContext("2d");
+
+    // Corporate light background
+    ctx.fillStyle = "#ffffff";
+    ctx.fillRect(0, 0, W, H);
+    if (clientBgImg) {
+        ctx.save();
+        ctx.globalAlpha = 0.08;
+        const bAr = clientBgImg.width / clientBgImg.height;
+        const cAr = W / H;
+        let dw, dh, dx, dy;
+        if (bAr > cAr) { dh = H; dw = H * bAr; dx = (W - dw) / 2; dy = 0; }
+        else { dw = W; dh = W / bAr; dx = 0; dy = (H - dh) / 2; }
+        ctx.drawImage(clientBgImg, dx, dy, dw, dh);
+        ctx.globalAlpha = 1.0;
+        ctx.restore();
+    }
+
+    // Helpers
+    const drawText = (text, x, y, font, color, align) => {
+        ctx.fillStyle = color || "#1a1a2e";
+        ctx.font = font || "28px Segoe UI, sans-serif";
+        ctx.textAlign = align || "center";
+        ctx.fillText(text, x, y);
+    };
+    const drawRoundRect = (x, y, w, h, r, fill, stroke) => {
+        ctx.beginPath();
+        ctx.roundRect(x, y, w, h, r);
+        if (fill) { ctx.fillStyle = fill; ctx.fill(); }
+        if (stroke) { ctx.strokeStyle = stroke; ctx.lineWidth = 1.5; ctx.stroke(); }
+    };
+
+    // ── TOP BAR (corporate accent strip) ──
+    ctx.fillStyle = projectConfig.accentColor;
+    ctx.fillRect(0, 0, W, 80);
+    if (clientLogoImg) {
+        const lS = 52;
+        ctx.save(); ctx.beginPath(); ctx.roundRect(18, 14, lS, lS, 8); ctx.clip();
+        ctx.drawImage(clientLogoImg, 18, 14, lS, lS); ctx.restore();
+    }
+    drawText(projectConfig.projectName.toUpperCase() + " — GO-LIVE RUNBOOK", W/2, 50, "bold 30px Segoe UI, sans-serif", "#ffffff");
+
+    // ── SUBTITLE BAR ──
+    ctx.fillStyle = "#f4f5f7";
+    ctx.fillRect(0, 80, W, 50);
+    const now = new Date();
+    const timeStr = now.toLocaleString("en-GB", {
+        weekday:"short", day:"2-digit", month:"short", year:"numeric",
+        hour:"2-digit", minute:"2-digit", second:"2-digit", hour12:false
+    }) + " UK";
+    drawText([projectConfig.subtitle, projectConfig.changeRef, timeStr].filter(Boolean).join("  |  "), W/2, 112, "22px Segoe UI, sans-serif", "#555555");
+
+    // Thin accent line
+    ctx.fillStyle = projectConfig.accentColor;
+    ctx.fillRect(0, 130, W, 3);
+
+    let Y = 155;
+
+    // ── HEALTH BADGE ──
+    const healthCol = { Green: "#2e7d32", Amber: "#e65100", Red: "#c62828" };
+    const healthLbl = { Green: "ON TRACK", Amber: "AT RISK", Red: "ROLLBACK" };
+    const healthBg = { Green: "#e8f5e9", Amber: "#fff3e0", Red: "#ffebee" };
+    const hc = healthCol[healthStatus];
+    const hl = healthLbl[healthStatus];
+    const hb = healthBg[healthStatus];
+
+    const badgeW = 260, badgeH = 42, badgeX = 60;
+    drawRoundRect(badgeX, Y, badgeW, badgeH, 21, hb, hc);
+    ctx.beginPath();
+    ctx.arc(badgeX + 24, Y + badgeH/2, 8, 0, Math.PI * 2);
+    ctx.fillStyle = hc;
+    ctx.fill();
+    drawText("GO-LIVE: " + hl, badgeX + badgeW/2 + 8, Y + 28, "bold 20px Segoe UI, sans-serif", hc);
+
+    // ── STATS ──
+    const { total, done, inProg, notStarted, blocking } = getGlobalStats();
+    const pct = total > 0 ? Math.round((done / total) * 100) : 0;
+    const openIssSnap = issues.filter(i => i.issueStatus === "Ongoing").length;
+    const blockIssSnap = issues.filter(i => i.issueStatus === "Ongoing" && i.severity === "Blocking").length;
+    const totalBlocking = blocking + blockIssSnap;
+
+    // ── MASTER STATUS PROGRESS BAR ──
+    const emMasterW = W - 120, emMasterH = 50, emMasterR = 10;
+    const emMasterX = 60;
+    const emGradColors = { Green: ['#2e7d32','#1565c0'], Amber: ['#f9a825','#e65100'], Red: ['#e65100','#c62828'] };
+    const egc = emGradColors[healthStatus] || emGradColors.Green;
+    // Background track
+    drawRoundRect(emMasterX, Y, emMasterW, emMasterH, emMasterR, "#e8e8e8", "#d0d0d0");
+    // Gradient fill
+    if (pct > 0) {
+        const fw = Math.max(emMasterR * 2, emMasterW * pct / 100);
+        drawRoundRect(emMasterX, Y, fw, emMasterH, emMasterR, null);
+        const gr = ctx.createLinearGradient(emMasterX, 0, emMasterX + fw, 0);
+        gr.addColorStop(0, egc[0]); gr.addColorStop(1, egc[1]);
+        ctx.fillStyle = gr; ctx.fill();
+    }
+    // Text overlay
+    drawText(pct + "%", emMasterX + emMasterW / 2 - 60, Y + 35, "bold 32px Segoe UI, sans-serif", "#ffffff", "center");
+    drawText(`${done} / ${total} tasks completed`, emMasterX + emMasterW / 2 + 10, Y + 28, "18px Segoe UI, sans-serif", "#ffffff", "left");
+    drawText("OVERALL COMPLETION", emMasterX + emMasterW / 2 + 10, Y + 44, "bold 10px Segoe UI, sans-serif", "rgba(255,255,255,0.85)", "left");
+    Y += emMasterH + 10;
+
+    // ── TASK STATS (left) + ISSUE STATS (right) ──
+    const emGap = 14;
+    const emLeftW = (W - 120 - emGap) * 0.66;
+    const emRightW = (W - 120 - emGap) * 0.34;
+    const emLeftX = 60, emRightX = emLeftX + emLeftW + emGap;
+    const emGH = 66, emGR = 8;
+
+    // Group labels
+    drawText("TASKS", emLeftX + emLeftW / 2, Y + 8, "bold 11px Segoe UI, sans-serif", "#888888");
+    drawText("ISSUES", emRightX + emRightW / 2, Y + 8, "bold 11px Segoe UI, sans-serif", "#888888");
+    Y += 14;
+
+    // Task cards
+    const emTaskStats = [
+        { value: total, label: "TOTAL", color: "#1a1a2e" },
+        { value: done, label: "DONE", color: "#2e7d32" },
+        { value: inProg, label: "IN PROG", color: "#e65100" },
+        { value: notStarted, label: "NOT START", color: "#c62828" }
+    ];
+    const emTcW = (emLeftW - 30) / 4, emTcGap = 10;
+    emTaskStats.forEach((s, i) => {
+        const cx = emLeftX + i * (emTcW + emTcGap);
+        drawRoundRect(cx, Y, emTcW, emGH, emGR, "#fafafa", "#e0e0e0");
+        drawText(String(s.value), cx + emTcW/2, Y + 34, "bold 28px Segoe UI, sans-serif", s.color);
+        drawText(s.label, cx + emTcW/2, Y + 54, "bold 10px Segoe UI, sans-serif", "#888888");
+    });
+
+    // Issue cards
+    const emIssStats = [
+        { value: openIssSnap, label: "OPEN", color: "#e65100" },
+        { value: totalBlocking, label: "BLOCKING", color: "#c62828" }
+    ];
+    const emIcW = (emRightW - 10) / 2, emIcGap = 10;
+    emIssStats.forEach((s, i) => {
+        const cx = emRightX + i * (emIcW + emIcGap);
+        drawRoundRect(cx, Y, emIcW, emGH, emGR, "#fafafa", "#e0e0e0");
+        drawText(String(s.value), cx + emIcW/2, Y + 34, "bold 28px Segoe UI, sans-serif", s.color);
+        drawText(s.label, cx + emIcW/2, Y + 54, "bold 10px Segoe UI, sans-serif", "#888888");
+    });
+
+    Y += emGH + 20;
+
+    // ── Divider ──
+    ctx.strokeStyle = "#e0e0e0";
+    ctx.lineWidth = 1;
+    ctx.beginPath(); ctx.moveTo(60, Y); ctx.lineTo(W-60, Y); ctx.stroke();
+    Y += 20;
+
+    // ── PHASE TIMELINE (horizontal 2-column grid) ──
+    drawText("PHASE TIMELINE", W/2, Y + 6, "bold 16px Segoe UI, sans-serif", "#888888");
+    Y += 24;
+
+    const categories = Object.keys(runbookData).filter(k => !k.startsWith("_"));
+    const sortedCats = sortCategories(categories);
+    const cols = 2;
+    const colW = (W - 140) / cols;
+    const rowH = 50;
+
+    sortedCats.forEach((cat, i) => {
+        const col = i % cols;
+        const row = Math.floor(i / cols);
+        const rx = 70 + col * (colW + 10);
+        const ry = Y + row * (rowH + 6);
+
+        const tasks = runbookData[cat];
+        const d = tasks.filter(t => normalizeStatus(t.status) === "Completed").length;
+        const catPct = Math.round((d / tasks.length) * 100);
+        const s = computeCategoryStatus(tasks);
+
+        // Row bg
+        const bgColor = s === "done" ? "#e8f5e9" : s === "inprogress" ? "#fff8e1" : "#ffebee";
+        const borderColor = s === "done" ? "#a5d6a7" : s === "inprogress" ? "#ffe082" : "#ef9a9a";
+        drawRoundRect(rx, ry, colW, rowH, 8, bgColor, borderColor);
+
+        // Dot
+        const dotColor = s === "done" ? "#2e7d32" : s === "inprogress" ? "#e65100" : "#c62828";
+        ctx.beginPath();
+        ctx.arc(rx + 22, ry + rowH/2, 6, 0, Math.PI * 2);
+        ctx.fillStyle = dotColor;
+        ctx.fill();
+
+        // Name
+        const nameColor = s === "done" ? "#2e7d32" : s === "inprogress" ? "#e65100" : "#c62828";
+        drawText(cat, rx + 40, ry + 22, "bold 18px Segoe UI, sans-serif", nameColor, "left");
+
+        // Count + mini bar
+        drawText(`${d}/${tasks.length}`, rx + 40, ry + 42, "16px Consolas, monospace", "#888888", "left");
+        const mpX = rx + 130, mpW = colW - 250, mpH = 6, mpY = ry + 34;
+        drawRoundRect(mpX, mpY, mpW, mpH, 3, "#e0e0e0");
+        if (catPct > 0) drawRoundRect(mpX, mpY, Math.max(6, mpW * catPct / 100), mpH, 3, dotColor);
+
+        // Percentage
+        drawText(catPct + "%", rx + colW - 30, ry + 32, "bold 20px Segoe UI, sans-serif", nameColor, "center");
+    });
+
+    const timelineRows = Math.ceil(sortedCats.length / cols);
+    Y += timelineRows * (rowH + 6) + 14;
+
+    // ── ACTIVE ASSIGNEES (compact for email) ──
+    const emailActiveAssignees = {};
+    sortedCats.forEach(cat => {
+        runbookData[cat].forEach(t => {
+            if (normalizeStatus(t.status) === "In Progress" && t.assignee) {
+                if (!emailActiveAssignees[t.assignee]) emailActiveAssignees[t.assignee] = 0;
+                emailActiveAssignees[t.assignee]++;
+            }
+        });
+    });
+    const emailActiveList = Object.entries(emailActiveAssignees).sort((a, b) => b[1] - a[1]);
+    if (emailActiveList.length > 0 && Y < H - 160) {
+        ctx.strokeStyle = "#e0e0e0";
+        ctx.beginPath(); ctx.moveTo(60, Y); ctx.lineTo(W-60, Y); ctx.stroke();
+        Y += 20;
+        drawText("ACTIVE ASSIGNEES", W/2, Y, "bold 14px Segoe UI, sans-serif", "#888888");
+        Y += 12;
+        const aCols = 3, aColW = (W - 160) / aCols;
+        emailActiveList.slice(0, 6).forEach((entry, i) => {
+            const ac = i % aCols;
+            const ar = Math.floor(i / aCols);
+            const ax = 80 + ac * aColW;
+            const ay = Y + ar * 28;
+            drawRoundRect(ax, ay, aColW - 8, 24, 4, "#f0f0ff", "#ddddf0");
+            drawText(entry[0], ax + 8, ay + 17, "14px Segoe UI, sans-serif", "#1565c0", "left");
+            drawText(entry[1] + " active", ax + aColW - 16, ay + 17, "bold 12px Segoe UI, sans-serif", "#e65100", "right");
+        });
+        Y += Math.ceil(Math.min(emailActiveList.length, 6) / aCols) * 28 + 10;
+    }
+
+    // ── ISSUES SECTION (compact for email) ──
+    const emailOpenIssues = issues.filter(i => i.issueStatus === "Ongoing");
+    const emailClosedIssues = issues.filter(i => i.issueStatus === "Closed");
+    const emailIssueList = emailExportIssueFilter === "open" ? emailOpenIssues : [...emailOpenIssues, ...emailClosedIssues];
+    if (emailIssueList.length > 0) {
+        ctx.strokeStyle = "#e0e0e0";
+        ctx.beginPath(); ctx.moveTo(60, Y); ctx.lineTo(W-60, Y); ctx.stroke();
+        Y += 24;
+        const blockOp = emailOpenIssues.filter(i => i.severity === "Blocking").length;
+        const emailIssTitle = emailExportIssueFilter === "open"
+            ? `OPEN ISSUES: ${emailOpenIssues.length}${blockOp > 0 ? '  (' + blockOp + ' blocking)' : ''}`
+            : `ISSUES LOG: ${emailIssueList.length} (${emailOpenIssues.length} open, ${emailClosedIssues.length} closed)`;
+        drawText(emailIssTitle, W/2, Y, "bold 16px Segoe UI, sans-serif", "#e65100");
+        Y += 14;
+
+        emailIssueList.forEach(iss => {
+            const iRowX = 70, iRowW = W - 140, iRowH = 38;
+            Y += 4;
+            const isBlk = iss.severity === "Blocking";
+            drawRoundRect(iRowX, Y, iRowW, iRowH, 6, "#fafafa", "#e0e0e0");
+            // Severity bar
+            drawRoundRect(iRowX + 4, Y + 6, 4, iRowH - 12, 2, isBlk ? "#c62828" : "#e65100");
+            // Description
+            const isOpen = iss.issueStatus === "Ongoing";
+            const descColor = isOpen ? (isBlk ? "#c62828" : "#333333") : "#888888";
+            const desc = iss.description.length > 80 ? iss.description.substring(0, 77) + "..." : iss.description;
+            drawText(desc, iRowX + 20, Y + 24, (isBlk && isOpen ? "bold " : "") + "18px Segoe UI, sans-serif", descColor, "left");
+            // Tags on right
+            const sTag = isBlk ? "BLOCKING" : "NON-BLOCKING";
+            const stTag = isOpen ? "ONGOING" : "CLOSED";
+            drawText(stTag, iRowX + iRowW - 16, Y + 16, "bold 11px Segoe UI, sans-serif", isOpen ? "#e65100" : "#2e7d32", "right");
+            drawText(sTag, iRowX + iRowW - 16, Y + 30, "bold 13px Segoe UI, sans-serif", isBlk ? "#c62828" : "#e65100", "right");
+            Y += iRowH;
+        });
+    }
+
+    // ── FOOTER ──
+    const footerY = Math.max(Y + 30, H - 40);
+    // Dynamically resize canvas if content overflows
+    if (footerY + 20 > H) {
+        const newH = footerY + 40;
+        const imgData = ctx.getImageData(0, 0, W, H);
+        cv.height = newH;
+        ctx.fillStyle = "#ffffff";
+        ctx.fillRect(0, 0, W, newH);
+        ctx.putImageData(imgData, 0, 0);
+    }
+    // Bottom accent bar
+    const fY = Math.max(footerY, cv.height - 40);
+    ctx.fillStyle = projectConfig.accentColor;
+    ctx.fillRect(0, fY + 10, W, 30);
+    drawText("Generated from Runbook Dashboard", W/2, fY + 30, "16px Segoe UI, sans-serif", "#ffffff", "center");
+
+    // ── Export ──
+    cv.toBlob(blob => {
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement("a");
+        a.href = url;
+        a.download = "runbook_email_" + new Date().toISOString().slice(0,16).replace(/[:T]/g, "-") + ".png";
+        a.click();
+        URL.revokeObjectURL(url);
+        showToast("Corporate email image ready!");
+    }, "image/png");
+}
+
+function exportGantt() {
+    showToast("Generating Gantt chart...");
+
+    const categories = Object.keys(runbookData).filter(k => !k.startsWith("_"));
+    const sortedCats = sortCategories(categories);
+
+    // Compute time bounds from all tasks
+    let globalMin = Infinity, globalMax = -Infinity;
+    sortedCats.forEach(cat => {
+        runbookData[cat].forEach(t => {
+            if (t.startTime) { const d = new Date(t.startTime).getTime(); if (!isNaN(d) && d < globalMin) globalMin = d; }
+            if (t.endTime) { const d = new Date(t.endTime).getTime(); if (!isNaN(d) && d > globalMax) globalMax = d; }
+        });
+    });
+    if (!isFinite(globalMin) || !isFinite(globalMax)) {
+        showToast("No time data available for Gantt chart");
+        return;
+    }
+    // Pad by 1 hour each side
+    globalMin -= 3600000;
+    globalMax += 3600000;
+    const span = globalMax - globalMin;
+
+    // Layout constants
+    const W = 1920, labelW = 340, rightPad = 60, chartX = labelW, chartW = W - labelW - rightPad;
+    const topH = 140; // header area
+    const axisH = 60; // time axis
+    const rowH = 72, rowGap = 6;
+    const contentH = sortedCats.length * (rowH + rowGap) + 40;
+    const legendH = 60;
+    const H = topH + axisH + contentH + legendH + 40;
+
+    const cv = document.createElement("canvas");
+    cv.width = W; cv.height = H;
+    const ctx = cv.getContext("2d");
+
+    // Background
+    ctx.fillStyle = "#ffffff";
+    ctx.fillRect(0, 0, W, H);
+
+    const drawText = (text, x, y, font, color, align) => {
+        ctx.fillStyle = color || "#1a1a2e";
+        ctx.font = font || "20px Segoe UI, sans-serif";
+        ctx.textAlign = align || "left";
+        ctx.fillText(text, x, y);
+    };
+    const drawRoundRect = (x, y, w, h, r, fill, stroke) => {
+        ctx.beginPath();
+        ctx.roundRect(x, y, w, h, r);
+        if (fill) { ctx.fillStyle = fill; ctx.fill(); }
+        if (stroke) { ctx.strokeStyle = stroke; ctx.lineWidth = 1.5; ctx.stroke(); }
+    };
+
+    // ── TOP BAR ──
+    ctx.fillStyle = projectConfig.accentColor;
+    ctx.fillRect(0, 0, W, 70);
+    if (clientLogoImg) {
+        const lS = 46;
+        ctx.save(); ctx.beginPath(); ctx.roundRect(16, 12, lS, lS, 7); ctx.clip();
+        ctx.drawImage(clientLogoImg, 16, 12, lS, lS); ctx.restore();
+    }
+    drawText(projectConfig.projectName.toUpperCase() + " — GANTT CHART", W / 2, 44, "bold 28px Segoe UI, sans-serif", "#ffffff", "center");
+
+    // Subtitle
+    const now = new Date();
+    const ts = now.toLocaleString("en-GB", { weekday:"short", day:"2-digit", month:"short", year:"numeric", hour:"2-digit", minute:"2-digit", hour12:false }) + " UK";
+    ctx.fillStyle = "#f4f5f7";
+    ctx.fillRect(0, 70, W, 36);
+    drawText([projectConfig.subtitle, projectConfig.changeRef, ts].filter(Boolean).join("  |  "), W / 2, 94, "18px Segoe UI, sans-serif", "#555555", "center");
+    ctx.fillStyle = projectConfig.accentColor;
+    ctx.fillRect(0, 106, W, 3);
+
+    // ── Health badge ──
+    const healthCol = { Green:"#2e7d32", Amber:"#e65100", Red:"#c62828" };
+    const healthLbl = { Green:"ON TRACK", Amber:"AT RISK", Red:"ROLLBACK" };
+    const healthBg2 = { Green:"#e8f5e9", Amber:"#fff3e0", Red:"#ffebee" };
+    drawRoundRect(20, 114, 220, 30, 15, healthBg2[healthStatus], healthCol[healthStatus]);
+    ctx.beginPath(); ctx.arc(38, 129, 6, 0, Math.PI * 2); ctx.fillStyle = healthCol[healthStatus]; ctx.fill();
+    drawText("GO-LIVE: " + healthLbl[healthStatus], 130, 135, "bold 14px Segoe UI, sans-serif", healthCol[healthStatus], "center");
+
+    // ── Overall stats badge ──
+    const { total, done, inProg, notStarted, blocking } = getGlobalStats();
+    const pct = total > 0 ? Math.round((done / total) * 100) : 0;
+    drawText(`${done}/${total} completed (${pct}%)  |  ${blocking} blocking`, W - rightPad, 135, "bold 14px Segoe UI, sans-serif", "#555", "right");
+
+    // ── TIME AXIS ──
+    const axisY = topH;
+    ctx.fillStyle = "#f8f8f8";
+    ctx.fillRect(chartX, axisY, chartW, axisH);
+    ctx.strokeStyle = "#e0e0e0";
+    ctx.lineWidth = 1;
+    ctx.beginPath(); ctx.moveTo(chartX, axisY + axisH); ctx.lineTo(chartX + chartW, axisY + axisH); ctx.stroke();
+
+    // Generate time tick marks
+    const startDate = new Date(globalMin);
+    startDate.setMinutes(0, 0, 0);
+    const tickInterval = 3600000 * 3; // 3-hour ticks
+    let tick = startDate.getTime();
+    while (tick <= globalMax) {
+        const x = chartX + ((tick - globalMin) / span) * chartW;
+        if (x >= chartX && x <= chartX + chartW) {
+            // Vertical gridline
+            ctx.strokeStyle = "#eee";
+            ctx.beginPath(); ctx.moveTo(x, axisY + axisH); ctx.lineTo(x, axisY + axisH + contentH); ctx.stroke();
+            // Tick label
+            const d = new Date(tick);
+            const hr = d.toLocaleTimeString("en-GB", { hour:"2-digit", minute:"2-digit", hour12:false });
+            const day = d.toLocaleDateString("en-GB", { day:"2-digit", month:"short" });
+            drawText(hr, x, axisY + 28, "bold 14px Consolas, monospace", "#333", "center");
+            drawText(day, x, axisY + 46, "12px Segoe UI, sans-serif", "#888", "center");
+        }
+        tick += tickInterval;
+    }
+
+    // Date band highlighting (alternate day backgrounds)
+    const dayStart = new Date(globalMin);
+    dayStart.setHours(0, 0, 0, 0);
+    let dBand = dayStart.getTime();
+    let bandIdx = 0;
+    while (dBand < globalMax) {
+        const dEnd = dBand + 86400000;
+        const x1 = Math.max(chartX, chartX + ((dBand - globalMin) / span) * chartW);
+        const x2 = Math.min(chartX + chartW, chartX + ((dEnd - globalMin) / span) * chartW);
+        if (x2 > x1 && bandIdx % 2 === 1) {
+            ctx.fillStyle = "rgba(0,0,0,0.02)";
+            ctx.fillRect(x1, axisY + axisH, x2 - x1, contentH);
+        }
+        dBand = dEnd;
+        bandIdx++;
+    }
+
+    // ── NOW line ──
+    const nowTs = Date.now();
+    if (nowTs >= globalMin && nowTs <= globalMax) {
+        const nx = chartX + ((nowTs - globalMin) / span) * chartW;
+        ctx.strokeStyle = "#c62828";
+        ctx.lineWidth = 2;
+        ctx.setLineDash([6, 4]);
+        ctx.beginPath(); ctx.moveTo(nx, axisY + axisH); ctx.lineTo(nx, axisY + axisH + contentH); ctx.stroke();
+        ctx.setLineDash([]);
+        drawText("NOW", nx, axisY + axisH - 4, "bold 12px Segoe UI, sans-serif", "#c62828", "center");
+    }
+
+    // ── GANTT BARS ──
+    const barsY = axisY + axisH + 20;
+
+    sortedCats.forEach((cat, i) => {
+        const tasks = runbookData[cat];
+        const ry = barsY + i * (rowH + rowGap);
+
+        // Category time bounds
+        let catMin = Infinity, catMax = -Infinity;
+        tasks.forEach(t => {
+            if (t.startTime) { const d = new Date(t.startTime).getTime(); if (!isNaN(d) && d < catMin) catMin = d; }
+            if (t.endTime) { const d = new Date(t.endTime).getTime(); if (!isNaN(d) && d > catMax) catMax = d; }
+        });
+
+        const d = tasks.filter(t => normalizeStatus(t.status) === "Completed").length;
+        const ip = tasks.filter(t => normalizeStatus(t.status) === "In Progress").length;
+        const catPct = Math.round((d / tasks.length) * 100);
+        const s = computeCategoryStatus(tasks);
+
+        // Label area (left)
+        const labelBg = s === "done" ? "#e8f5e9" : s === "inprogress" ? "#fff8e1" : "#ffebee";
+        const labelColor = s === "done" ? "#2e7d32" : s === "inprogress" ? "#e65100" : "#c62828";
+        drawRoundRect(12, ry, labelW - 20, rowH, 8, labelBg, s === "done" ? "#a5d6a7" : s === "inprogress" ? "#ffe082" : "#ef9a9a");
+
+        // Status dot
+        ctx.beginPath();
+        ctx.arc(28, ry + 24, 5, 0, Math.PI * 2);
+        ctx.fillStyle = labelColor;
+        ctx.fill();
+
+        // Category name (truncate if needed)
+        const nameStr = cat.length > 26 ? cat.substring(0, 24) + "..." : cat;
+        drawText(nameStr, 42, ry + 28, "bold 16px Segoe UI, sans-serif", labelColor, "left");
+
+        // Count + percentage
+        drawText(`${d}/${tasks.length} (${catPct}%)`, 42, ry + 50, "14px Consolas, monospace", "#888", "left");
+
+        // Mini completion bar in label
+        const mbX = 200, mbW = 110, mbH = 6, mbY2 = ry + 44;
+        drawRoundRect(mbX, mbY2, mbW, mbH, 3, "#e0e0e0");
+        if (catPct > 0) drawRoundRect(mbX, mbY2, Math.max(6, mbW * catPct / 100), mbH, 3, labelColor);
+
+        // In-progress badge
+        if (ip > 0) {
+            drawText(`${ip} active`, labelW - 30, ry + 50, "bold 12px Segoe UI, sans-serif", "#e65100", "right");
+        }
+
+        // Gantt bar (in chart area)
+        if (isFinite(catMin) && isFinite(catMax)) {
+            const bx1 = chartX + ((catMin - globalMin) / span) * chartW;
+            const bx2 = chartX + ((catMax - globalMin) / span) * chartW;
+            const bw = Math.max(8, bx2 - bx1);
+            const barY = ry + 10;
+            const barH = rowH - 20;
+
+            // Full bar (background = remaining)
+            const bgFill = s === "done" ? "#c8e6c9" : s === "inprogress" ? "#ffe0b2" : "#ffcdd2";
+            drawRoundRect(bx1, barY, bw, barH, 8, bgFill, s === "done" ? "#a5d6a7" : s === "inprogress" ? "#ffcc80" : "#ef9a9a");
+
+            // Completed fill
+            if (catPct > 0) {
+                const fillW = Math.max(8, bw * catPct / 100);
+                // Clip to bar shape
+                ctx.save();
+                ctx.beginPath();
+                ctx.roundRect(bx1, barY, bw, barH, 8);
+                ctx.clip();
+                const grad = ctx.createLinearGradient(bx1, 0, bx1 + fillW, 0);
+                grad.addColorStop(0, s === "done" ? "#43a047" : "#2e7d32");
+                grad.addColorStop(1, s === "done" ? "#66bb6a" : "#43a047");
+                ctx.fillStyle = grad;
+                ctx.fillRect(bx1, barY, fillW, barH);
+                ctx.restore();
+            }
+
+            // Percentage text on bar
+            const textX = bx1 + Math.max(8, bw * catPct / 100) / 2;
+            if (catPct > 0 && Math.max(8, bw * catPct / 100) > 50) {
+                drawText(catPct + "%", textX, barY + barH / 2 + 6, "bold 16px Segoe UI, sans-serif", "#ffffff", "center");
+            } else if (bw > 50) {
+                drawText(catPct + "%", bx1 + bw / 2, barY + barH / 2 + 6, "bold 16px Segoe UI, sans-serif", labelColor, "center");
+            }
+
+            // Time labels below bar
+            const startLabel = new Date(catMin).toLocaleTimeString("en-GB", { hour:"2-digit", minute:"2-digit", hour12:false });
+            const endLabel = new Date(catMax).toLocaleTimeString("en-GB", { hour:"2-digit", minute:"2-digit", hour12:false });
+            drawText(startLabel, bx1, barY + barH + 14, "11px Consolas, monospace", "#aaa", "left");
+            drawText(endLabel, bx1 + bw, barY + barH + 14, "11px Consolas, monospace", "#aaa", "right");
+        }
+    });
+
+    // ── LEGEND ──
+    const legY = barsY + sortedCats.length * (rowH + rowGap) + 20;
+    ctx.strokeStyle = "#e0e0e0";
+    ctx.beginPath(); ctx.moveTo(60, legY); ctx.lineTo(W - 60, legY); ctx.stroke();
+    const items = [
+        { color: "#43a047", label: "Completed" },
+        { color: "#ffe0b2", label: "In Progress", border: "#ffcc80" },
+        { color: "#ffcdd2", label: "Not Started", border: "#ef9a9a" }
+    ];
+    let lx = W / 2 - 200;
+    items.forEach(it => {
+        drawRoundRect(lx, legY + 12, 20, 14, 4, it.color, it.border || it.color);
+        drawText(it.label, lx + 28, legY + 24, "14px Segoe UI, sans-serif", "#555", "left");
+        lx += 130;
+    });
+    // Now line legend
+    ctx.strokeStyle = "#c62828";
+    ctx.lineWidth = 2;
+    ctx.setLineDash([6, 4]);
+    ctx.beginPath(); ctx.moveTo(lx, legY + 19); ctx.lineTo(lx + 20, legY + 19); ctx.stroke();
+    ctx.setLineDash([]);
+    drawText("Current Time", lx + 28, legY + 24, "14px Segoe UI, sans-serif", "#c62828", "left");
+
+    // ── FOOTER ──
+    ctx.fillStyle = projectConfig.accentColor;
+    ctx.fillRect(0, H - 28, W, 28);
+    drawText("Generated from Runbook Dashboard", W / 2, H - 10, "14px Segoe UI, sans-serif", "#ffffff", "center");
+
+    // ── Export ──
+    cv.toBlob(blob => {
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement("a");
+        a.href = url;
+        a.download = "runbook_gantt_" + new Date().toISOString().slice(0, 16).replace(/[:T]/g, "-") + ".png";
+        a.click();
+        URL.revokeObjectURL(url);
+        showToast("Gantt chart ready!");
+    }, "image/png");
+}
+
+function exportJSON() {
+    const exportData = Object.assign({}, runbookData, { _issues: issues, _health: healthStatus });
+    const blob = new Blob([JSON.stringify(exportData, null, 2)], { type: "application/json" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = "runbook_" + new Date().toISOString().slice(0,10) + ".json";
+    a.click();
+    URL.revokeObjectURL(url);
+    showToast("JSON exported (includes issues)");
+}
+
+function applyLoadedRunbook(fresh) {
+    if (!fresh || typeof fresh !== "object" || Array.isArray(fresh)) {
+        throw new Error("Invalid JSON structure");
+    }
+    runbookData = fresh;
+    issues = runbookData._issues || [];
+    healthStatus = runbookData._health || "Green";
+    issueFormOpen = false;
+    editingIssueId = null;
+    render();
+}
+
+async function reloadRunbookJSON() {
+    try {
+        const res = await fetch("runbook.json?_ts=" + Date.now(), { cache: "no-store" });
+        if (!res.ok) throw new Error("HTTP " + res.status);
+
+        const fresh = await res.json();
+        applyLoadedRunbook(fresh);
+        showToast("Reloaded runbook.json");
+    } catch (e) {
+        showToast("Failed to reload runbook.json");
+    }
+}
+
+function triggerFileRunbookLoad() {
+    const input = document.getElementById("runbookFileInput");
+    input.value = "";
+    input.click();
+}
+
+function handleRunbookFileSelected(event) {
+    const file = event.target.files && event.target.files[0];
+    if (!file) return;
+
+    const reader = new FileReader();
+    reader.onload = () => {
+        try {
+            const fresh = JSON.parse(reader.result);
+            applyLoadedRunbook(fresh);
+            showToast("Loaded runbook from local file");
+        } catch (e) {
+            showToast("Invalid JSON file");
+        }
+    };
+    reader.onerror = () => showToast("Failed to read local file");
+    reader.readAsText(file);
+}
+
+function expandAll() {
+    Object.keys(runbookData).filter(k => !k.startsWith("_")).forEach(cat => openCategories.add(cat));
+    render();
+}
+
+function collapseAll() {
+    openCategories.clear();
+    render();
+}
+
+// EVENT LISTENERS
+document.querySelectorAll(".filterBtn").forEach(btn => {
+    btn.addEventListener("click", () => {
+        document.querySelectorAll(".filterBtn").forEach(b => b.classList.remove("active"));
+        btn.classList.add("active");
+        filterState = btn.dataset.filter;
+        render();
+    });
+});
+
+document.getElementById("searchBox").addEventListener("input", (e) => {
+    searchQuery = e.target.value.trim();
+    render();
+});
+
+document.getElementById("teamFilter").addEventListener("change", (e) => {
+    teamFilter = e.target.value;
+    render();
+});
+
+document.getElementById("sortSelect").addEventListener("change", (e) => {
+    sortMode = e.target.value;
+    render();
+});
+
+// Keyboard shortcut: Ctrl+S to save
+document.addEventListener("keydown", (e) => {
+    if ((e.ctrlKey || e.metaKey) && e.key === "s") {
+        e.preventDefault();
+        saveToLocalStorage();
+    }
+});
+
+// ── LOGO & BACKGROUND DETECTION ──
+let clientLogoImg = null;
+let clientBgImg = null;
+
+function setFavicon(src) {
+    const link = document.getElementById('favicon');
+    if (link) link.href = src;
+}
+
+function detectAssets() {
+    const exts = ['png', 'jpg', 'jpeg', 'svg', 'webp'];
+
+    function loadLogo(src) {
+        const img = new Image();
+        img.onload = () => {
+            clientLogoImg = img;
+            const el = document.getElementById('clientLogo');
+            el.src = src;
+            el.classList.remove('hidden');
+            setFavicon(src);
+        };
+        img.src = src;
+    }
+
+    function loadBg(src) {
+        const bgImg = new Image();
+        bgImg.onload = () => {
+            clientBgImg = bgImg;
+            document.getElementById('bgOverlay').style.backgroundImage = 'url(' + src + ')';
+        };
+        bgImg.src = src;
+    }
+
+    // 1st priority: explicit paths from config.json (works without a server)
+    if (projectConfig.logoFile) loadLogo('assets/' + projectConfig.logoFile);
+    if (projectConfig.backgroundFile) loadBg('assets/' + projectConfig.backgroundFile);
+
+    // 2nd priority: auto-detect via directory listing (requires Python server)
+    if (!projectConfig.logoFile || !projectConfig.backgroundFile) {
+        fetch('assets/')
+            .then(r => r.ok ? r.text() : '')
+            .then(html => {
+                if (!html) return;
+                if (!projectConfig.logoFile) {
+                    const m = html.match(/href="([^"]*clientLogo[^"]*\.(png|jpg|jpeg|svg|webp))"/i);
+                    if (m) loadLogo('assets/' + m[1].replace(/.*\//, ''));
+                }
+                if (!projectConfig.backgroundFile) {
+                    const m = html.match(/href="([^"]*background[^"]*\.(png|jpg|jpeg|svg|webp))"/i);
+                    if (m) loadBg('assets/' + m[1].replace(/.*\//, ''));
+                }
+            })
+            .catch(() => {
+                // 3rd priority: guess exact names
+                if (!projectConfig.logoFile) {
+                    exts.forEach(ext => loadLogo('assets/clientLogo.' + ext));
+                }
+                if (!projectConfig.backgroundFile) {
+                    exts.forEach(ext => loadBg('assets/background.' + ext));
+                }
+            });
+    }
+}
+
+// INIT
+updateClock();
+setInterval(updateClock, 1000);
+loadConfig().then(() => { detectAssets(); loadRunbook(); });
+</script>
+
+</body>
+</html>

@@ -1,0 +1,32 @@
+# Column mapping for Fermat Treasury Migration CSV
+# Maps CSV column headers to the standardized runbook fields
+
+columns:
+  task: "Activities"
+  status: "Status"
+  startTime: "Exp start time"
+  endTime: "Exp end time"
+  item: "Item"
+  assignee: "Owner"
+
+category_column: "Category"
+default_category: "Uncategorized"
+
+# Map source status values to normalized dashboard statuses
+status_mapping:
+  "Done": "Completed"
+  "Completed": "Completed"
+  "WIP": "In Progress"
+  "In Progress": "In Progress"
+  "Pending": "Not Started"
+  "Not Started": "Not Started"
+  "Blocked": "Blocking"
+  "Blocking": "Blocking"
+  "N/A": "Unneeded"
+  "Not Needed": "Unneeded"
+
+# Normalize category names (fixes encoding artifacts, typos)
+category_mapping:
+  "Go Live Pre- Task": "Go Live Pre-Task"
+  "Bring?Up & Verification": "Bring-Up & Verification"
+  "Uncategorized": "Uncategorized"

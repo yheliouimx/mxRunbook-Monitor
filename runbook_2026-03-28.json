@@ -1,0 +1,766 @@
+{
+  "Preconditions & Approvals": [
+    {
+      "item": "Readiness Criteria",
+      "task": "Confirm all Readiness Criteria is met or waiver in place",
+      "status": "Completed",
+      "startTime": "2026-03-25T00:00:00",
+      "endTime": "2026-03-25T00:00:00"
+    },
+    {
+      "item": "Go/No-Go",
+      "task": "Go/No-Go call to be informed by Readiness Criteria and Regression Test results",
+      "status": "Completed",
+      "startTime": "2026-03-25T00:00:00",
+      "endTime": "2026-03-25T00:00:00"
+    },
+    {
+      "item": "Date Initialisation",
+      "task": "If the go-live has been moved from 20th March pre-batch, then FOD_NY_DATE and PLCC_DATE must be updated to the new date in prod_vars.yml (if go live on 27th, then date should be changed to 27th)",
+      "status": "Completed",
+      "startTime": "2026-03-25T00:00:00",
+      "endTime": "2026-03-25T00:00:00"
+    },
+    {
+      "item": "UK CHG Record",
+      "task": "Check CHG2736681 record is approved",
+      "status": "Completed",
+      "startTime": "2026-03-26T00:00:00",
+      "endTime": "2026-03-26T00:00:00"
+    },
+    {
+      "item": null,
+      "task": "Check the UCD agent running or not on prod server",
+      "status": "Completed",
+      "startTime": "2026-03-27T12:00:00",
+      "endTime": null
+    },
+    {
+      "item": null,
+      "task": "Upload the package and CI repo on UCD and share the details to Support team",
+      "status": "Completed",
+      "startTime": "2026-03-28T12:00:00",
+      "endTime": null
+    },
+    {
+      "item": null,
+      "task": "Make sure there is 80G+ space left in inbound folder",
+      "status": "Completed",
+      "startTime": "2026-03-26T00:00:00",
+      "endTime": null
+    }
+  ],
+  "Go Live Pre-Task": [
+    {
+      "item": null,
+      "task": "ADM to provide release notes for the EUCLID & ODI changes to App & DB Support Team\n\nThis task including the scripts for Actimize Transaction Codes mapping.",
+      "status": "Completed",
+      "startTime": "2026-03-24T14:00:00",
+      "endTime": "2026-03-24T15:00:00"
+    },
+    {
+      "item": null,
+      "task": "Cross Reference table between WWID and Flexcube Customer mappings with customer category and update to the release folder",
+      "status": "Completed",
+      "startTime": "2026-03-24T14:00:00",
+      "endTime": "2026-03-24T15:00:00"
+    },
+    {
+      "item": null,
+      "task": "Create new Transaction Code called MRX in Flexcube.\nRajesh to create Transaction Code once the Change Ticket is created.",
+      "status": "Completed",
+      "startTime": "2026-03-25T16:00:00",
+      "endTime": "2026-03-26T17:00:00"
+    },
+    {
+      "item": null,
+      "task": "Query to Provide List of GLs to be unblocked in Flexcube.",
+      "status": "Completed",
+      "startTime": "2026-03-24T17:00:00",
+      "endTime": "2026-03-24T17:30:00"
+    },
+    {
+      "item": null,
+      "task": "Execute the Query in FC PROD to get the list of GLs to be unblocked",
+      "status": "Completed",
+      "startTime": "2026-03-24T17:30:00",
+      "endTime": "2026-03-24T18:00:00"
+    },
+    {
+      "item": null,
+      "task": "Enable DE Flag FlexCube GLs which was provided using the query - This has to be done by Business Users.",
+      "status": "Completed",
+      "startTime": "2026-03-24T18:00:00",
+      "endTime": "2026-03-24T20:00:00"
+    },
+    {
+      "item": null,
+      "task": "Verify the SVC_BI_EOD having access to gi_extracts\\Murex_Extracts\n\nTo be sent for IT Security Team to create and provide access same as GI_Extracts.",
+      "status": "Completed",
+      "startTime": "2026-03-24T20:00:00",
+      "endTime": "2026-03-24T21:00:00"
+    },
+    {
+      "item": null,
+      "task": "Establish and verify the C:D Connection for the SWIFT MT/MX Messages\n\nVerified the C:D Connection for the Test Messages & will be verified for the production Messages as per BAU once the Murex batch is initiated post Go Live",
+      "status": "Completed",
+      "startTime": "2026-03-27T15:00:00",
+      "endTime": "2026-03-28T13:00:00"
+    },
+    {
+      "item": null,
+      "task": "Establish and verify the C:D Connection for the BIP Reports\n\nVerified the C:D Connection for the Test Files & will be verified for the production files as per BAU once the Murex batch is initiated",
+      "status": "Completed",
+      "startTime": "2026-03-27T15:00:00",
+      "endTime": "2026-03-28T13:00:00"
+    },
+    {
+      "item": null,
+      "task": "Establish and verify the C:D Connection for the FCC Files from UK to gi_extracts\\Murex_Extracts\n\nVerified the C:D Connection for the Test Files & will be verified for the production FCC Extracts as per BAU once the Murex batch is initiated",
+      "status": "Completed",
+      "startTime": "2026-03-27T15:00:00",
+      "endTime": "2026-03-28T13:00:00"
+    },
+    {
+      "item": null,
+      "task": "Send the IT Advisory Alert for Implementation",
+      "status": "Completed",
+      "startTime": "2026-03-26T14:30:00",
+      "endTime": "2026-03-26T15:00:00"
+    },
+    {
+      "item": "Send the IT Alert for Implementation",
+      "task": "Send request for IT Security support during Go Live Implementation",
+      "status": "Completed",
+      "startTime": "2026-03-25T14:00:00",
+      "endTime": "2026-03-25T14:30:00"
+    },
+    {
+      "item": null,
+      "task": "Set up SSIs in Production, see TASK 9 tab for details",
+      "status": "Completed",
+      "startTime": "2026-03-27T18:00:00",
+      "endTime": "2026-03-27T21:00:00"
+    },
+    {
+      "item": null,
+      "task": "Keep the US Systems End of Day (EOD) Batches on Hold before starting the Deployment\n\n(Hold ACBS (5:00 PM), GLDT (6:00 PM), Euclid (7:00 PM), Actimize (8:00PM), FC AD Sync Job & Pershing (11:00 PM) EOD jobs)",
+      "status": "Completed",
+      "startTime": "2026-03-27T14:00:00",
+      "endTime": "2026-03-27T15:00:00"
+    },
+    {
+      "item": null,
+      "task": "Collect the Pre Backups of all the systems and keep them as Pre EOD Golden backup to be used in case of Rollback required.\n\n - EUCLID Backup will be taken from the daily BAU backup.\n - Actimize, Flexcube and ACBS will be taken on the same day.",
+      "status": "Completed",
+      "startTime": "2026-03-27T23:00:00",
+      "endTime": "2026-03-28T01:00:00"
+    }
+  ],
+  "System Quiesce & Backups": [
+    {
+      "item": null,
+      "task": "Extract DBs indices from all schemas",
+      "status": "Completed",
+      "startTime": "2026-03-26T00:00:00",
+      "endTime": null
+    },
+    {
+      "item": null,
+      "task": "Create Prod UCD request with correct package name and ci repo",
+      "status": "Completed",
+      "startTime": "2026-03-27T16:00:00",
+      "endTime": "2026-03-27T16:30:00"
+    },
+    {
+      "item": null,
+      "task": "Hold murex batch in TWS including US_EOD",
+      "status": "Completed",
+      "startTime": "2026-03-27T14:00:00",
+      "endTime": "2026-03-27T15:00:00"
+    },
+    {
+      "item": null,
+      "task": "Export User Rights CTT zip file from prod:\nCTT_UserAdminGroupDef\nCTT_UserAdminUserGroup\nCTT_UserAdminUserProfile\nCTT_UserAdminUserProfileLink\nCTT_UserGroups\nCTT_UsersAndLicences\nCTT_Date_Shifters\nCTT_CCY_Pairs",
+      "status": "Completed",
+      "startTime": "2026-03-27T16:00:00",
+      "endTime": "2026-03-27T16:30:00"
+    },
+    {
+      "item": null,
+      "task": "Export Lookup tables and DD Formulae CTT from prod\nCTT_Release_LookupTables_DDFormulae",
+      "status": "Completed",
+      "startTime": "2026-03-27T16:00:00",
+      "endTime": "2026-03-27T16:30:00"
+    },
+    {
+      "item": null,
+      "task": "Export Lookup tables and DD Formulae CTT from prod\nDay1_TypA_LUT_Form",
+      "status": "Completed",
+      "startTime": "2026-03-27T16:00:00",
+      "endTime": "2026-03-27T16:30:00"
+    },
+    {
+      "item": "Backup",
+      "task": "Take a guaranteed restore point for the prod DB",
+      "status": "Completed",
+      "startTime": "2026-03-27T22:00:00",
+      "endTime": "2026-03-27T22:30:00"
+    },
+    {
+      "item": null,
+      "task": "Shutdown Murex",
+      "status": "Completed",
+      "startTime": "2026-03-28T00:15:00",
+      "endTime": "2026-03-28T00:45:00"
+    },
+    {
+      "item": null,
+      "task": "Make sure no Murex java processes are running",
+      "status": "Completed",
+      "startTime": "2026-03-28T00:45:00",
+      "endTime": "2026-03-28T01:00:00"
+    },
+    {
+      "item": null,
+      "task": "Unlink all softlinks in appdir\ncd /opt/murex/app/MAS_PROD/app\nls -l |grep lr\nthis should bring one softlink for logs and another for datamart_extractions, run the below command to unlink them\nunlink logs\nunlink datamart_extractions",
+      "status": "Completed",
+      "startTime": "2026-03-28T01:00:00",
+      "endTime": "2026-03-28T01:15:00"
+    },
+    {
+      "item": null,
+      "task": "Take backup of appdir\ncd /opt/murex/inbound\nmake sure enough space is there\nmkdir <CHANGEREF>_backup\ncd <CHANGEREF>_backup\ncp -R /opt/murex/app/MAS_PROD/app .\ncp -R /opt/murex/app/MAS_PROD/batch .",
+      "status": "Completed",
+      "startTime": "2026-03-28T01:00:00",
+      "endTime": "2026-03-28T02:00:00"
+    },
+    {
+      "item": "Backup",
+      "task": "Take a guaranteed restore point for the prod DB (NOT REQUIRED)",
+      "status": "Completed",
+      "startTime": null,
+      "endTime": null
+    }
+  ],
+  "Go Live Task": [
+    {
+      "item": null,
+      "task": "Deploy ODI/OBIEE Changes and confirm once done",
+      "status": "Completed",
+      "startTime": "2026-03-28T01:00:00",
+      "endTime": "2026-03-28T02:00:00"
+    },
+    {
+      "item": null,
+      "task": "Deploy Datacontrol Query for Lloyds Transaction Query and confirm once done",
+      "status": "In Progress",
+      "startTime": "2026-03-28T01:00:00",
+      "endTime": "2026-03-28T02:00:00"
+    }
+  ],
+  "Deployment Execution": [
+    {
+      "item": "Connect:Direct jobs for FCC and BIP",
+      "task": "Schedule Connect:Direct Jobs for FCC and BIP files",
+      "status": "Completed",
+      "startTime": "2026-03-27T19:00:00",
+      "endTime": "2026-03-27T19:30:00"
+    },
+    {
+      "item": "Connect:Direct jobs for Transaction Data Product",
+      "task": "Schedule Connect:Direct Jobs for Transaction Data Product",
+      "status": "Completed",
+      "startTime": "2026-03-27T19:00:00",
+      "endTime": "2026-03-27T19:30:00"
+    },
+    {
+      "item": "Fermat Entity Set / Portfolio Tree Fix",
+      "task": "Perform steps in tab: TASK 1. Clean Portfolio Rights",
+      "status": "Completed",
+      "startTime": "2026-03-27T23:00:00",
+      "endTime": "2026-03-27T23:20:00"
+    },
+    {
+      "item": "Fermat Entity Set / Portfolio Tree Fix",
+      "task": "Perform steps in tab: TASK 2. Clean Portfolio Tree",
+      "status": "Completed",
+      "startTime": "2026-03-27T23:20:00",
+      "endTime": "2026-03-27T23:40:00"
+    },
+    {
+      "item": "Fermat Limitation Date & Open Period Start Date Fix",
+      "task": "Perform steps in tab: TASK 3. Date Fix",
+      "status": "Completed",
+      "startTime": "2026-03-27T23:40:00",
+      "endTime": "2026-03-28T00:00:00"
+    },
+    {
+      "item": "Deploy release_mas_2.2",
+      "task": "Approve the deployment request in UCD",
+      "status": "Completed",
+      "startTime": "2026-03-28T02:00:00",
+      "endTime": "2026-03-28T04:30:00"
+    },
+    {
+      "item": "Deploy release_mas_2.2",
+      "task": "Monitor the deployment process",
+      "status": "Completed",
+      "startTime": "2026-03-28T02:00:00",
+      "endTime": "2026-03-28T04:30:00"
+    },
+    {
+      "item": null,
+      "task": "Rename multimode files\ncd /opt/murex/app/MAS_PROD/app\ncp launch.sh launch_single.sh\ncp launch_multinode.sh launch.sh\ncp startall.sh startall_single.sh\ncp startall_multinode.sh startall.sh",
+      "status": "Completed",
+      "startTime": "2026-03-28T04:30:00",
+      "endTime": "2026-03-28T04:45:00"
+    },
+    {
+      "item": null,
+      "task": "Put back the softlinks\ncd /opt/murex/app/MAS_PROD/app\nmv logs logs_deploy<date>\nln -s /opt/murex/logs logs\nln -s /opt/murex/batch_output datamart_extractions",
+      "status": "Completed",
+      "startTime": "2026-03-28T04:45:00",
+      "endTime": "2026-03-28T05:00:00"
+    },
+    {
+      "item": null,
+      "task": "Check the folder apdmandate/ReceivedFiles as per folder structure (Anuj Change)\n/opt/murex/app/MAS_PROD/app/apdmandate/ReceivedFiles\n\nVerify the correct rights",
+      "status": "Completed",
+      "startTime": "2026-03-28T05:00:00",
+      "endTime": "2026-03-28T05:15:00"
+    },
+    {
+      "item": null,
+      "task": "Start reduced Murex\ncd /opt/murex/app/MAS_PROD/app\n./start_reduced.sh",
+      "status": "Completed",
+      "startTime": "2026-03-28T05:15:00",
+      "endTime": "2026-03-28T05:45:00"
+    },
+    {
+      "item": "Import correct version of LBG.ALL.PENTITY",
+      "task": "Perform steps in tab: TASK 5. PENTITY Update (pre-start)",
+      "status": "Completed",
+      "startTime": null,
+      "endTime": null
+    },
+    {
+      "item": null,
+      "task": "Perform checks in tab: TASK 1Bis. Portfolio Rights",
+      "status": "Completed",
+      "startTime": "2026-03-28T05:45:00",
+      "endTime": "2026-03-28T06:15:00"
+    },
+    {
+      "item": "Import correct version of LBG.ALL.PENTITY",
+      "task": "Perform steps in tab: TASK 5. PENTITY Update (post-start)",
+      "status": "Completed",
+      "startTime": "2026-03-28T06:15:00",
+      "endTime": "2026-03-28T06:30:00"
+    },
+    {
+      "item": null,
+      "task": "Perform steps in tab: TASK 6. DataDictionary Formulas sanity check",
+      "status": "Completed",
+      "startTime": "2026-03-28T06:30:00",
+      "endTime": "2026-03-28T06:45:00"
+    },
+    {
+      "item": null,
+      "task": "Import only - CTT_UsersAndLicences",
+      "status": "In Progress",
+      "startTime": "2026-03-28T06:45:00",
+      "endTime": "2026-03-28T07:00:00"
+    },
+    {
+      "item": null,
+      "task": "MLC Manual changes - deploy the CTT from below location\n\\\\cmdfs.markets.global.lloydstsb.com\\DFS-LDN-DATA\\Common\\MAS\\Releases\\CHG2736681_20260327\\Golive - docs & CTT\\MLC",
+      "status": "Not Started",
+      "startTime": "2026-03-28T06:45:00",
+      "endTime": "2026-03-28T07:00:00"
+    },
+    {
+      "item": null,
+      "task": "MLC step MKTTE-16282 - add two lines to BatchOutputConfig.csv:\nC_BE_MLC_CCR_RE_PS,,,TCE_SFT_<ReportingDate>.txt,<CombinedReportingShare>,TCE_SFT.txt,,,,0,\nC_BE_MLC_CCR_RE_PS,,,TCE_Derivatives_<ReportingDate>.txt,<CombinedReportingShare>,TCE_Derivatives.txt,,,,0,",
+      "status": "Not Started",
+      "startTime": "2026-03-28T06:45:00",
+      "endTime": "2026-03-28T07:00:00"
+    },
+    {
+      "item": null,
+      "task": "MLC - LBCMLUX permission changes",
+      "status": "Not Started",
+      "startTime": "2026-03-28T06:45:00",
+      "endTime": "2026-03-28T07:00:00"
+    },
+    {
+      "item": "QBC",
+      "task": "Deploy QBC routing changes for Murex-PCM Fermat changes",
+      "status": "Completed",
+      "startTime": "2026-03-28T07:00:00",
+      "endTime": "2026-03-28T07:30:00"
+    },
+    {
+      "item": null,
+      "task": "John: Support team to stop CP Hub interface and deploy the hub CP interface zip (from 21 March) into appdir, then afterward start hub CP interface\n\nPath: \\\\cmdfs.markets.global.lloydstsb.com\\DFS-LDN-DATA\\Common\\MAS\\Releases\\CHG2736681_20260327\\Golive - docs & CTT\\John - CP Hub changes",
+      "status": "Not Started",
+      "startTime": "2026-03-28T07:00:00",
+      "endTime": "2026-03-28T07:10:00"
+    },
+    {
+      "item": null,
+      "task": "John: Support team to stop dlv_rel_holdForReviewBypass task, then overwrite the formula client.lloyds.postTrade.settlement.instructionRelease.holdForReviewBypass, then afterward start dlv_rel_holdForReviewBypass task",
+      "status": "Not Started",
+      "startTime": "2026-03-28T07:10:00",
+      "endTime": "2026-03-28T07:15:00"
+    },
+    {
+      "item": null,
+      "task": "Perform steps in tab: TASK 7. Run Team Manual Deploy (NOW PART OF Package, no manual steps required)",
+      "status": "Not Started",
+      "startTime": "2026-03-28T07:45:00",
+      "endTime": "2026-03-28T08:00:00"
+    },
+    {
+      "item": "PCM",
+      "task": "Deploy Dynatrace monitoring for MWDropper + Enable Scheduled Task",
+      "status": "Not Started",
+      "startTime": "2026-03-28T08:00:00",
+      "endTime": "2026-03-28T12:00:00"
+    },
+    {
+      "item": null,
+      "task": "UAM change to allow ref data user group access to bond data\nSteps:\n1. Open SUPERVISOR session\n2. Open REF_DATA and go to the navigation template\n3. Under CONFIGURATION, give access, update and insert rights to Bonds and Short papers under Securities\n4. Save and Exit\n5. Check again that the changes have indeed been saved\n6. Open REF_DATA group to confirm you can see Bonds & Short Papers under Securities",
+      "status": "Not Started",
+      "startTime": "2026-03-28T08:00:00",
+      "endTime": "2026-03-28T08:15:00"
+    },
+    {
+      "item": null,
+      "task": "Update counterpart UDF:\n1. Open CONFIG\n2. Go to counterparts - LLOYDSBNUS\n3. Go to User fields - Customer Category\n4. Update the UDF to LBHO\n5. Save & exit\n6. Confirm the UDF is saved properly by checking again",
+      "status": "Not Started",
+      "startTime": "2026-03-28T08:15:00",
+      "endTime": "2026-03-28T08:30:00"
+    },
+    {
+      "item": "Fermat Regression Env Prep",
+      "task": "Clear down all Murex Inbound and Outbound queues on QBC env",
+      "status": "Not Started",
+      "startTime": null,
+      "endTime": null
+    },
+    {
+      "item": "Fermat Regression Env Prep",
+      "task": "Start Murex CP Hub and Assassin Inbound Interfaces and ensure connected to QBC env",
+      "status": "Not Started",
+      "startTime": null,
+      "endTime": null
+    },
+    {
+      "item": "Fermat Regression Env Prep",
+      "task": "Start ALL Murex Outbound Interfaces and ensure connected to QBC env",
+      "status": "Not Started",
+      "startTime": null,
+      "endTime": null
+    },
+    {
+      "item": "Fermat Static",
+      "task": "Replay Fermat Test Trading Records from QBC",
+      "status": "Not Started",
+      "startTime": null,
+      "endTime": null
+    },
+    {
+      "item": "Fermat Static",
+      "task": "Replay Fermat Test SSIs from QBC",
+      "status": "Not Started",
+      "startTime": null,
+      "endTime": null
+    },
+    {
+      "item": "Fermat Static",
+      "task": "Create Fermat Nostro Accounts",
+      "status": "Not Started",
+      "startTime": null,
+      "endTime": null
+    },
+    {
+      "item": "Fermat Static",
+      "task": "Create Fermat Nostro SSIs",
+      "status": "Not Started",
+      "startTime": null,
+      "endTime": null
+    },
+    {
+      "item": "Fermat Static",
+      "task": "Create Instruments",
+      "status": "Not Started",
+      "startTime": null,
+      "endTime": null
+    },
+    {
+      "item": "Fermat Trades",
+      "task": "Insert Fermat test trades via MXTest",
+      "status": "Not Started",
+      "startTime": null,
+      "endTime": null
+    },
+    {
+      "item": "Fermat Trades",
+      "task": "Manually enter 20 trades",
+      "status": "Not Started",
+      "startTime": null,
+      "endTime": null
+    },
+    {
+      "item": "Fermat check",
+      "task": "Sanity check and processing of Fermat trades and events, including 20 trades inserted by US FO",
+      "status": "Not Started",
+      "startTime": null,
+      "endTime": null
+    },
+    {
+      "item": "Negative test",
+      "task": "Check that only PCM and Xcepter Outbound queues on QBC contain data from Murex. All others (e.g. MDL, UTS, Realiti etc) should still be empty",
+      "status": "Not Started",
+      "startTime": null,
+      "endTime": null
+    }
+  ],
+  "Bring-Up & Verification": [
+    {
+      "item": null,
+      "task": "Dates verification check:\nCheck the following dates are initialised correctly via tab TASK 4. Dates Verification\nACCOUNTING_DATE\nCLOSING_ENTITY_DATE\nMO PLCC_NY\nDesk FOD NYC\nLimitation Date\nOpen Period Start Date",
+      "status": "Not Started",
+      "startTime": "2026-03-28T09:30:00",
+      "endTime": "2026-03-28T09:45:00"
+    },
+    {
+      "item": null,
+      "task": "Accounting initialisation check",
+      "status": "Not Started",
+      "startTime": "2026-03-28T09:45:00",
+      "endTime": "2026-03-28T10:45:00"
+    },
+    {
+      "item": null,
+      "task": "GOM check",
+      "status": "Not Started",
+      "startTime": "2026-03-28T09:45:00",
+      "endTime": "2026-03-28T10:45:00"
+    },
+    {
+      "item": null,
+      "task": "OSPs and Smart Queues check",
+      "status": "Not Started",
+      "startTime": "2026-03-28T09:45:00",
+      "endTime": "2026-03-28T10:45:00"
+    },
+    {
+      "item": null,
+      "task": "Datamart Jobs check",
+      "status": "Not Started",
+      "startTime": "2026-03-28T09:45:00",
+      "endTime": "2026-03-28T10:45:00"
+    },
+    {
+      "item": null,
+      "task": "TWS changes check",
+      "status": "Not Started",
+      "startTime": "2026-03-28T09:45:00",
+      "endTime": "2026-03-28T10:45:00"
+    },
+    {
+      "item": null,
+      "task": "User Group Check",
+      "status": "Not Started",
+      "startTime": "2026-03-28T09:45:00",
+      "endTime": "2026-03-28T10:45:00"
+    },
+    {
+      "item": "Batch",
+      "task": "Release the Murex batch",
+      "status": "Not Started",
+      "startTime": "2026-03-28T11:15:00",
+      "endTime": "2026-03-28T18:15:00"
+    },
+    {
+      "item": null,
+      "task": "Batch NFT Check. Confirm that running US_EOD has no material impact to UK batch by using Dynatrace logging on pre-prod to compare March Release (release_mas_2.2) baseline vs target UK batch job durations",
+      "status": "Not Started",
+      "startTime": "2026-03-28T12:00:00",
+      "endTime": "2026-03-28T13:00:00"
+    },
+    {
+      "item": null,
+      "task": "FCC extracts check",
+      "status": "Not Started",
+      "startTime": "2026-03-28T18:15:00",
+      "endTime": "2026-03-28T18:45:00"
+    },
+    {
+      "item": null,
+      "task": "BIP Reports Check",
+      "status": "Not Started",
+      "startTime": "2026-03-28T18:15:00",
+      "endTime": "2026-03-28T18:45:00"
+    },
+    {
+      "item": "Negative test",
+      "task": "Reconcile UK reports against baseline and check whether any Fermat trades are in any UK reports that they should not be in. This is covered by the standard comprehensive reconciliation that is part of all Murex releases",
+      "status": "Not Started",
+      "startTime": null,
+      "endTime": null
+    },
+    {
+      "item": null,
+      "task": "FCC Connect:Direct Transfer confirmation",
+      "status": "Not Started",
+      "startTime": "2026-03-28T18:45:00",
+      "endTime": "2026-03-28T19:15:00"
+    },
+    {
+      "item": null,
+      "task": "BIP Reports Connect:Direct Transfer confirmation",
+      "status": "Not Started",
+      "startTime": "2026-03-28T18:45:00",
+      "endTime": "2026-03-28T19:15:00"
+    }
+  ],
+  "EOD Task": [
+    {
+      "item": null,
+      "task": "Kick-off 6pm (GLDT (GL Posting to FlexCube), SoftCo, CBRT and GL Extracts) EOD in ODI",
+      "status": "Not Started",
+      "startTime": "2026-03-28T13:00:00",
+      "endTime": "2026-03-28T13:30:00"
+    },
+    {
+      "item": null,
+      "task": "Validate the GL posting for any suspense entries.\n\nMay not require as we will be receiving the empty FCC Extracts on the Go Live day.",
+      "status": "Not Started",
+      "startTime": "2026-03-28T13:30:00",
+      "endTime": "2026-03-28T14:00:00"
+    },
+    {
+      "item": null,
+      "task": "Resume the US Systems EOD Batches post deployment",
+      "status": "Not Started",
+      "startTime": "2026-03-28T14:00:00",
+      "endTime": "2026-03-28T14:30:00"
+    },
+    {
+      "item": null,
+      "task": "Kick-off 5pm ACBS EOD in ODI and Application",
+      "status": "Not Started",
+      "startTime": "2026-03-28T14:00:00",
+      "endTime": "2026-03-28T19:00:00"
+    },
+    {
+      "item": null,
+      "task": "Enable & Run 7 PM Euclid EOD Job",
+      "status": "Not Started",
+      "startTime": "2026-03-28T14:00:00",
+      "endTime": "2026-03-28T19:00:00"
+    },
+    {
+      "item": null,
+      "task": "Enable & Run 8 PM Actimize EOD Job",
+      "status": "Not Started",
+      "startTime": "2026-03-28T14:00:00",
+      "endTime": "2026-03-28T19:00:00"
+    },
+    {
+      "item": null,
+      "task": "Take a backup of Flexcube Database",
+      "status": "Not Started",
+      "startTime": "2026-03-28T14:00:00",
+      "endTime": "2026-03-28T19:00:00"
+    },
+    {
+      "item": null,
+      "task": "Run Flexcube first 4 stages in NYK",
+      "status": "Not Started",
+      "startTime": "2026-03-28T14:00:00",
+      "endTime": "2026-03-28T19:00:00"
+    },
+    {
+      "item": null,
+      "task": "Enable & Run 11 PM Pershing EOD Job",
+      "status": "Not Started",
+      "startTime": "2026-03-28T14:00:00",
+      "endTime": "2026-03-28T19:00:00"
+    },
+    {
+      "item": null,
+      "task": "Take a backup of Flexcube Database before LSI",
+      "status": "Not Started",
+      "startTime": "2026-03-28T14:00:00",
+      "endTime": "2026-03-28T19:00:00"
+    },
+    {
+      "item": null,
+      "task": "Run Flexcube first 4 stages in LSI",
+      "status": "Not Started",
+      "startTime": "2026-03-28T14:00:00",
+      "endTime": "2026-03-28T19:00:00"
+    },
+    {
+      "item": null,
+      "task": "Confirm ACBS EOD is completed successfully",
+      "status": "Not Started",
+      "startTime": "2026-03-28T19:00:00",
+      "endTime": "2026-03-28T19:30:00"
+    },
+    {
+      "item": null,
+      "task": "Run Flexcube remaining EOD steps & Validations",
+      "status": "Not Started",
+      "startTime": "2026-03-28T20:00:00",
+      "endTime": "2026-03-28T22:00:00"
+    }
+  ],
+  "_issues": [
+    {
+      "id": 1774642727387,
+      "description": "SSI import issue, had to cancel everything and re-import the full batch",
+      "category": "Go Live Pre-Task",
+      "severity": "Non-Blocking",
+      "issueStatus": "Closed",
+      "time": "20:18 27 Mar"
+    },
+    {
+      "id": 1774678797381,
+      "description": "Infrastructure issues: Port restriction errors during sequence script. delay about 30min to 1hour",
+      "category": "Go Live Task",
+      "severity": "Non-Blocking",
+      "issueStatus": "Closed",
+      "time": "06:19 28 Mar"
+    },
+    {
+      "id": 1774694598878,
+      "description": "SUPERVISOR session issue on one user. Decided to do full restart of the services.",
+      "category": "Deployment Execution",
+      "severity": "Non-Blocking",
+      "issueStatus": "Closed",
+      "time": "10:43 28 Mar"
+    },
+    {
+      "id": 1774700942781,
+      "description": "OSP issue taking long time to start",
+      "category": "Bring-Up & Verification",
+      "severity": "Non-Blocking",
+      "issueStatus": "Closed",
+      "time": "12:29 28 Mar"
+    },
+    {
+      "id": 1774713550451,
+      "description": "EOD issue related to Infrastructure: NFS share performance impacting the batches - batch over-run and finish in timeout",
+      "category": "EOD Task",
+      "severity": "Blocking",
+      "issueStatus": "Ongoing",
+      "time": "15:59 28 Mar"
+    }
+  ],
+  "_health": "Green"
+}

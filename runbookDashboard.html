@@ -1129,7 +1129,7 @@
 
 <div class="theme-toggle-wrap">
     <span class="theme-toggle-label">🌙</span>
-    <div class="theme-toggle" id="themeToggle" onclick="toggleTheme()" title="Toggle light/dark mode">
+    <div class="theme-toggle" id="themeToggle" title="Toggle light/dark mode">
         <div class="theme-toggle-knob"></div>
     </div>
     <span class="theme-toggle-label">☀️</span>
@@ -1149,9 +1149,9 @@
     <div class="health-bar">
         <span class="health-label">Go-Live Health:</span>
         <div class="health-indicator">
-            <div class="health-dot green" data-health="Green" onclick="setHealth('Green')" title="Green - On Track">GO</div>
-            <div class="health-dot amber" data-health="Amber" onclick="setHealth('Amber')" title="Amber - At Risk">AT RISK</div>
-            <div class="health-dot red" data-health="Red" onclick="setHealth('Red')" title="Red - Rollback">STOP</div>
+            <div class="health-dot green" data-health="Green" title="Green - On Track">GO</div>
+            <div class="health-dot amber" data-health="Amber" title="Amber - At Risk">AT RISK</div>
+            <div class="health-dot red" data-health="Red" title="Red - Rollback">STOP</div>
         </div>
         <span class="health-text" id="healthText"></span>
     </div>
@@ -1188,402 +1188,30 @@
 <div id="container"></div>
 
 <div class="actions">
-    <button class="action-btn primary" onclick="saveToLocalStorage()">Save Progress</button>
-    <button class="action-btn" onclick="reloadRunbookJSON()">Reload runbook.json</button>
-    <button class="action-btn" onclick="triggerFileRunbookLoad()">Load JSON File</button>
-    <button class="action-btn share" onclick="showPhoneExportOptions()"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-2px;margin-right:4px"><rect x="5" y="2" width="14" height="20" rx="2" ry="2"/><line x1="12" y1="18" x2="12.01" y2="18"/></svg>Phone Image</button>
-    <button class="action-btn share" onclick="showEmailExportOptions()"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-2px;margin-right:4px"><rect x="2" y="4" width="20" height="16" rx="2"/><polyline points="22,4 12,13 2,4"/></svg>Email Image</button>
-    <button class="action-btn share" onclick="exportGantt()"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-2px;margin-right:4px"><line x1="4" y1="6" x2="16" y2="6"/><line x1="8" y1="10" x2="20" y2="10"/><line x1="6" y1="14" x2="18" y2="14"/><line x1="4" y1="18" x2="14" y2="18"/><line x1="2" y1="3" x2="2" y2="21"/></svg>Gantt Chart</button>
-    <button class="action-btn" onclick="generateSummary()">Generate Summary</button>
-    <button class="action-btn" onclick="exportJSON()">Export JSON</button>
-    <button class="action-btn" onclick="expandAll()">Expand All</button>
-    <button class="action-btn" onclick="collapseAll()">Collapse All</button>
+    <button class="action-btn primary" data-action="save">Save Progress</button>
+    <button class="action-btn" data-action="reload">Reload runbook.json</button>
+    <button class="action-btn" data-action="load-file">Load JSON File</button>
+    <button class="action-btn share" data-action="phone-export"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-2px;margin-right:4px"><rect x="5" y="2" width="14" height="20" rx="2" ry="2"/><line x1="12" y1="18" x2="12.01" y2="18"/></svg>Phone Image</button>
+    <button class="action-btn share" data-action="email-export"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-2px;margin-right:4px"><rect x="2" y="4" width="20" height="16" rx="2"/><polyline points="22,4 12,13 2,4"/></svg>Email Image</button>
+    <button class="action-btn share" data-action="gantt-export"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-2px;margin-right:4px"><line x1="4" y1="6" x2="16" y2="6"/><line x1="8" y1="10" x2="20" y2="10"/><line x1="6" y1="14" x2="18" y2="14"/><line x1="4" y1="18" x2="14" y2="18"/><line x1="2" y1="3" x2="2" y2="21"/></svg>Gantt Chart</button>
+    <button class="action-btn" data-action="summary">Generate Summary</button>
+    <button class="action-btn" data-action="export-json">Export JSON</button>
+    <button class="action-btn" data-action="expand-all">Expand All</button>
+    <button class="action-btn" data-action="collapse-all">Collapse All</button>
 </div>
 
-<input id="runbookFileInput" type="file" accept="application/json,.json" style="display:none" onchange="handleRunbookFileSelected(event)">
+<input id="runbookFileInput" type="file" accept="application/json,.json" style="display:none">
 
 <div id="summaryBox"></div>
 
 <div class="reset-zone">
-    <button class="reset-btn" onclick="resetRunbook()">⚠ Reset Entire Runbook</button>
+    <button class="reset-btn" data-action="reset">⚠ Reset Entire Runbook</button>
 </div>
 
 <div class="toast" id="toast"></div>
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
-<script type="module">
-// ============================================================
-// ARCHITECTURE CONTRACT  (Phase 0 — do not remove)
-// ============================================================
-// Intended module split (target state after refactor):
-//   dashboard/constants.js  — STATUS, STATUS_LABELS, HEALTH_META, RESERVED_KEYS, defaults
-//   dashboard/state.js      — single mutable state object (replaces loose globals below)
-//   dashboard/dom.js        — centralised DOM lookups
-//   dashboard/selectors.js  — pure derived-data helpers (normalizeStatus, getGlobalStats, …)
-//   dashboard/validation.js — browser-side JSON validation mirroring adapter/schema.py
-//   dashboard/persistence.js— loadInitialRunbook / saveDraft / loadFromServer / loadFromFile / reset
-//   dashboard/actions/      — tasks.js  issues.js  health.js
-//   dashboard/render/       — stats.js  timeline.js  categories.js  issues.js  summary.js
-//   dashboard/export/       — shared.js  canvas.js  theme.js  phone.js  email.js  gantt.js
-//   runbookDashboard.html   — final entry point: markup + CSS + <script type="module"> only
-//
-// Persistence policy (source of truth):
-//   1. runbook.json          — baseline template served from the server
-//   2. localStorage          — working draft for browser continuity across refreshes
-//   3. imported local file   — becomes the active in-memory working draft
-//   Reload from server explicitly replaces current in-memory data.
-//   Save persists working draft to localStorage AND downloads a file snapshot.
-//   Reserved keys: _issues (array), _health (string) — always round-trip with runbookData.
-//
-// UI contract: every phase must leave the dashboard visually and behaviourally identical.
-//
-// ── DUPLICATE INVENTORY (items to extract in Phases 1-2) ──────────────────
-// STATUS values  : "Not Started" / "In Progress" / "Completed" / "Blocking" / "Unneeded"
-//   → defined inline in normalizeStatus(), statusClass(), status popup, generateSummary()
-//   → EXTRACT TO: dashboard/constants.js → STATUS / STATUS_LABELS
-//
-// HEALTH labels  : { Green: "ON TRACK", Amber: "AT RISK", Red: "ROLLBACK" }
-//   → duplicated in renderHealthIndicator() and inside exportSnapshot, exportEmailSnapshot, exportGantt
-//   → EXTRACT TO: dashboard/constants.js → HEALTH_META
-//
-// HEALTH colors  : healthColors / healthCol — three separate inline definitions (lines 2179, 2527, 2836)
-//   → EXTRACT TO: dashboard/export/theme.js (export surfaces) + dashboard/constants.js (dashboard)
-//
-// drawText / drawRoundRect — defined THREE times inside exportSnapshot, exportEmailSnapshot, exportGantt
-//   → EXTRACT TO: dashboard/export/canvas.js
-//
-// Reserved keys  : "_issues" / "_health" — scattered across 8 call sites (lines 1270, 1395-1406, 1736-1746, 3054-3055)
-//   → EXTRACT TO: dashboard/constants.js → RESERVED_KEYS
-//
-// Export filters : phoneExportIssueFilter / emailExportIssueFilter — loose globals (lines 2074-2075)
-//   → EXTRACT TO: dashboard/state.js
-// ============================================================
-
-import { STATUS, STATUS_LABELS, HEALTH_META, RESERVED_KEYS, DEFAULT_PROJECT_CONFIG, SORT_MODES, EXPORT_FILTERS, HEALTH_STATUSES } from "./dashboard/constants.js";
-import { state } from "./dashboard/state.js";
-import { normalizeStatus, statusClass, computeCategoryStatus, formatTime, formatTimeShort, getEarliestTime, getCategoryNames, getGlobalStats, getUniqueTeams, matchesSearch, matchesTeam, sortCategories, escapeHtml, getOpenIssues, getClosedIssues, getBlockingIssues, getCompletionPct } from "./dashboard/selectors.js";
-import { dom } from "./dashboard/dom.js";
-import { loadInitialRunbook, loadFromServer, loadFromFile, saveDraft, exportRunbookJson, resetRunbook as doReset } from "./dashboard/persistence.js";
-import { renderGlobalStats, renderHealthIndicator } from "./dashboard/render/stats.js";
-import { renderTimeline } from "./dashboard/render/timeline.js";
-import { renderCategories } from "./dashboard/render/categories.js";
-import { renderIssues, toggleIssueForm, saveIssue as doSaveIssue, closeIssue as doCloseIssue, reopenIssue as doReopenIssue, editIssue as doEditIssue, deleteIssue as doDeleteIssue } from "./dashboard/render/issues.js";
-import { generateSummary as doGenerateSummary, copySummaryToClipboard as doCopySummaryToClipboard } from "./dashboard/render/summary.js";
-import { setHealth as doSetHealth } from "./dashboard/actions/health.js";
-import { expandAll as doExpandAll, collapseAll as doCollapseAll } from "./dashboard/actions/tasks.js";
-import { toggleIssuesPanel as doToggleIssuesPanel } from "./dashboard/actions/issues.js";
-import { exportPhoneSnapshot } from "./dashboard/export/phone.js";
-import { exportEmailSnapshot } from "./dashboard/export/email.js";
-import { exportGanttChart } from "./dashboard/export/gantt.js";
-
-async function loadConfig() {
-    try {
-        const res = await fetch("config.json");
-        const cfg = await res.json();
-        Object.assign(state.projectConfig, cfg);
-    } catch(e) { /* config.json optional — use defaults */ }
-    applyConfig();
-}
-
-function applyConfig() {
-    const c = state.projectConfig;
-    document.title = c.projectName + " - Go-Live Runbook Dashboard";
-    const h1 = document.querySelector(".header h1");
-    if (h1) h1.textContent = c.projectName + " - Go-Live Runbook";
-    const sub = document.querySelector(".subtitle");
-    if (sub) sub.textContent = [c.subtitle, c.changeRef].filter(Boolean).join(" | ");
-}
-
-function toggleTheme() {
-    const html = document.documentElement;
-    const current = html.getAttribute("data-theme");
-    const next = current === "light" ? "dark" : "light";
-    html.setAttribute("data-theme", next);
-    localStorage.setItem("runbook_theme", next);
-    renderHealthIndicator();
-}
-
-(function initTheme() {
-    const saved = localStorage.getItem("runbook_theme");
-    if (saved === "light") document.documentElement.setAttribute("data-theme", "light");
-})();
-
-function setHealth(status) {
-    doSetHealth(status);
-    renderHealthIndicator();
-    renderGlobalStats();
-}
-
-// renderHealthIndicator is now in dashboard/render/stats.js
-
-function showToast(msg) {
-    const t = document.getElementById("toast");
-    t.textContent = msg;
-    t.classList.add("show");
-    setTimeout(() => t.classList.remove("show"), 2500);
-}
-
-function updateClock() {
-    const now = new Date();
-    document.getElementById("clock").textContent =
-        now.toLocaleString("en-GB", {
-            weekday: "short", day: "2-digit", month: "short", year: "numeric",
-            hour: "2-digit", minute: "2-digit", second: "2-digit", hour12: false
-        }) + " UK";
-}
-
-function populateTeamFilter() {
-    const sel = document.getElementById("teamFilter");
-    const current = sel.value;
-    const teams = getUniqueTeams();
-    sel.innerHTML = '<option value="all">All Teams</option>' +
-        teams.map(t => `<option value="${escapeHtml(t)}">${escapeHtml(t)}</option>`).join("");
-    sel.value = current;
-}
-
-async function loadRunbook() {
-    try {
-        const { source } = await loadInitialRunbook();
-        showToast(source === "browser draft" ? "Loaded saved progress" : "Loaded runbook.json");
-        render();
-    } catch (e) {
-        document.getElementById("container").innerHTML =
-            '<div class="no-results">Failed to load runbook.json. Make sure the file is in the same directory.</div>';
-    }
-}
-
-// renderGlobalStats is now in dashboard/render/stats.js
-
-function render() {
-    renderGlobalStats();
-    renderIssues();
-    populateTeamFilter();
-
-    let categories = sortCategories(getCategoryNames());
-    renderTimeline(categories, render);
-    renderCategories(categories, render, showToast);
-}
-
-// renderTimeline is now in dashboard/render/timeline.js
-
-function resetRunbook() {
-    if (!doReset()) return;
-    render();
-    showToast("Runbook has been reset");
-}
-
-function saveToLocalStorage() {
-    saveDraft();
-    showToast("Progress saved to runbook.json");
-}
-
-// ── ISSUES (delegated to dashboard/render/issues.js) ──
-// renderIssues and toggleIssueForm are imported directly.
-// Thin wrappers below pass showToast to functions that need it.
-function saveIssue() { doSaveIssue(showToast); }
-function closeIssue(id) { doCloseIssue(id); }
-function reopenIssue(id) { doReopenIssue(id); }
-function editIssue(id) { doEditIssue(id); }
-function deleteIssue(id) { doDeleteIssue(id, showToast); }
-
-// ── SUMMARY (delegated to dashboard/render/summary.js) ──
-function generateSummary() { doGenerateSummary(); }
-function copySummaryToClipboard() { doCopySummaryToClipboard(showToast); }
-
-
-function showExportIssueOptions(exportFn, filterSetter, title) {
-    let modal = document.getElementById('exportIssueModal');
-    if (modal) modal.remove();
-    modal = document.createElement('div');
-    modal.id = 'exportIssueModal';
-    modal.style.cssText = 'position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.7);display:flex;align-items:center;justify-content:center;z-index:9999';
-    modal.innerHTML = `
-        <div style="background:var(--surface, #1a1a2e);border:1px solid var(--border, #333);border-radius:12px;padding:24px 32px;min-width:300px;text-align:center">
-            <h3 style="margin:0 0 16px;color:var(--text, #fff);font-size:1.1em">${title} \u2014 Issues Filter</h3>
-            <p style="margin:0 0 16px;color:var(--text-dim, #888);font-size:0.9em">Which state.issues to include in the export?</p>
-            <div style="display:flex;gap:10px;justify-content:center">
-                <button class="issue-btn save" id="expOptOpen">Open Only</button>
-                <button class="issue-btn save" id="expOptAll">All Issues</button>
-                <button class="issue-btn" id="expOptCancel">Cancel</button>
-            </div>
-        </div>
-    `;
-    document.body.appendChild(modal);
-    modal.querySelector('#expOptOpen').addEventListener('click', () => { filterSetter('open'); modal.remove(); exportFn(); });
-    modal.querySelector('#expOptAll').addEventListener('click', () => { filterSetter('all'); modal.remove(); exportFn(); });
-    modal.querySelector('#expOptCancel').addEventListener('click', () => { modal.remove(); });
-    modal.addEventListener('click', (e) => { if (e.target === modal) modal.remove(); });
-}
-
-function showPhoneExportOptions() {
-    showExportIssueOptions(() => exportPhoneSnapshot(showToast), (v) => { state.phoneExportIssueFilter = v; }, 'Phone Image');
-}
-
-function showEmailExportOptions() {
-    showExportIssueOptions(() => exportEmailSnapshot(showToast), (v) => { state.emailExportIssueFilter = v; }, 'Email Image');
-}
-
-// ── EXPORT FUNCTIONS (delegated to dashboard/export/*.js) ──
-function exportSnapshot() { exportPhoneSnapshot(showToast); }
-function exportGantt() { exportGanttChart(showToast); }
-
-function exportJSON() {
-    exportRunbookJson();
-    showToast("JSON exported (includes issues)");
-}
-
-async function reloadRunbookJSON() {
-    try {
-        await loadFromServer();
-        render();
-        showToast("Reloaded runbook.json");
-    } catch (e) {
-        showToast("Failed to reload runbook.json");
-    }
-}
-
-function triggerFileRunbookLoad() {
-    const input = document.getElementById("runbookFileInput");
-    input.value = "";
-    input.click();
-}
-
-function handleRunbookFileSelected(event) {
-    const file = event.target.files && event.target.files[0];
-    if (!file) return;
-    loadFromFile(file)
-        .then(() => { render(); showToast("Loaded runbook from local file"); })
-        .catch(e => showToast(e.message || "Failed to read local file"));
-}
-
-function expandAll() {
-    doExpandAll();
-    render();
-}
-
-function collapseAll() {
-    doCollapseAll();
-    render();
-}
-
-// EVENT LISTENERS
-document.querySelectorAll(".filterBtn").forEach(btn => {
-    btn.addEventListener("click", () => {
-        document.querySelectorAll(".filterBtn").forEach(b => b.classList.remove("active"));
-        btn.classList.add("active");
-        state.filterState = btn.dataset.filter;
-        render();
-    });
-});
-
-document.getElementById("searchBox").addEventListener("input", (e) => {
-    state.searchQuery = e.target.value.trim();
-    render();
-});
-
-document.getElementById("teamFilter").addEventListener("change", (e) => {
-    state.teamFilter = e.target.value;
-    render();
-});
-
-document.getElementById("sortSelect").addEventListener("change", (e) => {
-    state.sortMode = e.target.value;
-    render();
-});
-
-// Keyboard shortcut: Ctrl+S to save
-document.addEventListener("keydown", (e) => {
-    if ((e.ctrlKey || e.metaKey) && e.key === "s") {
-        e.preventDefault();
-        saveToLocalStorage();
-    }
-});
-
-// ── LOGO & BACKGROUND DETECTION ──
-
-function setFavicon(src) {
-    const link = document.getElementById('favicon');
-    if (link) link.href = src;
-}
-
-function detectAssets() {
-    const exts = ['png', 'jpg', 'jpeg', 'svg', 'webp'];
-
-    function loadLogo(src) {
-        const img = new Image();
-        img.onload = () => {
-            state.clientLogoImg = img;
-            const el = document.getElementById('clientLogo');
-            el.src = src;
-            el.classList.remove('hidden');
-            setFavicon(src);
-        };
-        img.src = src;
-    }
-
-    function loadBg(src) {
-        const bgImg = new Image();
-        bgImg.onload = () => {
-            state.clientBgImg = bgImg;
-            document.getElementById('bgOverlay').style.backgroundImage = 'url(' + src + ')';
-        };
-        bgImg.src = src;
-    }
-
-    // 1st priority: explicit paths from config.json (works without a server)
-    if (state.projectConfig.logoFile) loadLogo('assets/' + state.projectConfig.logoFile);
-    if (state.projectConfig.backgroundFile) loadBg('assets/' + state.projectConfig.backgroundFile);
-
-    // 2nd priority: auto-detect via directory listing (requires Python server)
-    if (!state.projectConfig.logoFile || !state.projectConfig.backgroundFile) {
-        fetch('assets/')
-            .then(r => r.ok ? r.text() : '')
-            .then(html => {
-                if (!html) return;
-                if (!state.projectConfig.logoFile) {
-                    const m = html.match(/href="([^"]*clientLogo[^"]*\.(png|jpg|jpeg|svg|webp))"/i);
-                    if (m) loadLogo('assets/' + m[1].replace(/.*\//, ''));
-                }
-                if (!state.projectConfig.backgroundFile) {
-                    const m = html.match(/href="([^"]*background[^"]*\.(png|jpg|jpeg|svg|webp))"/i);
-                    if (m) loadBg('assets/' + m[1].replace(/.*\//, ''));
-                }
-            })
-            .catch(() => {
-                // 3rd priority: guess exact names
-                if (!state.projectConfig.logoFile) {
-                    exts.forEach(ext => loadLogo('assets/clientLogo.' + ext));
-                }
-                if (!state.projectConfig.backgroundFile) {
-                    exts.forEach(ext => loadBg('assets/background.' + ext));
-                }
-            });
-    }
-}
-
-function toggleIssuesPanel(el) {
-    doToggleIssuesPanel();
-    document.getElementById('issuesList').style.display = state.issuesPanelOpen ? 'block' : 'none';
-    el.querySelector('.iss-chevron').classList.toggle('open', state.issuesPanelOpen);
-}
-
-// INIT
-updateClock();
-setInterval(updateClock, 1000);
-loadConfig().then(() => { detectAssets(); loadRunbook(); });
-
-// Expose to global scope for HTML onclick attributes
-// (Phase 9 will move these to addEventListener)
-Object.assign(window, {
-  toggleTheme, setHealth, showPhoneExportOptions, showEmailExportOptions,
-  exportGantt, generateSummary, copySummaryToClipboard,
-  saveToLocalStorage, exportJSON, resetRunbook,
-  reloadRunbookJSON, triggerFileRunbookLoad, handleRunbookFileSelected,
-  expandAll, collapseAll,
-  toggleIssueForm, saveIssue, closeIssue, reopenIssue, editIssue, deleteIssue,
-  toggleIssuesPanel,
-});
-</script>
+<script type="module" src="./dashboard/app.js"></script>
 
 </body>
 </html>

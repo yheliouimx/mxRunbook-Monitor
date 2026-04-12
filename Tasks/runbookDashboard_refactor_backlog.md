@@ -145,17 +145,30 @@ Definition of done:
 - ~~one display-label map for UI~~ ✅ (STATUS_LABELS + statusLabel() + CATEGORY_STATUS_LABEL)
 - ~~no more mixed wording across filter buttons, stats, issues, summary, and exports~~ ✅
 
-**Phase 9**
+**Phase 9** ✅
 Trim the HTML file down to shell plus entry wiring.
 
-1. Update runbookDashboard.html: Keep only markup, CSS, and minimal import/bootstrap code.
-2. Update runbookDashboard.html: Remove migrated logic in slices, verifying the page still runs after each extraction rather than deleting everything in one pass.
-3. Keep runbookDashboard.html as the stable DOM shell for operational usage so user workflows do not change.
+1. ~~Update runbookDashboard.html: Keep only markup, CSS, and minimal import/bootstrap code.~~ ✅
+2. ~~Update runbookDashboard.html: Remove migrated logic in slices, verifying the page still runs after each extraction rather than deleting everything in one pass.~~ ✅
+3. ~~Keep runbookDashboard.html as the stable DOM shell for operational usage so user workflows do not change.~~ ✅
+
+Created dashboard/app.js (~260 lines) with all application logic:
+- Config loading, theme, clock, toast, render orchestrator
+- All action wrappers (save, reset, expand/collapse, issues, summary, exports)
+- Export modal dialog
+- Asset detection (logo, background)
+- Static event binding via addEventListener (replaces 16 inline onclick/onchange attributes)
+- Window exposure for dynamic onclick in renderers (issues.js, summary.js)
+
+HTML changes:
+- Replaced 16 inline onclick/onchange attributes with data-action attributes
+- Replaced ~350-line inline `<script>` block with single `<script type="module" src="./dashboard/app.js">`
+- HTML file reduced from ~1589 lines to ~1167 lines (pure markup + CSS shell)
 
 Definition of done:
-- the HTML file becomes the page shell
-- app logic lives in modules
-- future features can be added without editing a 3000-line script block
+- ~~the HTML file becomes the page shell~~ ✅
+- ~~app logic lives in modules~~ ✅
+- ~~future features can be added without editing a 3000-line script block~~ ✅
 
 Estimated effort:
 - 0.5 day

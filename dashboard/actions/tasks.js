@@ -1,4 +1,5 @@
 import { state } from "../state.js";
+import { STATUS } from "../constants.js";
 import { normalizeStatus } from "../selectors.js";
 
 /**
@@ -21,11 +22,11 @@ export function completeAllInCategory(cat) {
     const tasks = state.runbookData[cat];
     const pending = tasks.filter(t => {
         const st = normalizeStatus(t.status);
-        return st !== "Completed" && st !== "Unneeded";
+        return st !== STATUS.COMPLETED && st !== STATUS.UNNEEDED;
     });
     if (pending.length === 0) return -1;
     tasks.forEach(t => {
-        if (normalizeStatus(t.status) !== "Unneeded") t.status = "Completed";
+        if (normalizeStatus(t.status) !== STATUS.UNNEEDED) t.status = STATUS.COMPLETED;
     });
     return pending.length;
 }

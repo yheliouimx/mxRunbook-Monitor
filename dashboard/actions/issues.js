@@ -1,4 +1,5 @@
 import { state } from "../state.js";
+import { ISSUE_STATUS } from "../constants.js";
 
 /**
  * Get the default time string for a new issue (current HH:MM DD Mon).
@@ -60,7 +61,7 @@ export function saveIssue(fields) {
  */
 export function closeIssue(id) {
     const iss = state.issues.find(i => i.id === id);
-    if (iss) iss.issueStatus = "Closed";
+    if (iss) iss.issueStatus = ISSUE_STATUS.CLOSED;
 }
 
 /**
@@ -69,7 +70,7 @@ export function closeIssue(id) {
  */
 export function reopenIssue(id) {
     const iss = state.issues.find(i => i.id === id);
-    if (iss) iss.issueStatus = "Ongoing";
+    if (iss) iss.issueStatus = ISSUE_STATUS.ONGOING;
 }
 
 /**

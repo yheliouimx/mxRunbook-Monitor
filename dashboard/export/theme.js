@@ -3,18 +3,20 @@
  * Single source of truth for health, status, and gradient colors in exports.
  */
 
+import { HEALTH_META } from "../constants.js";
+
 // ── Health colors by surface ──
 
 export const HEALTH_DARK = {
-    Green: { color: "#39ff14", bg: "#0a3a0a", border: "#39ff14", label: "ON TRACK" },
-    Amber: { color: "#ffa500", bg: "#3a2a00", border: "#ffa500", label: "AT RISK" },
-    Red:   { color: "#ff3333", bg: "#3a0a0a", border: "#ff3333", label: "ROLLBACK" },
+    Green: { color: "#39ff14", bg: "#0a3a0a", border: "#39ff14", label: HEALTH_META.Green.label },
+    Amber: { color: "#ffa500", bg: "#3a2a00", border: "#ffa500", label: HEALTH_META.Amber.label },
+    Red:   { color: "#ff3333", bg: "#3a0a0a", border: "#ff3333", label: HEALTH_META.Red.label },
 };
 
 export const HEALTH_LIGHT = {
-    Green: { color: "#2e7d32", bg: "#e8f5e9", border: "#2e7d32", label: "ON TRACK" },
-    Amber: { color: "#e65100", bg: "#fff3e0", border: "#e65100", label: "AT RISK" },
-    Red:   { color: "#c62828", bg: "#ffebee", border: "#c62828", label: "ROLLBACK" },
+    Green: { color: "#2e7d32", bg: "#e8f5e9", border: "#2e7d32", label: HEALTH_META.Green.label },
+    Amber: { color: "#e65100", bg: "#fff3e0", border: "#e65100", label: HEALTH_META.Amber.label },
+    Red:   { color: "#c62828", bg: "#ffebee", border: "#c62828", label: HEALTH_META.Red.label },
 };
 
 // ── Progress bar gradient colors by health status ──

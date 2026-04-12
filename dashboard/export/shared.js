@@ -4,6 +4,7 @@
  */
 
 import { state } from "../state.js";
+import { STATUS, ISSUE_STATUS, ISSUE_SEVERITY } from "../constants.js";
 import { normalizeStatus, computeCategoryStatus, getGlobalStats, sortCategories } from "../selectors.js";
 
 /**
@@ -30,8 +31,8 @@ export function getProjectInfo() {
 export function getExportStats() {
     const { total, done, inProg, notStarted, blocking } = getGlobalStats();
     const pct = total > 0 ? Math.round((done / total) * 100) : 0;
-    const openIssues = state.issues.filter(i => i.issueStatus === "Ongoing").length;
-    const blockingIssues = state.issues.filter(i => i.issueStatus === "Ongoing" && i.severity === "Blocking").length;
+    const openIssues = state.issues.filter(i => i.issueStatus === ISSUE_STATUS.ONGOING).length;
+    const blockingIssues = state.issues.filter(i => i.issueStatus === ISSUE_STATUS.ONGOING && i.severity === ISSUE_SEVERITY.BLOCKING).length;
     const totalBlocking = blocking + blockingIssues;
     return { total, done, inProg, notStarted, blocking, pct, openIssues, blockingIssues, totalBlocking };
 }
@@ -45,9 +46,9 @@ export function getCategoryExportStats(cat) {
     const tasks = state.runbookData[cat];
     const done = tasks.filter(t => {
         const st = normalizeStatus(t.status);
-        return st === "Completed" || st === "Unneeded";
+        return st === STATUS.COMPLETED || st === STATUS.UNNEEDED;
     }).length;
-    const inProg = tasks.filter(t => normalizeStatus(t.status) === "In Progress").length;
+    const inProg = tasks.filter(t => normalizeStatus(t.status) === STATUS.IN_PROGRESS).length;
     const catPct = Math.round((done / tasks.length) * 100);
     const status = computeCategoryStatus(tasks);
     return { tasks, done, inProg, catPct, status };
@@ -62,7 +63,7 @@ export function getActiveAssignees(categories) {
     const map = {};
     categories.forEach(cat => {
         state.runbookData[cat].forEach(t => {
-            if (normalizeStatus(t.status) === "In Progress" && t.assignee) {
+            if (normalizeStatus(t.status) === STATUS.IN_PROGRESS && t.assignee) {
                 if (!map[t.assignee]) map[t.assignee] = 0;
                 map[t.assignee]++;
             }
@@ -77,8 +78,8 @@ export function getActiveAssignees(categories) {
  * @returns {{ openIssues: object[], closedIssues: object[], displayList: object[] }}
  */
 export function getExportIssues(filter) {
-    const openIssues = state.issues.filter(i => i.issueStatus === "Ongoing");
-    const closedIssues = state.issues.filter(i => i.issueStatus === "Closed");
+    const openIssues = state.issues.filter(i => i.issueStatus === ISSUE_STATUS.ONGOING);
+    const closedIssues = state.issues.filter(i => i.issueStatus === ISSUE_STATUS.CLOSED);
     const displayList = filter === "open" ? openIssues : [...openIssues, ...closedIssues];
     return { openIssues, closedIssues, displayList };
 }

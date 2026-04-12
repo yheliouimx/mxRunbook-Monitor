@@ -4,6 +4,7 @@
 
 import { drawText, drawRoundRect, drawDivider, drawDot, drawBackgroundImage, drawProgressBar, resizeIfNeeded, exportCanvasAsImage, formatExportTimestamp } from "./canvas.js";
 import { HEALTH_LIGHT, PROGRESS_GRADIENT_LIGHT, CAT_STATUS_LIGHT, STAT_COLORS_LIGHT } from "./theme.js";
+import { ISSUE_SEVERITY, ISSUE_STATUS, STATUS, statusLabel } from "../constants.js";
 import { getExportCategories, getProjectInfo, getExportStats, getCategoryExportStats, getActiveAssignees, getExportIssues, getHealthStatus, getExportAssets, getIssueFilter } from "./shared.js";
 
 /**
@@ -94,7 +95,7 @@ export function exportEmailSnapshot(showToast) {
 
     const emIssStats = [
         { value: stats.openIssues, label: "OPEN", color: sc.openIssues },
-        { value: stats.totalBlocking, label: "BLOCKING", color: sc.blocking },
+        { value: stats.totalBlocking, label: statusLabel(STATUS.BLOCKING).toUpperCase(), color: sc.blocking },
     ];
     const emIcW = (emRightW - 10) / 2, emIcGap = 10;
     emIssStats.forEach((s, i) => {
@@ -166,7 +167,7 @@ export function exportEmailSnapshot(showToast) {
     if (emailIssueList.length > 0) {
         drawDivider(ctx, 60, W - 60, Y, "#e0e0e0");
         Y += 24;
-        const blockOp = emailOpen.filter(i => i.severity === "Blocking").length;
+        const blockOp = emailOpen.filter(i => i.severity === ISSUE_SEVERITY.BLOCKING).length;
         const emailIssTitle = issueFilter === "open"
             ? `OPEN ISSUES: ${emailOpen.length}${blockOp > 0 ? "  (" + blockOp + " blocking)" : ""}`
             : `ISSUES LOG: ${emailIssueList.length} (${emailOpen.length} open, ${emailClosed.length} closed)`;
@@ -176,18 +177,18 @@ export function exportEmailSnapshot(showToast) {
         emailIssueList.forEach(iss => {
             const iRowX = 70, iRowW = W - 140, iRowH = 38;
             Y += 4;
-            const isBlk = iss.severity === "Blocking";
+            const isBlk = iss.severity === ISSUE_SEVERITY.BLOCKING;
             drawRoundRect(ctx, iRowX, Y, iRowW, iRowH, 6, "#fafafa", "#e0e0e0");
             drawRoundRect(ctx, iRowX + 4, Y + 6, 4, iRowH - 12, 2, isBlk ? "#c62828" : "#e65100");
 
-            const isOpen = iss.issueStatus === "Ongoing";
+            const isOpen = iss.issueStatus === ISSUE_STATUS.ONGOING;
             const descColor = isOpen ? (isBlk ? "#c62828" : "#333333") : "#888888";
             const desc = iss.description.length > 80 ? iss.description.substring(0, 77) + "..." : iss.description;
             drawText(ctx, desc, iRowX + 20, Y + 24, (isBlk && isOpen ? "bold " : "") + "18px Segoe UI, sans-serif", descColor, "left");
 
-            const stTag = isOpen ? "ONGOING" : "CLOSED";
+            const stTag = isOpen ? ISSUE_STATUS.ONGOING.toUpperCase() : ISSUE_STATUS.CLOSED.toUpperCase();
             drawText(ctx, stTag, iRowX + iRowW - 16, Y + 16, "bold 11px Segoe UI, sans-serif", isOpen ? "#e65100" : "#2e7d32", "right");
-            drawText(ctx, isBlk ? "BLOCKING" : "NON-BLOCKING", iRowX + iRowW - 16, Y + 30, "bold 13px Segoe UI, sans-serif", isBlk ? "#c62828" : "#e65100", "right");
+            drawText(ctx, isBlk ? ISSUE_SEVERITY.BLOCKING.toUpperCase() : ISSUE_SEVERITY.NON_BLOCKING.toUpperCase(), iRowX + iRowW - 16, Y + 30, "bold 13px Segoe UI, sans-serif", isBlk ? "#c62828" : "#e65100", "right");
             Y += iRowH;
         });
     }

@@ -1,5 +1,5 @@
 import { state } from "./state.js";
-import { RESERVED_KEYS } from "./constants.js";
+import { RESERVED_KEYS, STATUS } from "./constants.js";
 import { validateAndNormalize, formatErrors } from "./validation.js";
 
 // ── Internal helpers ──
@@ -124,7 +124,7 @@ export function resetRunbook() {
     if (!confirm("⚠ WARNING: This will reset ALL task statuses back to \"Not Started\" and clear all issues.\n\nThis action cannot be undone.\n\nAre you sure?")) return false;
     if (!confirm("FINAL CONFIRMATION: You are about to reset the ENTIRE runbook. Continue?")) return false;
     Object.keys(state.runbookData).filter(k => !k.startsWith("_")).forEach(cat => {
-        state.runbookData[cat].forEach(t => { t.status = "Not Started"; });
+        state.runbookData[cat].forEach(t => { t.status = STATUS.NOT_STARTED; });
     });
     state.issues.length = 0;
     state.runbookData[RESERVED_KEYS.issues] = [];

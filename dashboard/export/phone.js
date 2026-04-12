@@ -4,6 +4,7 @@
 
 import { drawText, drawRoundRect, drawDivider, drawDot, drawBackgroundImage, drawLogo, drawProgressBar, resizeIfNeeded, exportCanvasAsImage, formatExportTimestamp } from "./canvas.js";
 import { HEALTH_DARK, PROGRESS_GRADIENT_DARK, CAT_STATUS_DARK, STAT_COLORS_DARK } from "./theme.js";
+import { ISSUE_SEVERITY, ISSUE_STATUS, STATUS, statusLabel } from "../constants.js";
 import { getExportCategories, getProjectInfo, getExportStats, getCategoryExportStats, getActiveAssignees, getExportIssues, getHealthStatus, getExportAssets, getIssueFilter } from "./shared.js";
 
 /**
@@ -98,7 +99,7 @@ export function exportPhoneSnapshot(showToast) {
 
     const issStats = [
         { value: stats.openIssues, label: "OPEN", color: sc.openIssues },
-        { value: stats.totalBlocking, label: "BLOCKING", color: sc.blocking },
+        { value: stats.totalBlocking, label: statusLabel(STATUS.BLOCKING).toUpperCase(), color: sc.blocking },
     ];
     const icW = (rightW - 10) / 2, icGap = 10;
     issStats.forEach((s, i) => {
@@ -170,7 +171,7 @@ export function exportPhoneSnapshot(showToast) {
         Y += 30;
         drawDivider(ctx, 60, W - 60, Y);
         Y += 36;
-        const blockingOpen = openIssues.filter(i => i.severity === "Blocking").length;
+        const blockingOpen = openIssues.filter(i => i.severity === ISSUE_SEVERITY.BLOCKING).length;
         let issueTitle = `ISSUES LOG (${openIssues.length} open`;
         if (blockingOpen > 0) issueTitle += ` / ${blockingOpen} blocking`;
         issueTitle += ")";
@@ -181,8 +182,8 @@ export function exportPhoneSnapshot(showToast) {
             if (Y > H - 100) return;
             Y += 8;
             const iRowX = 80, iRowW = W - 160, iRowH = 66;
-            const isOpen = iss.issueStatus === "Ongoing";
-            const isBlocking = iss.severity === "Blocking";
+            const isOpen = iss.issueStatus === ISSUE_STATUS.ONGOING;
+            const isBlocking = iss.severity === ISSUE_SEVERITY.BLOCKING;
 
             drawRoundRect(ctx, iRowX, Y, iRowW, iRowH, 8, "#0d0d12", "#222222");
             drawRoundRect(ctx, iRowX + 6, Y + 8, 5, iRowH - 16, 3, isBlocking ? "#ff3333" : "#ffa500");
@@ -194,9 +195,9 @@ export function exportPhoneSnapshot(showToast) {
 
             drawText(ctx, `${iss.category}  \u00B7  ${iss.time}`, iRowX + 24, Y + 50, "18px Segoe UI, sans-serif", "#666666", "left");
 
-            const stTag = isOpen ? "ONGOING" : "CLOSED";
+            const stTag = isOpen ? ISSUE_STATUS.ONGOING.toUpperCase() : ISSUE_STATUS.CLOSED.toUpperCase();
             const stColor = isOpen ? "#ffd84a" : "#7bff7b";
-            const sevTag = isBlocking ? "BLOCKING" : "NON-BLOCKING";
+            const sevTag = isBlocking ? ISSUE_SEVERITY.BLOCKING.toUpperCase() : ISSUE_SEVERITY.NON_BLOCKING.toUpperCase();
             const sevColor = isBlocking ? "#ff6b6b" : "#ffa500";
             drawText(ctx, stTag, iRowX + iRowW - 16, Y + 26, "bold 16px Segoe UI, sans-serif", stColor, "right");
             drawText(ctx, sevTag, iRowX + iRowW - 16, Y + 48, "bold 14px Segoe UI, sans-serif", sevColor, "right");

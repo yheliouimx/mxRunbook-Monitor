@@ -7,13 +7,44 @@ export const STATUS = {
   UNNEEDED:     "Unneeded",
 };
 
-// STATUS_LABELS — what the UI shows (Blocking → "Blocked" in display)
+// STATUS_LABELS — what the UI shows (data value → display label)
 export const STATUS_LABELS = {
   "Not Started": "Not Started",
   "In Progress": "In Progress",
   "Completed":   "Completed",
   "Blocking":    "Blocked",
   "Unneeded":    "Unneeded",
+};
+
+/** Return the display label for a status (falls back to the value itself). */
+export function statusLabel(s) { return STATUS_LABELS[s] || s; }
+
+// ISSUE_STATUS — internal data values for issue lifecycle
+export const ISSUE_STATUS = {
+  ONGOING: "Ongoing",
+  CLOSED:  "Closed",
+};
+
+// ISSUE_SEVERITY — internal data values for issue severity
+export const ISSUE_SEVERITY = {
+  BLOCKING:     "Blocking",
+  NON_BLOCKING: "Non-Blocking",
+};
+
+// CATEGORY_STATUS — CSS-friendly keys returned by computeCategoryStatus()
+export const CATEGORY_STATUS = {
+  DONE:        "done",
+  IN_PROGRESS: "inprogress",
+  BLOCKED:     "blocked",
+  NOT_STARTED: "notstarted",
+};
+
+// CATEGORY_STATUS_LABEL — display text for category status markers (e.g. summary table)
+export const CATEGORY_STATUS_LABEL = {
+  done:       "DONE",
+  inprogress: "IN PROGRESS",
+  blocked:    "BLOCKING",
+  notstarted: "NOT STARTED",
 };
 
 // HEALTH_META — labels used in renderHealthIndicator(), export* (3 duplicates today)

@@ -1,29 +1,30 @@
 import { state } from "./state.js";
+import { STATUS, ISSUE_STATUS, ISSUE_SEVERITY } from "./constants.js";
 
 // ── Status normalization & classification ──
 
 export function normalizeStatus(s) {
-    if (!s || s === "NaN") return "Not Started";
+    if (!s || s === "NaN") return STATUS.NOT_STARTED;
     const lower = s.toLowerCase().trim();
-    if (lower === "completed" || lower === "done") return "Completed";
-    if (lower.includes("progress")) return "In Progress";
-    if (lower === "blocked" || lower === "blocking") return "Blocking";
-    if (lower === "unneeded" || lower === "not needed" || lower === "n/a") return "Unneeded";
-    return "Not Started";
+    if (lower === "completed" || lower === "done") return STATUS.COMPLETED;
+    if (lower.includes("progress")) return STATUS.IN_PROGRESS;
+    if (lower === "blocked" || lower === "blocking") return STATUS.BLOCKING;
+    if (lower === "unneeded" || lower === "not needed" || lower === "n/a") return STATUS.UNNEEDED;
+    return STATUS.NOT_STARTED;
 }
 
 export function statusClass(s) {
-    if (s === "Completed") return "done";
-    if (s === "In Progress") return "inprogress";
-    if (s === "Blocking") return "blocked";
-    if (s === "Unneeded") return "unneeded";
+    if (s === STATUS.COMPLETED) return "done";
+    if (s === STATUS.IN_PROGRESS) return "inprogress";
+    if (s === STATUS.BLOCKING) return "blocked";
+    if (s === STATUS.UNNEEDED) return "unneeded";
     return "notstarted";
 }
 
 export function computeCategoryStatus(tasks) {
-    const done = tasks.filter(t => { const st = normalizeStatus(t.status); return st === "Completed" || st === "Unneeded"; }).length;
-    const inProg = tasks.filter(t => normalizeStatus(t.status) === "In Progress").length;
-    const blocking = tasks.filter(t => normalizeStatus(t.status) === "Blocking").length;
+    const done = tasks.filter(t => { const st = normalizeStatus(t.status); return st === STATUS.COMPLETED || st === STATUS.UNNEEDED; }).length;
+    const inProg = tasks.filter(t => normalizeStatus(t.status) === STATUS.IN_PROGRESS).length;
+    const blocking = tasks.filter(t => normalizeStatus(t.status) === STATUS.BLOCKING).length;
     if (done === tasks.length) return "done";
     if (blocking > 0) return "blocked";
     if (done > 0 || inProg > 0) return "inprogress";
@@ -71,9 +72,9 @@ export function getGlobalStats() {
         tasks.forEach(t => {
             total++;
             const s = normalizeStatus(t.status);
-            if (s === "Completed" || s === "Unneeded") done++;
-            else if (s === "In Progress") inProg++;
-            else if (s === "Blocking") blocking++;
+            if (s === STATUS.COMPLETED || s === STATUS.UNNEEDED) done++;
+            else if (s === STATUS.IN_PROGRESS) inProg++;
+            else if (s === STATUS.BLOCKING) blocking++;
             else notStarted++;
         });
     });
@@ -106,8 +107,8 @@ export function matchesTeam(task) {
 export function sortCategories(categories) {
     if (state.sortMode === "completion") {
         return [...categories].sort((a, b) => {
-            const pA = state.runbookData[a].filter(t => { const st = normalizeStatus(t.status); return st === "Completed" || st === "Unneeded"; }).length / state.runbookData[a].length;
-            const pB = state.runbookData[b].filter(t => { const st = normalizeStatus(t.status); return st === "Completed" || st === "Unneeded"; }).length / state.runbookData[b].length;
+            const pA = state.runbookData[a].filter(t => { const st = normalizeStatus(t.status); return st === STATUS.COMPLETED || st === STATUS.UNNEEDED; }).length / state.runbookData[a].length;
+            const pB = state.runbookData[b].filter(t => { const st = normalizeStatus(t.status); return st === STATUS.COMPLETED || st === STATUS.UNNEEDED; }).length / state.runbookData[b].length;
             return pB - pA;
         });
     }
@@ -136,15 +137,15 @@ export function escapeHtml(text) {
 // ── Derived issue helpers ──
 
 export function getOpenIssues() {
-    return state.issues.filter(i => i.issueStatus === "Ongoing");
+    return state.issues.filter(i => i.issueStatus === ISSUE_STATUS.ONGOING);
 }
 
 export function getClosedIssues() {
-    return state.issues.filter(i => i.issueStatus === "Closed");
+    return state.issues.filter(i => i.issueStatus === ISSUE_STATUS.CLOSED);
 }
 
 export function getBlockingIssues() {
-    return state.issues.filter(i => i.issueStatus === "Ongoing" && i.severity === "Blocking");
+    return state.issues.filter(i => i.issueStatus === ISSUE_STATUS.ONGOING && i.severity === ISSUE_SEVERITY.BLOCKING);
 }
 
 export function getCompletionPct() {

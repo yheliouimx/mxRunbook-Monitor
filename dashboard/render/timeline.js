@@ -1,4 +1,5 @@
 import { state } from "../state.js";
+import { STATUS } from "../constants.js";
 import { normalizeStatus, computeCategoryStatus } from "../selectors.js";
 import { toggleCategory } from "../actions/tasks.js";
 
@@ -16,7 +17,7 @@ export function renderTimeline(categories, renderAll) {
     categories.forEach(cat => {
         const tasks = state.runbookData[cat];
         const s = computeCategoryStatus(tasks);
-        const done = tasks.filter(t => { const st = normalizeStatus(t.status); return st === "Completed" || st === "Unneeded"; }).length;
+        const done = tasks.filter(t => { const st = normalizeStatus(t.status); return st === STATUS.COMPLETED || st === STATUS.UNNEEDED; }).length;
 
         const el = document.createElement("span");
         el.className = "timelineItem tl-" + s;

@@ -1,4 +1,5 @@
 import { state } from "../state.js";
+import { HEALTH_META, statusLabel, STATUS } from "../constants.js";
 import { getGlobalStats, getCompletionPct, getOpenIssues, getBlockingIssues } from "../selectors.js";
 
 export function renderHealthIndicator() {
@@ -6,8 +7,7 @@ export function renderHealthIndicator() {
         d.classList.toggle('active', d.dataset.health === state.healthStatus);
     });
     const ht = document.getElementById('healthText');
-    const labels = { Green: 'ON TRACK', Amber: 'AT RISK', Red: 'ROLLBACK' };
-    ht.textContent = labels[state.healthStatus] || state.healthStatus;
+    ht.textContent = (HEALTH_META[state.healthStatus] || {}).label || state.healthStatus;
     ht.className = 'health-text ' + state.healthStatus.toLowerCase();
     const isLight = document.documentElement.getAttribute('data-theme') === 'light';
     const clockColors = isLight
@@ -53,7 +53,7 @@ export function renderGlobalStats() {
                 <div class="stats-group-label">Issues</div>
                 <div class="stats-group">
                     <div class="stat-card issues"><div class="stat-value">${openIss}</div><div class="stat-label">Open</div></div>
-                    <div class="stat-card blocking"><div class="stat-value">${totalBlocking}</div><div class="stat-label">Blocked</div></div>
+                    <div class="stat-card blocking"><div class="stat-value">${totalBlocking}</div><div class="stat-label">${statusLabel(STATUS.BLOCKING)}</div></div>
                 </div>
             </div>
         </div>

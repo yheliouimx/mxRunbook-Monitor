@@ -1,4 +1,5 @@
 import { state } from "../state.js";
+import { STATUS, ISSUE_STATUS, ISSUE_SEVERITY, CATEGORY_STATUS_LABEL, statusLabel } from "../constants.js";
 import { normalizeStatus, getGlobalStats, formatTimeShort, escapeHtml } from "../selectors.js";
 
 /**
@@ -29,11 +30,11 @@ export function generateSummary() {
     html += `<table style="width:100%;border-collapse:collapse;margin-bottom:20px;"><tr>`;
     html += `<td style="text-align:center;padding:8px;background:#e8f5e9;border-radius:4px;"><b style="font-size:18px;color:#2e7d32;">${done}</b><br/><span style="font-size:11px;color:#666;">DONE</span></td>`;
     html += `<td style="width:6px;"></td>`;
-    html += `<td style="text-align:center;padding:8px;background:#fff3e0;border-radius:4px;"><b style="font-size:18px;color:#e65100;">${inProg}</b><br/><span style="font-size:11px;color:#666;">IN PROGRESS</span></td>`;
+    html += `<td style="text-align:center;padding:8px;background:#fff3e0;border-radius:4px;"><b style="font-size:18px;color:#e65100;">${inProg}</b><br/><span style="font-size:11px;color:#666;">${CATEGORY_STATUS_LABEL.inprogress}</span></td>`;
     html += `<td style="width:6px;"></td>`;
-    html += `<td style="text-align:center;padding:8px;background:#fafafa;border-radius:4px;"><b style="font-size:18px;color:#555;">${notStarted}</b><br/><span style="font-size:11px;color:#666;">NOT STARTED</span></td>`;
+    html += `<td style="text-align:center;padding:8px;background:#fafafa;border-radius:4px;"><b style="font-size:18px;color:#555;">${notStarted}</b><br/><span style="font-size:11px;color:#666;">${CATEGORY_STATUS_LABEL.notstarted}</span></td>`;
     html += `<td style="width:6px;"></td>`;
-    html += `<td style="text-align:center;padding:8px;background:#ffebee;border-radius:4px;"><b style="font-size:18px;color:#c62828;">${blocking}</b><br/><span style="font-size:11px;color:#666;">BLOCKING</span></td>`;
+    html += `<td style="text-align:center;padding:8px;background:#ffebee;border-radius:4px;"><b style="font-size:18px;color:#c62828;">${blocking}</b><br/><span style="font-size:11px;color:#666;">${CATEGORY_STATUS_LABEL.blocked}</span></td>`;
     html += `</tr></table>`;
 
     html += `<table style="width:100%;border-collapse:collapse;font-size:13px;">`;
@@ -41,11 +42,11 @@ export function generateSummary() {
 
     Object.keys(state.runbookData).filter(k => !k.startsWith("_")).forEach((cat, ci) => {
         const tasks = state.runbookData[cat];
-        const d = tasks.filter(t => { const st = normalizeStatus(t.status); return st === "Completed" || st === "Unneeded"; }).length;
-        const ip = tasks.filter(t => normalizeStatus(t.status) === "In Progress").length;
-        const bl = tasks.filter(t => normalizeStatus(t.status) === "Blocking").length;
+        const d = tasks.filter(t => { const st = normalizeStatus(t.status); return st === STATUS.COMPLETED || st === STATUS.UNNEEDED; }).length;
+        const ip = tasks.filter(t => normalizeStatus(t.status) === STATUS.IN_PROGRESS).length;
+        const bl = tasks.filter(t => normalizeStatus(t.status) === STATUS.BLOCKING).length;
         const p = Math.round((d / tasks.length) * 100);
-        const marker = bl > 0 ? "BLOCKING" : d === tasks.length ? "DONE" : ip > 0 ? "IN PROGRESS" : "NOT STARTED";
+        const marker = bl > 0 ? CATEGORY_STATUS_LABEL.blocked : d === tasks.length ? CATEGORY_STATUS_LABEL.done : ip > 0 ? CATEGORY_STATUS_LABEL.inprogress : CATEGORY_STATUS_LABEL.notstarted;
         const markerColor = bl > 0 ? '#c62828' : d === tasks.length ? '#2e7d32' : ip > 0 ? '#e65100' : '#888888';
         const rowBg = ci % 2 === 0 ? '#ffffff' : '#f9f9f9';
 
@@ -57,9 +58,9 @@ export function generateSummary() {
 
         tasks.forEach(t => {
             const s = normalizeStatus(t.status);
-            if (s !== "Completed" && s !== "Unneeded") {
-                const sColor = s === "In Progress" ? '#e65100' : s === "Blocking" ? '#c62828' : '#888888';
-                const sIcon = s === "In Progress" ? '▶' : s === "Blocking" ? '✕' : '•';
+            if (s !== STATUS.COMPLETED && s !== STATUS.UNNEEDED) {
+                const sColor = s === STATUS.IN_PROGRESS ? '#e65100' : s === STATUS.BLOCKING ? '#c62828' : '#888888';
+                const sIcon = s === STATUS.IN_PROGRESS ? '▶' : s === STATUS.BLOCKING ? '✕' : '•';
                 const firstLine = t.task.split("\n")[0];
                 const time = t.startTime ? formatTimeShort(t.startTime) : '';
                 const who = t.assignee || '';
@@ -75,8 +76,8 @@ export function generateSummary() {
     });
     html += `</table>`;
 
-    const openIss = state.issues.filter(i => i.issueStatus === "Ongoing");
-    const closedIss = state.issues.filter(i => i.issueStatus === "Closed");
+    const openIss = state.issues.filter(i => i.issueStatus === ISSUE_STATUS.ONGOING);
+    const closedIss = state.issues.filter(i => i.issueStatus === ISSUE_STATUS.CLOSED);
     if (state.issues.length > 0) {
         html += `<div style="margin-top:20px;border-top:2px solid ${accent};padding-top:12px;">`;
         html += `<div style="font-size:14px;font-weight:bold;color:${accent};margin-bottom:10px;">Issues Log (${openIss.length} open, ${closedIss.length} closed)</div>`;
@@ -86,18 +87,18 @@ export function generateSummary() {
             if (list.length === 0) return;
             html += `<tr><td colspan="4" style="padding:6px 10px;font-weight:bold;color:#555;background:#f5f5f5;font-size:11px;text-transform:uppercase;letter-spacing:1px;">${label}</td></tr>`;
             list.forEach(iss => {
-                const isBlk = iss.severity === "Blocking";
+                const isBlk = iss.severity === ISSUE_SEVERITY.BLOCKING;
                 const sevColor = isBlk ? '#c62828' : '#e65100';
                 html += `<tr style="border-bottom:1px solid #eeeeee;">`;
                 html += `<td style="padding:5px 10px;width:4px;background:${sevColor};">&nbsp;</td>`;
                 html += `<td style="padding:5px 10px;">${escapeHtml(iss.description)}</td>`;
-                html += `<td style="padding:5px 8px;text-align:center;white-space:nowrap;"><span style="background:${sevColor};color:#fff;padding:1px 6px;border-radius:3px;font-size:10px;font-weight:600;">${isBlk ? 'BLOCKING' : 'NON-BLOCKING'}</span></td>`;
+                html += `<td style="padding:5px 8px;text-align:center;white-space:nowrap;"><span style="background:${sevColor};color:#fff;padding:1px 6px;border-radius:3px;font-size:10px;font-weight:600;">${isBlk ? ISSUE_SEVERITY.BLOCKING.toUpperCase() : ISSUE_SEVERITY.NON_BLOCKING.toUpperCase()}</span></td>`;
                 html += `<td style="padding:5px 8px;text-align:right;white-space:nowrap;color:#888;font-size:11px;">${escapeHtml(iss.time || '')}</td>`;
                 html += `</tr>`;
             });
         };
-        renderIssueRows(openIss, 'Ongoing');
-        renderIssueRows(closedIss, 'Closed');
+        renderIssueRows(openIss, ISSUE_STATUS.ONGOING);
+        renderIssueRows(closedIss, ISSUE_STATUS.CLOSED);
         html += `</table></div>`;
     }
 

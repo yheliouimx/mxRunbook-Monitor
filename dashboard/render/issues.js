@@ -1,4 +1,5 @@
 import { state } from "../state.js";
+import { ISSUE_STATUS, ISSUE_SEVERITY } from "../constants.js";
 import { getCategoryNames, escapeHtml } from "../selectors.js";
 import {
     getDefaultIssueTime,
@@ -15,9 +16,9 @@ import {
  */
 export function renderIssues() {
     const panel = document.getElementById("issuesPanel");
-    const openIssues = state.issues.filter(i => i.issueStatus === "Ongoing");
-    const closedIssues = state.issues.filter(i => i.issueStatus === "Closed");
-    const blockingOpen = openIssues.filter(i => i.severity === "Blocking").length;
+    const openIssues = state.issues.filter(i => i.issueStatus === ISSUE_STATUS.ONGOING);
+    const closedIssues = state.issues.filter(i => i.issueStatus === ISSUE_STATUS.CLOSED);
+    const blockingOpen = openIssues.filter(i => i.severity === ISSUE_SEVERITY.BLOCKING).length;
 
     const catOptions = getCategoryNames().map(c =>
         `<option value="${escapeHtml(c)}">${escapeHtml(c)}</option>`
@@ -54,15 +55,15 @@ export function renderIssues() {
                 <div class="issue-field">
                     <label>Severity</label>
                     <select id="if_sev">
-                        <option value="Blocking">\u{1F534} Blocking</option>
-                        <option value="Non-Blocking">\u{1F7E0} Non-Blocking</option>
+                        <option value="${ISSUE_SEVERITY.BLOCKING}">\u{1F534} ${ISSUE_SEVERITY.BLOCKING}</option>
+                        <option value="${ISSUE_SEVERITY.NON_BLOCKING}">\u{1F7E0} ${ISSUE_SEVERITY.NON_BLOCKING}</option>
                     </select>
                 </div>
                 <div class="issue-field">
                     <label>Status</label>
                     <select id="if_status">
-                        <option value="Ongoing">Ongoing</option>
-                        <option value="Closed">Closed</option>
+                        <option value="${ISSUE_STATUS.ONGOING}">${ISSUE_STATUS.ONGOING}</option>
+                        <option value="${ISSUE_STATUS.CLOSED}">${ISSUE_STATUS.CLOSED}</option>
                     </select>
                 </div>
                 <div class="issue-field">
@@ -80,13 +81,13 @@ export function renderIssues() {
             ${state.issues.length === 0 ? '<div style="text-align:center;color:#555;padding:12px;font-size:0.85em">No issues logged yet</div>' : ''}
             ${state.issues.map(iss => `
                 <div class="issue-card">
-                    <div class="issue-severity ${iss.severity === 'Blocking' ? 'blocking' : 'non-blocking'}"></div>
+                    <div class="issue-severity ${iss.severity === ISSUE_SEVERITY.BLOCKING ? 'blocking' : 'non-blocking'}"></div>
                     <div class="issue-body">
                         <div class="issue-title-row">
                             <span class="issue-desc">${escapeHtml(iss.description)}</span>
                             <div class="issue-tags">
-                                <span class="issue-tag ${iss.severity === 'Blocking' ? 'blocking' : 'non-blocking'}">${iss.severity}</span>
-                                <span class="issue-tag ${iss.issueStatus === 'Ongoing' ? 'ongoing' : 'closed'}">${iss.issueStatus}</span>
+                                <span class="issue-tag ${iss.severity === ISSUE_SEVERITY.BLOCKING ? 'blocking' : 'non-blocking'}">${iss.severity}</span>
+                                <span class="issue-tag ${iss.issueStatus === ISSUE_STATUS.ONGOING ? 'ongoing' : 'closed'}">${iss.issueStatus}</span>
                             </div>
                         </div>
                         <div class="issue-meta">
@@ -94,7 +95,7 @@ export function renderIssues() {
                             <span>\u{1F552} ${iss.time}</span>
                         </div>
                         <div class="issue-actions">
-                            ${iss.issueStatus === 'Ongoing'
+                            ${iss.issueStatus === ISSUE_STATUS.ONGOING
                                 ? '<button class="close-btn" onclick="closeIssue('+iss.id+')">\u2713 Close</button>'
                                 : '<button class="reopen-btn" onclick="reopenIssue('+iss.id+')">\u21BA Reopen</button>'
                             }

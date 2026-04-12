@@ -132,21 +132,18 @@ Definition of done:
 - ~~counts and labels match the main dashboard exactly~~ ✅
 - ~~export-specific code is mostly drawing, not business logic~~ ✅
 
-**Phase 8**
+**Phase 8** ✅
 Normalize naming and remove drift.
 
-1. Create dashboard/labels.js or extend dashboard/constants.js: Define canonical internal status values and separate display labels so data stays compatible with existing JSON while UI text can say Blocked consistently.
-2. Update runbookDashboard.html: Make filter labels use shared display labels instead of inline text.
-3. Update runbookDashboard.html, runbookDashboard.html, runbookDashboard.html, runbookDashboard.html, and runbookDashboard.html: Replace all hard-coded Blocking and Blocked strings with shared label helpers.
-4. Review runbookDashboard.html and runbookDashboard.html: Collapse duplicate CSS variables where possible, but only after renderer refactor is complete.
+1. ~~Extend dashboard/constants.js: Add `statusLabel()` helper, `ISSUE_STATUS` (Ongoing/Closed), `ISSUE_SEVERITY` (Blocking/Non-Blocking), `CATEGORY_STATUS` (CSS-friendly keys), and `CATEGORY_STATUS_LABEL` (uppercase display text for summary/exports).~~ ✅
+2. ~~Update runbookDashboard.html: Change filter button label from "Blocking" to "Blocked" to match STATUS_LABELS.~~ ✅
+3. ~~Update all JS modules: Replace every hard-coded status/severity/issue-status string with imports from constants.js across selectors.js, render/stats.js, render/timeline.js, render/categories.js, render/issues.js, render/summary.js, actions/tasks.js, actions/issues.js, persistence.js, export/shared.js, export/phone.js, export/email.js, export/gantt.js, export/theme.js (16 files total).~~ ✅
+4. ~~Review CSS variables: Audited all `:root` vs `[data-theme="light"]` definitions — all duplicates are intentional theme overrides. No collapsible redundancy found.~~ ✅
 
 Definition of done:
-- one internal term for data
-- one display-label map for UI
-- no more mixed wording across filter buttons, stats, issues, summary, and exports
-
-Estimated effort:
-- 0.5 day
+- ~~one internal term for data~~ ✅ (STATUS, ISSUE_STATUS, ISSUE_SEVERITY in constants.js)
+- ~~one display-label map for UI~~ ✅ (STATUS_LABELS + statusLabel() + CATEGORY_STATUS_LABEL)
+- ~~no more mixed wording across filter buttons, stats, issues, summary, and exports~~ ✅
 
 **Phase 9**
 Trim the HTML file down to shell plus entry wiring.

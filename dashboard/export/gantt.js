@@ -4,6 +4,7 @@
 
 import { drawText, drawRoundRect, drawDivider, drawDot, exportCanvasAsImage, formatExportTimestamp } from "./canvas.js";
 import { HEALTH_LIGHT, CAT_STATUS_LIGHT, GANTT_BAR } from "./theme.js";
+import { STATUS, statusLabel } from "../constants.js";
 import { getExportCategories, getProjectInfo, getExportStats, getCategoryExportStats, getTimeBounds, getCategoryTimeBounds, getHealthStatus, getExportAssets } from "./shared.js";
 
 /**
@@ -67,7 +68,7 @@ export function exportGanttChart(showToast) {
     drawText(ctx, "GO-LIVE: " + hMeta.label, 130, 135, "bold 14px Segoe UI, sans-serif", hMeta.color, "center");
 
     // ── Overall stats badge ──
-    drawText(ctx, `${stats.done}/${stats.total} completed (${stats.pct}%)  |  ${stats.blocking} blocking`, W - rightPad, 135, "bold 14px Segoe UI, sans-serif", "#555", "right");
+    drawText(ctx, `${stats.done}/${stats.total} completed (${stats.pct}%)  |  ${stats.blocking} ${statusLabel(STATUS.BLOCKING).toLowerCase()}`, W - rightPad, 135, "bold 14px Segoe UI, sans-serif", "#555", "right");
 
     // ── TIME AXIS ──
     const axisY = topH;
@@ -195,9 +196,9 @@ export function exportGanttChart(showToast) {
     const legY = barsY + sortedCats.length * (rowH + rowGap) + 20;
     drawDivider(ctx, 60, W - 60, legY, "#e0e0e0");
     const items = [
-        { color: "#43a047", label: "Completed" },
-        { color: "#ffe0b2", label: "In Progress", border: "#ffcc80" },
-        { color: "#ffcdd2", label: "Not Started", border: "#ef9a9a" },
+        { color: "#43a047", label: statusLabel(STATUS.COMPLETED) },
+        { color: "#ffe0b2", label: statusLabel(STATUS.IN_PROGRESS), border: "#ffcc80" },
+        { color: "#ffcdd2", label: statusLabel(STATUS.NOT_STARTED), border: "#ef9a9a" },
     ];
     let lx = W / 2 - 200;
     items.forEach(it => {

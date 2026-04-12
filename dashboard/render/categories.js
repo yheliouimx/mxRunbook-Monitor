@@ -1,4 +1,5 @@
 import { state } from "../state.js";
+import { STATUS, statusLabel } from "../constants.js";
 import {
     normalizeStatus, statusClass, computeCategoryStatus,
     formatTime, formatTimeShort, getEarliestTime,
@@ -29,7 +30,7 @@ export function renderCategories(categories, renderAll, showToast) {
 
         anyVisible = true;
 
-        const done = tasks.filter(t => { const st = normalizeStatus(t.status); return st === "Completed" || st === "Unneeded"; }).length;
+        const done = tasks.filter(t => { const st = normalizeStatus(t.status); return st === STATUS.COMPLETED || st === STATUS.UNNEEDED; }).length;
         const pct = Math.round((done / tasks.length) * 100);
         const isOpen = state.openCategories.has(cat);
         const earliest = getEarliestTime(tasks);
@@ -67,10 +68,10 @@ export function renderCategories(categories, renderAll, showToast) {
                         ? formatTimeShort(t.startTime) + (t.endTime ? " - " + formatTimeShort(t.endTime) : "")
                         : "";
                     return `
-                    <div class="task-row ${ns === 'Completed' ? 'completed' : ns === 'Blocking' ? 'blocked' : ns === 'Unneeded' ? 'unneeded' : ''}">
+                    <div class="task-row ${ns === STATUS.COMPLETED ? 'completed' : ns === STATUS.BLOCKING ? 'blocked' : ns === STATUS.UNNEEDED ? 'unneeded' : ''}">
                         <div class="task-status-btn s-${sc}" title="Click to cycle status"
                             data-cat="${escapeHtml(cat)}" data-idx="${realIdx}">
-                            ${ns === 'Completed' ? '✓' : ns === 'In Progress' ? '▶' : ns === 'Blocking' ? '✕' : ns === 'Unneeded' ? '—' : ''}
+                            ${ns === STATUS.COMPLETED ? '✓' : ns === STATUS.IN_PROGRESS ? '▶' : ns === STATUS.BLOCKING ? '✕' : ns === STATUS.UNNEEDED ? '—' : ''}
                         </div>
                         <div class="task-content">
                             ${t.item ? '<span class="task-item-label">' + escapeHtml(t.item) + '</span>' : ''}
@@ -103,11 +104,11 @@ export function renderCategories(categories, renderAll, showToast) {
                 const popup = document.createElement("div");
                 popup.className = "status-popup";
                 const statuses = [
-                    { key: "Not Started", label: "Not Started", cls: "sp-notstarted", icon: "" },
-                    { key: "In Progress", label: "In Progress", cls: "sp-inprogress", icon: "▶" },
-                    { key: "Completed",   label: "Completed",   cls: "sp-done",       icon: "✓" },
-                    { key: "Blocking",    label: "Blocked",     cls: "sp-blocked",    icon: "✕" },
-                    { key: "Unneeded",    label: "Unneeded",    cls: "sp-unneeded",   icon: "—" }
+                    { key: STATUS.NOT_STARTED, label: statusLabel(STATUS.NOT_STARTED), cls: "sp-notstarted", icon: "" },
+                    { key: STATUS.IN_PROGRESS, label: statusLabel(STATUS.IN_PROGRESS), cls: "sp-inprogress", icon: "▶" },
+                    { key: STATUS.COMPLETED,   label: statusLabel(STATUS.COMPLETED),   cls: "sp-done",       icon: "✓" },
+                    { key: STATUS.BLOCKING,    label: statusLabel(STATUS.BLOCKING),     cls: "sp-blocked",    icon: "✕" },
+                    { key: STATUS.UNNEEDED,    label: statusLabel(STATUS.UNNEEDED),     cls: "sp-unneeded",   icon: "—" }
                 ];
                 statuses.forEach(s => {
                     const opt = document.createElement("div");
@@ -134,7 +135,7 @@ export function renderCategories(categories, renderAll, showToast) {
             completeAllBtn.addEventListener("click", (e) => {
                 e.stopPropagation();
                 const c = e.currentTarget.dataset.cat;
-                const pending = state.runbookData[c].filter(t => normalizeStatus(t.status) !== "Completed" && normalizeStatus(t.status) !== "Unneeded").length;
+                const pending = state.runbookData[c].filter(t => normalizeStatus(t.status) !== STATUS.COMPLETED && normalizeStatus(t.status) !== STATUS.UNNEEDED).length;
                 if (pending === 0) { showToast("All tasks already completed or unneeded"); return; }
                 if (!confirm(`Mark all ${pending} remaining tasks in "${c}" as Completed?`)) return;
                 completeAllInCategory(c);

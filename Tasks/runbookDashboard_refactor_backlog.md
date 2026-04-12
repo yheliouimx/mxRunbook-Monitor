@@ -165,6 +165,28 @@ Definition of done:
 Estimated effort:
 - 0.5 day
 
+**Phase 10**
+Add test infrastructure and initial unit test coverage.
+
+1. Initialize npm project and install Vitest + happy-dom as dev dependencies. Add `"test"` script to package.json.
+2. Create vitest.config.js with happy-dom environment so tests get a lightweight DOM without a real browser.
+3. Create tests/validation.test.js: Test validate() rejects non-objects, missing required fields, non-array categories; test normalize() fills null/undefined optional fields; test formatErrors() truncation logic; test validateAndNormalize() end-to-end with valid and invalid payloads.
+4. Create tests/selectors.test.js: Test normalizeStatus() canonical mapping and unknown-status passthrough; test computeCategoryStatus() for all status combinations; test getGlobalStats() counts; test getOpenIssues(), getBlockingIssues(), getCompletionPct() against a seeded state; test sortCategories() for each sort mode; test matchesSearch() and matchesTeam() filtering; test escapeHtml() against XSS vectors.
+5. Create tests/constants.test.js: Assert STATUS values match the keys in STATUS_LABELS; assert HEALTH_META covers all HEALTH_STATUSES; assert RESERVED_KEYS values start with underscore. These are contract guards, not logic tests.
+6. Create tests/persistence.test.js: Mock fetch and localStorage; test loadInitialRunbook() prefers localStorage draft over server fetch; test loadInitialRunbook() falls through to fetch on corrupt localStorage; test saveDraft() writes to localStorage and triggers download; test resetRunbook() clears state and localStorage; test applyLoadedRunbook() rejects invalid JSON via validation.
+7. Create tests/state.test.js: Test initial state shape has all expected keys; test that mutating state is reflected in selector output (integration smoke test).
+8. Add tests for any render, actions, or export modules that exist by this phase — at minimum verify they export the expected functions and don't throw on basic input.
+
+Definition of done:
+- `npm test` runs all suites from the command line
+- pure modules (validation, selectors, constants) have full coverage
+- persistence has coverage for all load/save/reset paths with mocked browser APIs
+- CI-ready: no browser required, no network required
+- test failures surface as actionable messages, not generic assertion dumps
+
+Estimated effort:
+- 1 to 1.5 days
+
 **File-By-File Deliverables**
 This is the concrete file creation and ownership map.
 
@@ -190,6 +212,12 @@ This is the concrete file creation and ownership map.
 20. dashboard/export/gantt.js: gantt renderer.
 21. runbookDashboard.html: final entry point and shell.
 22. schema.py: unchanged authority for schema, but referenced by validation documentation and parity checks.
+23. vitest.config.js: test runner configuration with happy-dom environment.
+24. tests/validation.test.js: schema validation and normalization tests.
+25. tests/selectors.test.js: selector logic, filtering, sorting, and derived-data tests.
+26. tests/constants.test.js: contract guards for status/health/reserved-key consistency.
+27. tests/persistence.test.js: load/save/reset flows with mocked fetch and localStorage.
+28. tests/state.test.js: state shape and mutation smoke tests.
 
 **Recommended Ticket Breakdown**
 If you want to manage this as work items, this is the cleanest split.
@@ -204,6 +232,7 @@ If you want to manage this as work items, this is the cleanest split.
 8. Ticket 8: Refactor phone and email exports onto shared data.
 9. Ticket 9: Refactor gantt export onto shared data.
 10. Ticket 10: Final naming cleanup and monolith reduction.
+11. Ticket 11: Test infrastructure and initial unit test coverage.
 
 **Suggested Order If You Want Fast Value**
 Do these first because they reduce breakage risk immediately:
@@ -225,6 +254,6 @@ The lowest-risk starting point is:
 - runbookDashboard.html, because that area is mostly state, config, normalization, loading, and selectors
 
 **Effort**
-A realistic implementation estimate for one person moving carefully is 6 to 9 working days, with the first meaningful maintainability win after 2 days.
+A realistic implementation estimate for one person moving carefully is 7 to 10.5 working days, with the first meaningful maintainability win after 2 days.
 
 If you want, I can turn this next into a sprint-ready checklist with exact acceptance criteria per ticket and a recommended commit sequence.

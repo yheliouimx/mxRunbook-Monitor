@@ -6,167 +6,228 @@
 <title>Go-Live Runbook Dashboard</title>
 <link rel="icon" id="favicon" type="image/png" href="">
 <style>
+    /* ═══════════════════════════════════════════════════════
+       SEMANTIC DESIGN TOKENS — Corporate Palette (Dark)
+       Override via [data-palette] for neon, [data-theme] for light
+       ═══════════════════════════════════════════════════════ */
     :root {
-        --bg: #0a0a0f;
-        --text: #e0e0e0;
-        --text-muted: #888;
-        --text-dim: #555;
-        --card-bg: #111;
-        --card-border: #222;
-        --card-hover: #151515;
-        --input-bg: #111;
-        --input-border: #333;
-        --row-bg: #0d0d0d;
-        --row-border: #1a1a1a;
-        --row-hover: #141418;
-        --bar-bg: #1a1a1a;
-        --divider: #222;
-        --green: #39ff14;
-        --amber: #ffa500;
-        --red: #ff3333;
-        --yellow: #ffd84a;
-        --pink: #ff6b6b;
-        --blue: #5bc0ff;
-        --orange: #ff9944;
-        --green-bg: #0d3d0d;
-        --green-text: #7bff7b;
-        --amber-bg: #3d3000;
-        --red-bg: #3a0a0a;
-        --red-text: #ff8888;
-        --completed-text: #64ff64;
-        --item-label-color: #8888dd;
-        --stat-total: #ffffff;
-        --stat-done: #39ff14;
-        --stat-inprog: #ffd84a;
-        --stat-notstarted: #aaaaaa;
-        --stat-pct: #5bc0ff;
-        --stat-issues: #ff9944;
-        --stat-blocking: #ff3333;
-        --progress-from: #39ff14;
-        --progress-to: #5bc0ff;
-        --health-green: #39ff14;
-        --health-green-bg: #0a3a0a;
-        --health-amber: #ffa500;
-        --health-amber-bg: #3a2a00;
-        --health-red: #ff3333;
-        --health-red-bg: #3a0a0a;
-        --dot-done: #39ff14;
-        --dot-inprog: #ffd84a;
-        --dot-notstarted: #aaaaaa;
-        --btn-done-bg: #0a2a0a;
-        --btn-done-border: #39ff14;
-        --btn-done-color: #39ff14;
-        --btn-inprog-bg: #2a2500;
-        --btn-inprog-border: #ffd84a;
-        --btn-inprog-color: #ffd84a;
-        --btn-notstarted-bg: #1a1a1a;
-        --btn-notstarted-border: #aaaaaa;
-        --btn-notstarted-color: #aaaaaa;
-        --stat-blocked: #ff3333;
-        --stat-unneeded: #888888;
-        --dot-blocked: #ff3333;
-        --dot-unneeded: #666666;
-        --btn-blocked-bg: #3a0a0a;
-        --btn-blocked-border: #ff3333;
-        --btn-blocked-color: #ff3333;
-        --btn-unneeded-bg: #1a1a1a;
-        --btn-unneeded-border: #666666;
-        --btn-unneeded-color: #666666;
-        --blocked-text: #ffffff;
-        --unneeded-text: #666666;
-        --blocked-bg: #1a1a1a;
-        --blocked-tag-text: #ffffff;
-        --unneeded-bg: #1a1a1a;
-        --unneeded-tag-text: #888888;
-        --issue-form-bg: #0d0d12;
-        --btn-bg: #181818;
-        --btn-border: #333;
-        --action-bg: #181818;
-        --action-border: #333;
-        --toast-bg: #1a3a1a;
-        --toast-border: #2a5a2a;
-        --toast-text: #7bff7b;
+        /* Surfaces */
+        --color-surface: #0a0a0f;
+        --color-surface-elevated: #111118;
+        --color-surface-hover: #151520;
+        --color-surface-row: #0d0d12;
+        --color-surface-bar: #1a1a22;
+        --color-surface-form: #0d0d12;
+        --color-surface-action: #181820;
+
+        /* Text */
+        --color-text-primary: #e0e0e0;
+        --color-text-secondary: #888;
+        --color-text-dim: #555;
+        --color-text-emphasis: #ffffff;
+
+        /* Borders */
+        --color-border: #222;
+        --color-border-strong: #333;
+        --color-border-subtle: #1a1a1a;
+
+        /* Status: Success (Done / Completed) */
+        --color-success: #10b981;
+        --color-success-bg: #052e16;
+        --color-success-text: #6ee7b7;
+
+        /* Status: Warning (In Progress) */
+        --color-warning: #f59e0b;
+        --color-warning-bg: #451a03;
+        --color-warning-text: #fcd34d;
+
+        /* Status: Danger (Blocked / Red) */
+        --color-danger: #ef4444;
+        --color-danger-bg: #450a0a;
+        --color-danger-text: #fca5a5;
+
+        /* Status: Info */
+        --color-info: #3b82f6;
+
+        /* Status: Issues */
+        --color-issues: #f97316;
+
+        /* Status: Neutral (Not Started / Unneeded) */
+        --color-neutral: #aaaaaa;
+        --color-neutral-muted: #888888;
+        --color-neutral-dim: #666666;
+        --color-neutral-bg: #1a1a1a;
+
+        /* Primary / Accent (overridden by config.accentColor via JS) */
+        --color-primary: var(--color-success);
+
+        /* Labels */
+        --color-label: #8888dd;
+
+        /* Progress gradient */
+        --color-progress-from: var(--color-success);
+        --color-progress-to: var(--color-info);
+
+        /* Toast */
+        --color-toast-bg: var(--color-success-bg);
+        --color-toast-border: #065f46;
+        --color-toast-text: var(--color-success-text);
+
+        /* ── Atomic Aliases (backward compat) ─────────────── */
+        --bg: var(--color-surface);
+        --text: var(--color-text-primary);
+        --text-muted: var(--color-text-secondary);
+        --text-dim: var(--color-text-dim);
+        --card-bg: var(--color-surface-elevated);
+        --card-border: var(--color-border);
+        --card-hover: var(--color-surface-hover);
+        --input-bg: var(--color-surface-elevated);
+        --input-border: var(--color-border-strong);
+        --row-bg: var(--color-surface-row);
+        --row-border: var(--color-border-subtle);
+        --row-hover: var(--color-surface-hover);
+        --bar-bg: var(--color-surface-bar);
+        --divider: var(--color-border);
+        --green: var(--color-success);
+        --amber: var(--color-warning);
+        --red: var(--color-danger);
+        --yellow: var(--color-warning-text);
+        --pink: var(--color-danger-text);
+        --blue: var(--color-info);
+        --orange: var(--color-issues);
+        --green-bg: var(--color-success-bg);
+        --green-text: var(--color-success-text);
+        --amber-bg: var(--color-warning-bg);
+        --red-bg: var(--color-danger-bg);
+        --red-text: var(--color-danger-text);
+        --completed-text: var(--color-success-text);
+        --item-label-color: var(--color-label);
+        --stat-total: var(--color-text-emphasis);
+        --stat-done: var(--color-success);
+        --stat-inprog: var(--color-warning-text);
+        --stat-notstarted: var(--color-neutral);
+        --stat-pct: var(--color-info);
+        --stat-issues: var(--color-issues);
+        --stat-blocking: var(--color-danger);
+        --progress-from: var(--color-progress-from);
+        --progress-to: var(--color-progress-to);
+        --health-green: var(--color-success);
+        --health-green-bg: var(--color-success-bg);
+        --health-amber: var(--color-warning);
+        --health-amber-bg: var(--color-warning-bg);
+        --health-red: var(--color-danger);
+        --health-red-bg: var(--color-danger-bg);
+        --dot-done: var(--color-success);
+        --dot-inprog: var(--color-warning-text);
+        --dot-notstarted: var(--color-neutral);
+        --btn-done-bg: var(--color-success-bg);
+        --btn-done-border: var(--color-success);
+        --btn-done-color: var(--color-success);
+        --btn-inprog-bg: var(--color-warning-bg);
+        --btn-inprog-border: var(--color-warning-text);
+        --btn-inprog-color: var(--color-warning-text);
+        --btn-notstarted-bg: var(--color-neutral-bg);
+        --btn-notstarted-border: var(--color-neutral);
+        --btn-notstarted-color: var(--color-neutral);
+        --stat-blocked: var(--color-danger);
+        --stat-unneeded: var(--color-neutral-muted);
+        --dot-blocked: var(--color-danger);
+        --dot-unneeded: var(--color-neutral-dim);
+        --btn-blocked-bg: var(--color-danger-bg);
+        --btn-blocked-border: var(--color-danger);
+        --btn-blocked-color: var(--color-danger);
+        --btn-unneeded-bg: var(--color-neutral-bg);
+        --btn-unneeded-border: var(--color-neutral-dim);
+        --btn-unneeded-color: var(--color-neutral-dim);
+        --blocked-text: var(--color-text-emphasis);
+        --unneeded-text: var(--color-neutral-dim);
+        --blocked-bg: var(--color-neutral-bg);
+        --blocked-tag-text: var(--color-text-emphasis);
+        --unneeded-bg: var(--color-neutral-bg);
+        --unneeded-tag-text: var(--color-neutral-muted);
+        --issue-form-bg: var(--color-surface-form);
+        --btn-bg: var(--color-surface-action);
+        --btn-border: var(--color-border-strong);
+        --action-bg: var(--color-surface-action);
+        --action-border: var(--color-border-strong);
+        --toast-bg: var(--color-toast-bg);
+        --toast-border: var(--color-toast-border);
+        --toast-text: var(--color-toast-text);
     }
+
+    /* ═══ NEON PALETTE (Dark) ═══ */
+    [data-palette="neon"] {
+        --color-success: #39ff14;
+        --color-success-bg: #0d3d0d;
+        --color-success-text: #7bff7b;
+        --color-warning: #ffa500;
+        --color-warning-bg: #3d3000;
+        --color-warning-text: #ffd84a;
+        --color-danger: #ff3333;
+        --color-danger-bg: #3a0a0a;
+        --color-danger-text: #ff8888;
+        --color-info: #5bc0ff;
+        --color-issues: #ff9944;
+        --color-toast-bg: #1a3a1a;
+        --color-toast-border: #2a5a2a;
+        --color-toast-text: #7bff7b;
+    }
+
+    /* ═══ LIGHT THEME (Corporate) ═══ */
     [data-theme="light"] {
-        --bg: #f4f5f7;
-        --text: #1a1a2e;
-        --text-muted: #555;
-        --text-dim: #888;
-        --card-bg: #ffffff;
-        --card-border: #ddd;
-        --card-hover: #f0f0f0;
-        --input-bg: #fff;
-        --input-border: #ccc;
-        --row-bg: #fafafa;
-        --row-border: #e8e8e8;
-        --row-hover: #f0f0f5;
-        --bar-bg: #e0e0e0;
-        --divider: #ddd;
-        --green-bg: #e8f5e9;
-        --green-text: #2e7d32;
-        --amber-bg: #fff8e1;
-        --red-bg: #ffebee;
-        --red-text: #c62828;
-        --issue-form-bg: #f5f5fa;
-        --btn-bg: #f0f0f0;
-        --btn-border: #ccc;
-        --action-bg: #f5f5f5;
-        --action-border: #ccc;
-        --toast-bg: #e8f5e9;
-        --toast-border: #a5d6a7;
-        --toast-text: #2e7d32;
-        --green: #2e7d32;
-        --amber: #e65100;
-        --red: #c62828;
-        --yellow: #e65100;
-        --pink: #c62828;
-        --blue: #1565c0;
-        --orange: #e65100;
-        --completed-text: #2e7d32;
-        --item-label-color: #5c5c99;
-        --stat-total: #1a1a2e;
-        --stat-done: #2e7d32;
-        --stat-inprog: #e65100;
-        --stat-notstarted: #777777;
-        --stat-pct: #1565c0;
-        --stat-issues: #e65100;
-        --stat-blocking: #c62828;
-        --progress-from: #2e7d32;
-        --progress-to: #1565c0;
-        --health-green: #2e7d32;
-        --health-green-bg: #e8f5e9;
-        --health-amber: #e65100;
-        --health-amber-bg: #fff3e0;
-        --health-red: #c62828;
-        --health-red-bg: #ffebee;
-        --dot-done: #2e7d32;
-        --dot-inprog: #e65100;
-        --dot-notstarted: #999999;
-        --btn-done-bg: #e8f5e9;
-        --btn-done-border: #2e7d32;
-        --btn-done-color: #2e7d32;
-        --btn-inprog-bg: #fff3e0;
-        --btn-inprog-border: #e65100;
-        --btn-inprog-color: #e65100;
-        --btn-notstarted-bg: #f0f0f0;
-        --btn-notstarted-border: #999999;
-        --btn-notstarted-color: #999999;
-        --stat-blocked: #c62828;
-        --stat-unneeded: #757575;
-        --dot-blocked: #c62828;
-        --dot-unneeded: #9e9e9e;
-        --btn-blocked-bg: #ffebee;
-        --btn-blocked-border: #c62828;
-        --btn-blocked-color: #c62828;
-        --btn-unneeded-bg: #f5f5f5;
-        --btn-unneeded-border: #9e9e9e;
-        --btn-unneeded-color: #9e9e9e;
-        --blocked-text: #1a1a1a;
-        --unneeded-text: #9e9e9e;
+        --color-surface: #f4f5f7;
+        --color-surface-elevated: #ffffff;
+        --color-surface-hover: #f0f0f5;
+        --color-surface-row: #fafafa;
+        --color-surface-bar: #e0e0e0;
+        --color-surface-form: #f5f5fa;
+        --color-surface-action: #f5f5f5;
+        --color-text-primary: #1a1a2e;
+        --color-text-secondary: #555;
+        --color-text-dim: #888;
+        --color-text-emphasis: #1a1a2e;
+        --color-border: #ddd;
+        --color-border-strong: #ccc;
+        --color-border-subtle: #e8e8e8;
+        --color-success: #059669;
+        --color-success-bg: #ecfdf5;
+        --color-success-text: #059669;
+        --color-warning: #d97706;
+        --color-warning-bg: #fffbeb;
+        --color-warning-text: #d97706;
+        --color-danger: #dc2626;
+        --color-danger-bg: #fef2f2;
+        --color-danger-text: #dc2626;
+        --color-info: #2563eb;
+        --color-issues: #ea580c;
+        --color-neutral: #888888;
+        --color-neutral-muted: #757575;
+        --color-neutral-dim: #9e9e9e;
+        --color-neutral-bg: #f0f0f0;
+        --color-label: #5c5c99;
+        --color-toast-bg: #ecfdf5;
+        --color-toast-border: #a7f3d0;
+        --color-toast-text: #059669;
         --blocked-bg: #e0e0e0;
-        --blocked-tag-text: #1a1a1a;
         --unneeded-bg: #f5f5f5;
-        --unneeded-tag-text: #757575;
+    }
+
+    /* ═══ LIGHT THEME + NEON PALETTE ═══ */
+    [data-theme="light"][data-palette="neon"] {
+        --color-success: #2e7d32;
+        --color-success-bg: #e8f5e9;
+        --color-success-text: #2e7d32;
+        --color-warning: #e65100;
+        --color-warning-bg: #fff3e0;
+        --color-warning-text: #e65100;
+        --color-danger: #c62828;
+        --color-danger-bg: #ffebee;
+        --color-danger-text: #c62828;
+        --color-info: #1565c0;
+        --color-issues: #e65100;
+        --color-toast-bg: #e8f5e9;
+        --color-toast-border: #a5d6a7;
+        --color-toast-text: #2e7d32;
     }
 
     *, *::before, *::after { box-sizing: border-box; }
@@ -175,10 +236,12 @@
         background: var(--bg);
         color: var(--text);
         font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
-        margin: 0;
+        margin: 0 auto;
         padding: 20px 30px;
+        max-width: 1280px;
         line-height: 1.5;
         transition: background 0.3s, color 0.3s;
+        position: relative;
     }
 
     /* BACKGROUND IMAGE */
@@ -1122,12 +1185,33 @@
         gap: 6px;
         z-index: 10;
     }
+
+    /* PALETTE TOGGLE */
+    .palette-btn {
+        background: var(--card-bg);
+        border: 1px solid var(--card-border);
+        border-radius: 6px;
+        padding: 4px 10px;
+        cursor: pointer;
+        font-size: 0.72em;
+        color: var(--text-muted);
+        transition: all 0.2s;
+        white-space: nowrap;
+        margin-right: 8px;
+    }
+    .palette-btn:hover { background: var(--card-hover); color: var(--text); border-color: var(--text-dim); }
+
+    /* HEALTH-BASED PROGRESS GRADIENT (CSS-driven) */
+    .stats-master.health-green .progress-fill { background: linear-gradient(90deg, var(--color-success), var(--color-info)); }
+    .stats-master.health-amber .progress-fill { background: linear-gradient(90deg, var(--color-warning), var(--color-issues)); }
+    .stats-master.health-red .progress-fill { background: linear-gradient(90deg, var(--color-issues), var(--color-danger)); }
 </style>
 </head>
 
 <body>
 
 <div class="theme-toggle-wrap">
+    <button class="palette-btn" id="paletteToggle" title="Switch color palette">Corporate</button>
     <span class="theme-toggle-label">🌙</span>
     <div class="theme-toggle" id="themeToggle" title="Toggle light/dark mode">
         <div class="theme-toggle-knob"></div>

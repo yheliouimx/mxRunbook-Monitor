@@ -7,23 +7,22 @@
 
 ## P0 — Critical (Do First)
 
-### 1. Max-width + centered layout
-- Add `max-width: 1280px; margin: 0 auto` to the body or a wrapper
-- Prevents content stretching on wide monitors
+### ~~1. Max-width + centered layout~~ ✅ Done (2026-04-12)
+- ~~Add `max-width: 1280px; margin: 0 auto` to the body or a wrapper~~
+- ~~Prevents content stretching on wide monitors~~
 - **Files:** `runbookDashboard.html` (CSS)
 
-### 2. Replace neon palette with config-driven accent color
-- `accentColor` from `config.json` is only used in summary export — apply it as `--color-primary` across the entire dashboard
-- Replace `#39ff14` (neon green) with a professional teal/emerald (e.g. `#10b981`) as default
-- Derive success/progress fills from the accent color
-- **Files:** `runbookDashboard.html` (CSS vars), `dashboard/render/stats.js`, `dashboard/render/categories.js`, all export functions in `runbookDashboard.html`
+### ~~2. Replace neon palette with config-driven accent color~~ ✅ Done (2026-04-12)
+- ~~`accentColor` from `config.json` is applied as `--color-primary` across the dashboard~~
+- ~~Default corporate palette (emerald `#10b981`); neon palette preserved via `[data-palette="neon"]` toggle~~
+- ~~Palette toggle button added; preference persisted in localStorage~~
+- **Files:** `runbookDashboard.html`, `dashboard/app.js`, `dashboard/render/stats.js`, `dashboard/render/categories.js`
 
-### 3. Semantic CSS variable system
-- Current: ~80+ atomic variables (`--green`, `--btn-done-bg`, etc.)
-- Target: semantic tokens (`--color-primary`, `--color-success`, `--color-warning`, `--color-danger`, `--color-surface`, `--color-text-primary`, `--color-text-secondary`)
-- Atomic vars should reference semantic ones, not the reverse
-- Reduces duplication between dark/light themes
-- **Files:** `runbookDashboard.html` (`:root` and `[data-theme="light"]` blocks)
+### ~~3. Semantic CSS variable system~~ ✅ Done (2026-04-12)
+- ~~80+ atomic vars now alias semantic tokens (`--color-success`, `--color-warning`, `--color-danger`, etc.)~~
+- ~~4 CSS cascade layers: `:root` (corporate dark) → `[data-palette="neon"]` → `[data-theme="light"]` → `[data-theme="light"][data-palette="neon"]`~~
+- ~~Hardcoded hex colors removed from JS render files~~
+- **Files:** `runbookDashboard.html` (`:root`, `[data-palette]`, `[data-theme]` blocks)
 
 ---
 

@@ -63,6 +63,9 @@ function applyConfig() {
     if (h1) h1.textContent = c.projectName + " - Go-Live Runbook";
     const sub = document.querySelector(".subtitle");
     if (sub) sub.textContent = [c.subtitle, c.changeRef].filter(Boolean).join(" | ");
+    if (c.accentColor) {
+        document.documentElement.style.setProperty('--color-primary', c.accentColor);
+    }
 }
 
 // ── Theme ──────────────────────────────────────────────────
@@ -79,6 +82,36 @@ function toggleTheme() {
     html.setAttribute("data-theme", next);
     localStorage.setItem("runbook_theme", next);
     renderHealthIndicator();
+}
+
+// ── Palette ────────────────────────────────────────────────
+
+function initPalette() {
+    const saved = localStorage.getItem("runbook_palette");
+    if (saved === "neon") document.documentElement.setAttribute("data-palette", "neon");
+    updatePaletteButton();
+}
+
+function togglePalette() {
+    const html = document.documentElement;
+    const current = html.getAttribute("data-palette");
+    const next = current === "neon" ? null : "neon";
+    if (next) {
+        html.setAttribute("data-palette", next);
+    } else {
+        html.removeAttribute("data-palette");
+    }
+    localStorage.setItem("runbook_palette", next || "corporate");
+    updatePaletteButton();
+    renderHealthIndicator();
+    render();
+}
+
+function updatePaletteButton() {
+    const btn = document.getElementById("paletteToggle");
+    if (!btn) return;
+    const isNeon = document.documentElement.getAttribute("data-palette") === "neon";
+    btn.textContent = isNeon ? "🟢 Neon" : "Corporate";
 }
 
 // ── Health ─────────────────────────────────────────────────
@@ -293,6 +326,10 @@ function bindEvents() {
     // Theme toggle
     document.getElementById("themeToggle").addEventListener("click", toggleTheme);
 
+    // Palette toggle
+    const paletteBtn = document.getElementById("paletteToggle");
+    if (paletteBtn) paletteBtn.addEventListener("click", togglePalette);
+
     // Health dots
     document.querySelectorAll(".health-dot").forEach(dot => {
         dot.addEventListener("click", () => setHealth(dot.dataset.health));
@@ -365,6 +402,7 @@ Object.assign(window, {
 // ── Boot ───────────────────────────────────────────────────
 
 initTheme();
+initPalette();
 updateClock();
 setInterval(updateClock, 1000);
 bindEvents();

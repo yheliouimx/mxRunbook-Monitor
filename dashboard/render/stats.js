@@ -9,11 +9,9 @@ export function renderHealthIndicator() {
     const ht = document.getElementById('healthText');
     ht.textContent = (HEALTH_META[state.healthStatus] || {}).label || state.healthStatus;
     ht.className = 'health-text ' + state.healthStatus.toLowerCase();
-    const isLight = document.documentElement.getAttribute('data-theme') === 'light';
-    const clockColors = isLight
-        ? { Green: '#1b8a2a', Amber: '#b8860b', Red: '#c62828' }
-        : { Green: '#39ff14', Amber: '#ffd700', Red: '#ff1744' };
-    document.getElementById('clock').style.color = clockColors[state.healthStatus] || clockColors.Green;
+    const clockEl = document.getElementById('clock');
+    const clockColorMap = { Green: 'var(--color-success)', Amber: 'var(--color-warning)', Red: 'var(--color-danger)' };
+    clockEl.style.color = clockColorMap[state.healthStatus] || clockColorMap.Green;
 }
 
 export function renderGlobalStats() {
@@ -22,15 +20,10 @@ export function renderGlobalStats() {
     const openIss = getOpenIssues().length;
     const blockIss = getBlockingIssues().length;
     const totalBlocking = blocking + blockIss;
-    const healthGradients = {
-        Green: 'linear-gradient(90deg, #39ff14, #5bc0ff)',
-        Amber: 'linear-gradient(90deg, #ffd700, #ff8c00)',
-        Red:   'linear-gradient(90deg, #ff8c00, #ff1744)'
-    };
-    const barGradient = healthGradients[state.healthStatus] || healthGradients.Green;
+    const healthClass = 'health-' + (state.healthStatus || 'Green').toLowerCase();
     document.getElementById("globalStats").innerHTML = `
-        <div class="stats-master">
-            <div class="progress-fill" style="width:${pct}%;background:${barGradient}"></div>
+        <div class="stats-master ${healthClass}">
+            <div class="progress-fill" style="width:${pct}%"></div>
             <div class="progress-text">
                 <div class="master-pct">${pct}%</div>
                 <div>

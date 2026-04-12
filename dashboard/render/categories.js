@@ -40,7 +40,7 @@ export function renderCategories(categories, renderAll, showToast) {
             return (!best || d < best) ? d : best;
         }, null).toISOString()) : "";
 
-        const fillColor = pct === 100 ? "#39ff14" : pct > 0 ? "#ffd84a" : "#ff6b6b";
+        const fillColor = pct === 100 ? "var(--color-success)" : pct > 0 ? "var(--color-warning-text)" : "var(--color-danger-text)";
 
         const div = document.createElement("div");
         div.className = "category";

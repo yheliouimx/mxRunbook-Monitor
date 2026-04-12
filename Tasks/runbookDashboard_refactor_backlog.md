@@ -116,23 +116,21 @@ Definition of done:
 Estimated effort:
 - 1 day
 
-**Phase 7**
+**Phase 7** ✅
 Extract shared export data and canvas helpers before touching visuals.
 
-1. Create dashboard/export/shared.js: Centralize shared export selectors for project title, timestamp, health metadata, stats, visible categories, active assignees, and issue lists.
-2. Create dashboard/export/canvas.js: Move repeated canvas helpers such as drawText, drawRoundRect, gradient helpers, logo draw helpers, and resize-if-overflow logic from runbookDashboard.html.
-3. Create dashboard/export/theme.js: Centralize export color maps for phone, email, and gantt surfaces so health/status colors are defined once.
-4. Update runbookDashboard.html: Refactor phone export to consume shared export data and shared canvas helpers without changing layout.
-5. Update runbookDashboard.html: Refactor email export to consume the same shared export data.
-6. Update runbookDashboard.html: Refactor gantt export to consume the same shared time bounds and category status model.
+1. ~~Create dashboard/export/shared.js: Centralize shared export selectors for project title, timestamp, health metadata, stats, visible categories, active assignees, and issue lists.~~ ✅
+2. ~~Create dashboard/export/canvas.js: Move repeated canvas helpers such as drawText, drawRoundRect, gradient helpers, logo draw helpers, and resize-if-overflow logic from runbookDashboard.html.~~ ✅
+3. ~~Create dashboard/export/theme.js: Centralize export color maps for phone, email, and gantt surfaces so health/status colors are defined once.~~ ✅
+4. ~~Create dashboard/export/phone.js: Refactor phone export to consume shared export data and shared canvas helpers without changing layout.~~ ✅
+5. ~~Create dashboard/export/email.js: Refactor email export to consume the same shared export data.~~ ✅
+6. ~~Create dashboard/export/gantt.js: Refactor gantt export to consume the same shared time bounds and category status model.~~ ✅
+7. ~~Update runbookDashboard.html: Replace ~930 lines of inline export code with 3-line delegations importing from the new modules.~~ ✅
 
 Definition of done:
-- exports still look the same
-- counts and labels match the main dashboard exactly
-- export-specific code is mostly drawing, not business logic
-
-Estimated effort:
-- 1.5 to 2 days
+- ~~exports still look the same~~ ✅
+- ~~counts and labels match the main dashboard exactly~~ ✅
+- ~~export-specific code is mostly drawing, not business logic~~ ✅
 
 **Phase 8**
 Normalize naming and remove drift.

@@ -1,62 +1,62 @@
 **Backlog**
 This is the safest concrete implementation backlog to get from the current monolith in runbookDashboard.html to a maintainable structure without changing the UI, exports, or runbook format. It is sequenced so each phase leaves the dashboard working.
 
-**Phase 0**
+**Phase 0** ✅
 Stabilize the current contract before moving code.
 
-1. runbookDashboard.html: Add a short architecture banner comment at the top of the script section describing the intended module split, the persistence policy, and the rule that the UI must stay visually unchanged during refactor.
-2. runbookDashboard.html: Inventory all status strings, health labels, reserved keys, and export filter values currently in use; mark every duplicate for extraction.
-3. runbookDashboard.html: Define the source-of-truth policy in code comments next to the initial load path so future refactor work does not drift.
-4. schema.py: Confirm the browser validation scope should mirror this file exactly for required fields and root structure; keep this file as the authoritative schema reference for runbook shape.
+1. ~~runbookDashboard.html: Add a short architecture banner comment at the top of the script section describing the intended module split, the persistence policy, and the rule that the UI must stay visually unchanged during refactor.~~ ✅
+2. ~~runbookDashboard.html: Inventory all status strings, health labels, reserved keys, and export filter values currently in use; mark every duplicate for extraction.~~ ✅
+3. ~~runbookDashboard.html: Define the source-of-truth policy in code comments next to the initial load path so future refactor work does not drift.~~ ✅
+4. ~~schema.py: Confirm the browser validation scope should mirror this file exactly for required fields and root structure; keep this file as the authoritative schema reference for runbook shape.~~ ✅
 
 Definition of done:
-- one documented contract for status names, reserved keys, and persistence behavior
-- no functional changes yet
+- ~~one documented contract for status names, reserved keys, and persistence behavior~~ ✅
+- ~~no functional changes yet~~ ✅
 
-**Phase 1**
+**Phase 1** ✅
 Create the shared module skeleton and move constants/state first.
 
-1. Create dashboard/constants.js: Extract canonical status values, status display labels, health labels, reserved keys, filter option values, default project config, and export mode values.
-2. Create dashboard/state.js: Move all mutable globals from runbookDashboard.html into a single exported state object, including runbook data, issues, filters, sorting, open categories, health state, issue form state, and export filter state.
-3. Create dashboard/dom.js: Centralize repeated DOM lookups such as container nodes, summary box, timeline, toast, file input, and header elements.
-4. Update runbookDashboard.html: Replace loose top-level variables with imports from the new state and constants modules.
-5. Update runbookDashboard.html: Convert the bootstrap sequence so the HTML file becomes an entry point that wires modules together instead of owning all logic.
+1. ~~Create dashboard/constants.js: Extract canonical status values, status display labels, health labels, reserved keys, filter option values, default project config, and export mode values.~~ ✅
+2. ~~Create dashboard/state.js: Move all mutable globals from runbookDashboard.html into a single exported state object, including runbook data, issues, filters, sorting, open categories, health state, issue form state, and export filter state.~~ ✅
+3. ~~Create dashboard/dom.js: Centralize repeated DOM lookups such as container nodes, summary box, timeline, toast, file input, and header elements.~~ ✅
+4. ~~Update runbookDashboard.html: Replace loose top-level variables with imports from the new state and constants modules.~~ ✅ (216 global→state.* replacements)
+5. ~~Update runbookDashboard.html: Convert the bootstrap sequence so the HTML file becomes an entry point that wires modules together instead of owning all logic.~~ ✅ (script type="module" + window re-exports for onclick handlers)
 
 Definition of done:
-- one state container
-- one constants module
-- no change in rendering or behavior
+- ~~one state container~~ ✅
+- ~~one constants module~~ ✅
+- ~~no change in rendering or behavior~~ ✅
 
 Estimated effort:
 - 0.5 to 1 day
 
-**Phase 2**
+**Phase 2** ✅
 Extract pure selectors and normalization logic.
 
-1. Create dashboard/selectors.js: Move normalizeStatus from runbookDashboard.html and keep one canonical mapping for internal values.
-2. Create dashboard/selectors.js: Move statusClass, computeCategoryStatus, getGlobalStats, getEarliestTime, getUniqueTeams, matchesSearch, matchesTeam, and sortCategories out of runbookDashboard.html.
-3. Create dashboard/selectors.js: Add derived helpers such as getOpenIssues, getClosedIssues, getBlockingIssues, getActiveAssignees, getVisibleCategories, getVisibleTasks, and getCompletionPct.
-4. Update runbookDashboard.html: Make global stats rendering consume selectors rather than recomputing counts inline.
-5. Update runbookDashboard.html: Make the main render path consume a single derived dashboard model instead of mixing filtering, sorting, and markup assembly in the same function.
+1. ~~Create dashboard/selectors.js: Move normalizeStatus from runbookDashboard.html and keep one canonical mapping for internal values.~~ ✅
+2. ~~Create dashboard/selectors.js: Move statusClass, computeCategoryStatus, getGlobalStats, getEarliestTime, getUniqueTeams, matchesSearch, matchesTeam, and sortCategories out of runbookDashboard.html.~~ ✅ (also moved formatTime, formatTimeShort, escapeHtml, getCategoryNames)
+3. ~~Create dashboard/selectors.js: Add derived helpers such as getOpenIssues, getClosedIssues, getBlockingIssues, getActiveAssignees, getVisibleCategories, getVisibleTasks, and getCompletionPct.~~ ✅ (getOpenIssues, getClosedIssues, getBlockingIssues, getCompletionPct added)
+4. ~~Update runbookDashboard.html: Make global stats rendering consume selectors rather than recomputing counts inline.~~ ✅ (renderGlobalStats now uses getCompletionPct(), getOpenIssues(), getBlockingIssues())
+5. ~~Update runbookDashboard.html: Make the main render path consume a single derived dashboard model instead of mixing filtering, sorting, and markup assembly in the same function.~~ ✅ (render() now uses getCategoryNames() via sortCategories; full view-model pattern deferred to Phase 5)
 
 Definition of done:
-- one place for status normalization
-- dashboard, summary, and exports can share the same derived counts
-- Blocking vs Blocked display drift is controlled centrally
+- ~~one place for status normalization~~ ✅
+- ~~dashboard, summary, and exports can share the same derived counts~~ ✅
+- Blocking vs Blocked display drift is controlled centrally ← Phase 8
 
 Estimated effort:
 - 1 day
 
-**Phase 3**
+**Phase 3** ✅
 Separate persistence and load flows.
 
-1. Create dashboard/persistence.js: Extract loadInitialRunbook from runbookDashboard.html with explicit precedence rules for browser draft versus server file.
-2. Create dashboard/persistence.js: Extract saveDraft from runbookDashboard.html so localStorage save and file download are clearly separated but still triggered together if that remains the chosen behavior.
-3. Create dashboard/persistence.js: Extract exportRunbookJson from runbookDashboard.html so file export is isolated from UI concerns.
-4. Create dashboard/persistence.js: Extract loadFromServer from runbookDashboard.html.
-5. Create dashboard/persistence.js: Extract loadFromFile from runbookDashboard.html.
-6. Create dashboard/persistence.js: Extract resetRunbook from runbookDashboard.html.
-7. Update runbookDashboard.html: Keep button handlers, but make them call persistence functions instead of inline logic.
+1. ~~Create dashboard/persistence.js: Extract loadInitialRunbook from runbookDashboard.html with explicit precedence rules for browser draft versus server file.~~ ✅
+2. ~~Create dashboard/persistence.js: Extract saveDraft from runbookDashboard.html so localStorage save and file download are clearly separated but still triggered together if that remains the chosen behavior.~~ ✅
+3. ~~Create dashboard/persistence.js: Extract exportRunbookJson from runbookDashboard.html so file export is isolated from UI concerns.~~ ✅
+4. ~~Create dashboard/persistence.js: Extract loadFromServer from runbookDashboard.html.~~ ✅
+5. ~~Create dashboard/persistence.js: Extract loadFromFile from runbookDashboard.html.~~ ✅
+6. ~~Create dashboard/persistence.js: Extract resetRunbook from runbookDashboard.html.~~ ✅
+7. ~~Update runbookDashboard.html: Keep button handlers, but make them call persistence functions instead of inline logic.~~ ✅ (loadRunbook→loadInitialRunbook, saveToLocalStorage→saveDraft, exportJSON→exportRunbookJson, reloadRunbookJSON→loadFromServer, handleRunbookFileSelected→loadFromFile, resetRunbook→doReset)
 
 Definition of done:
 - every load/save/reset path goes through one persistence layer

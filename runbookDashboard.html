@@ -1261,7 +1261,9 @@
 
 import { STATUS, STATUS_LABELS, HEALTH_META, RESERVED_KEYS, DEFAULT_PROJECT_CONFIG, SORT_MODES, EXPORT_FILTERS, HEALTH_STATUSES } from "./dashboard/constants.js";
 import { state } from "./dashboard/state.js";
+import { normalizeStatus, statusClass, computeCategoryStatus, formatTime, formatTimeShort, getEarliestTime, getCategoryNames, getGlobalStats, getUniqueTeams, matchesSearch, matchesTeam, sortCategories, escapeHtml, getOpenIssues, getClosedIssues, getBlockingIssues, getCompletionPct } from "./dashboard/selectors.js";
 import { dom } from "./dashboard/dom.js";
+import { loadInitialRunbook, loadFromServer, loadFromFile, saveDraft, exportRunbookJson, resetRunbook as doReset } from "./dashboard/persistence.js";
 
 async function loadConfig() {
     try {
@@ -1334,79 +1336,6 @@ function updateClock() {
         }) + " UK";
 }
 
-// EXTRACT: normalizeStatus → dashboard/selectors.js  (STATUS values → dashboard/constants.js)
-function normalizeStatus(s) {
-    if (!s || s === "NaN") return "Not Started";
-    const lower = s.toLowerCase().trim();
-    if (lower === "completed" || lower === "done") return "Completed";
-    if (lower.includes("progress")) return "In Progress";
-    if (lower === "blocked" || lower === "blocking") return "Blocking";
-    if (lower === "unneeded" || lower === "not needed" || lower === "n/a") return "Unneeded";
-    return "Not Started";
-}
-
-// EXTRACT: statusClass → dashboard/selectors.js
-function statusClass(s) {
-    if (s === "Completed") return "done";
-    if (s === "In Progress") return "inprogress";
-    if (s === "Blocking") return "blocked";
-    if (s === "Unneeded") return "unneeded";
-    return "notstarted";
-}
-
-function formatTime(iso) {
-    if (!iso) return "";
-    const d = new Date(iso);
-    if (isNaN(d)) return "";
-    return d.toLocaleString("en-GB", { month:"short", day:"2-digit", hour:"2-digit", minute:"2-digit", hour12:false });
-}
-
-function formatTimeShort(iso) {
-    if (!iso) return "";
-    const d = new Date(iso);
-    if (isNaN(d)) return "";
-    return d.toLocaleTimeString("en-GB", { hour:"2-digit", minute:"2-digit", hour12:false });
-}
-
-// EXTRACT: getEarliestTime → dashboard/selectors.js
-function getEarliestTime(tasks) {
-    let earliest = null;
-    for (const t of tasks) {
-        if (t.startTime) {
-            const d = new Date(t.startTime);
-            if (!isNaN(d) && (!earliest || d < earliest)) earliest = d;
-        }
-    }
-    return earliest;
-}
-
-// EXTRACT: computeCategoryStatus → dashboard/selectors.js
-function computeCategoryStatus(tasks) {
-    const done = tasks.filter(t => { const st = normalizeStatus(t.status); return st === "Completed" || st === "Unneeded"; }).length;
-    const inProg = tasks.filter(t => normalizeStatus(t.status) === "In Progress").length;
-    const blocking = tasks.filter(t => normalizeStatus(t.status) === "Blocking").length;
-    if (done === tasks.length) return "done";
-    if (blocking > 0) return "blocked";
-    if (done > 0 || inProg > 0) return "inprogress";
-    return "notstarted";
-}
-
-function escapeHtml(text) {
-    const div = document.createElement("div");
-    div.textContent = text;
-    return div.innerHTML;
-}
-
-// EXTRACT: getUniqueTeams → dashboard/selectors.js
-function getUniqueTeams() {
-    const teams = new Set();
-    Object.entries(state.runbookData).forEach(([key, tasks]) => {
-        if (key.startsWith("_") || !Array.isArray(tasks)) return;
-        tasks.forEach(t => { if (t.assignee) teams.add(t.assignee); });
-    });
-    return [...teams].sort((a, b) => a.localeCompare(b));
-}
-
 function populateTeamFilter() {
     const sel = document.getElementById("teamFilter");
     const current = sel.value;
@@ -1416,69 +1345,22 @@ function populateTeamFilter() {
     sel.value = current;
 }
 
-function matchesTeam(task) {
-    if (state.teamFilter === "all") return true;
-    return (task.assignee || "") === state.teamFilter;
-}
-
 async function loadRunbook() {
-    // ── PERSISTENCE SOURCE-OF-TRUTH POLICY ──────────────────────────────────
-    // Priority order on startup:
-    //   1. localStorage ("runbook_progress") — working draft wins if present and valid
-    //   2. runbook.json (server fetch)       — baseline template fallback
-    // On manual "Reload from server": always fetches runbook.json, discards draft.
-    // On local file import: replaces in-memory state.runbookData, does NOT auto-save localStorage.
-    // On save: writes localStorage AND downloads runbook.json snapshot.
-    // Reserved keys _issues and _health are always read/written with state.runbookData.
-    // → Phase 3 will extract this block into dashboard/persistence.js :: loadInitialRunbook()
-    // ────────────────────────────────────────────────────────────────────────
-    const saved = localStorage.getItem("runbook_progress");
-    if (saved) {
-        try {
-            state.runbookData = JSON.parse(saved);
-            state.issues = state.runbookData._issues || [];
-            state.healthStatus = state.runbookData._health || "Green";
-            showToast("Loaded saved progress");
-            render();
-            return;
-        } catch(e) { /* fall through to fetch */ }
-    }
     try {
-        const res = await fetch("runbook.json");
-        state.runbookData = await res.json();
-        state.issues = state.runbookData._issues || [];
-        state.healthStatus = state.runbookData._health || "Green";
-    } catch(e) {
+        const { source } = await loadInitialRunbook();
+        showToast(source === "browser draft" ? "Loaded saved progress" : "Loaded runbook.json");
+        render();
+    } catch (e) {
         document.getElementById("container").innerHTML =
             '<div class="no-results">Failed to load runbook.json. Make sure the file is in the same directory.</div>';
-        return;
     }
-    render();
-}
-
-// EXTRACT: getGlobalStats → dashboard/selectors.js
-function getGlobalStats() {
-    let total = 0, done = 0, inProg = 0, notStarted = 0, blocking = 0;
-    Object.entries(state.runbookData).forEach(([key, tasks]) => {
-        if (key.startsWith("_")) return;
-        if (!Array.isArray(tasks)) return;
-        tasks.forEach(t => {
-            total++;
-            const s = normalizeStatus(t.status);
-            if (s === "Completed" || s === "Unneeded") done++;
-            else if (s === "In Progress") inProg++;
-            else if (s === "Blocking") blocking++;
-            else notStarted++;
-        });
-    });
-    return { total, done, inProg, notStarted, blocking };
 }
 
 function renderGlobalStats() {
     const { total, done, inProg, notStarted, blocking } = getGlobalStats();
-    const pct = total > 0 ? Math.round((done / total) * 100) : 0;
-    const openIss = state.issues.filter(i => i.issueStatus === "Ongoing").length;
-    const blockIss = state.issues.filter(i => i.issueStatus === "Ongoing" && i.severity === "Blocking").length;
+    const pct = getCompletionPct();
+    const openIss = getOpenIssues().length;
+    const blockIss = getBlockingIssues().length;
     const totalBlocking = blocking + blockIss;
     const healthGradients = {
         Green: 'linear-gradient(90deg, #39ff14, #5bc0ff)',
@@ -1519,37 +1401,6 @@ function renderGlobalStats() {
     renderHealthIndicator();
 }
 
-// EXTRACT: matchesSearch → dashboard/selectors.js
-function matchesSearch(task) {
-    if (!state.searchQuery) return true;
-    const q = state.searchQuery.toLowerCase();
-    const text = ((task.item || "") + " " + (task.task || "") + " " + (task.assignee || "")).toLowerCase();
-    return text.includes(q);
-}
-
-// EXTRACT: sortCategories → dashboard/selectors.js
-function sortCategories(categories) {
-    if (state.sortMode === "completion") {
-        return [...categories].sort((a, b) => {
-            const pA = state.runbookData[a].filter(t => { const st = normalizeStatus(t.status); return st === "Completed" || st === "Unneeded"; }).length / state.runbookData[a].length;
-            const pB = state.runbookData[b].filter(t => { const st = normalizeStatus(t.status); return st === "Completed" || st === "Unneeded"; }).length / state.runbookData[b].length;
-            return pB - pA;
-        });
-    }
-    if (state.sortMode === "alpha") {
-        return [...categories].sort((a, b) => a.localeCompare(b));
-    }
-    // timeline: sort by earliest task start time
-    return [...categories].sort((a, b) => {
-        const tA = getEarliestTime(state.runbookData[a]);
-        const tB = getEarliestTime(state.runbookData[b]);
-        if (!tA && !tB) return 0;
-        if (!tA) return 1;
-        if (!tB) return -1;
-        return tA - tB;
-    });
-}
-
 function render() {
     renderGlobalStats();
     renderIssues();
@@ -1558,7 +1409,7 @@ function render() {
     const container = document.getElementById("container");
     container.innerHTML = "";
 
-    let categories = sortCategories(Object.keys(state.runbookData).filter(k => !k.startsWith("_")));
+    let categories = sortCategories(getCategoryNames());
     renderTimeline(categories);
 
     let anyVisible = false;
@@ -1773,43 +1624,18 @@ function renderTimeline(categories) {
     timeline.appendChild(items);
 }
 
-// EXTRACT: resetRunbook → dashboard/persistence.js :: resetRunbook()
 function resetRunbook() {
-    if (!confirm("⚠ WARNING: This will reset ALL task statuses back to \"Not Started\" and clear all issues.\n\nThis action cannot be undone.\n\nAre you sure?")) return;
-    if (!confirm("FINAL CONFIRMATION: You are about to reset the ENTIRE runbook. Continue?")) return;
-    Object.keys(state.runbookData).filter(k => !k.startsWith("_")).forEach(cat => {
-        state.runbookData[cat].forEach(t => { t.status = "Not Started"; });
-    });
-    state.issues.length = 0;
-    state.runbookData._issues = [];
-    state.healthStatus = "Green";
-    state.runbookData._health = "Green";
-    localStorage.removeItem("runbook_progress");
+    if (!doReset()) return;
     render();
     showToast("Runbook has been reset");
 }
 
-// EXTRACT: saveToLocalStorage → dashboard/persistence.js :: saveDraft()
 function saveToLocalStorage() {
-    state.runbookData._issues = state.issues;  // EXTRACT: "_issues" → RESERVED_KEYS.issues
-    state.runbookData._health = state.healthStatus;  // EXTRACT: "_health" → RESERVED_KEYS.health
-    localStorage.setItem("runbook_progress", JSON.stringify(state.runbookData));
-    // Also save to local file (runbook.json)
-    const blob = new Blob([JSON.stringify(state.runbookData, null, 2)], { type: "application/json" });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement("a");
-    a.href = url;
-    a.download = "runbook.json";
-    a.click();
-    URL.revokeObjectURL(url);
+    saveDraft();
     showToast("Progress saved to runbook.json");
 }
 
 // ── ISSUES MANAGEMENT ──
-function getCategoryNames() {
-    return Object.keys(state.runbookData).filter(k => !k.startsWith("_"));
-}
-
 function renderIssues() {
     const panel = document.getElementById("issuesPanel");
     const openIssues = state.issues.filter(i => i.issueStatus === "Ongoing");
@@ -3085,36 +2911,15 @@ function exportGantt() {
 }
 
 function exportJSON() {
-    const exportData = Object.assign({}, state.runbookData, { _issues: state.issues, _health: state.healthStatus });
-    const blob = new Blob([JSON.stringify(exportData, null, 2)], { type: "application/json" });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement("a");
-    a.href = url;
-    a.download = "runbook_" + new Date().toISOString().slice(0,10) + ".json";
-    a.click();
-    URL.revokeObjectURL(url);
+    exportRunbookJson();
     showToast("JSON exported (includes issues)");
 }
 
-function applyLoadedRunbook(fresh) {
-    if (!fresh || typeof fresh !== "object" || Array.isArray(fresh)) {
-        throw new Error("Invalid JSON structure");
-    }
-    state.runbookData = fresh;
-    state.issues = state.runbookData._issues || [];
-    state.healthStatus = state.runbookData._health || "Green";
-    state.issueFormOpen = false;
-    state.editingIssueId = null;
-    render();
-}
 
 async function reloadRunbookJSON() {
     try {
-        const res = await fetch("runbook.json?_ts=" + Date.now(), { cache: "no-store" });
-        if (!res.ok) throw new Error("HTTP " + res.status);
-
-        const fresh = await res.json();
-        applyLoadedRunbook(fresh);
+        await loadFromServer();
+        render();
         showToast("Reloaded runbook.json");
     } catch (e) {
         showToast("Failed to reload runbook.json");
@@ -3130,19 +2935,9 @@ function triggerFileRunbookLoad() {
 function handleRunbookFileSelected(event) {
     const file = event.target.files && event.target.files[0];
     if (!file) return;
-
-    const reader = new FileReader();
-    reader.onload = () => {
-        try {
-            const fresh = JSON.parse(reader.result);
-            applyLoadedRunbook(fresh);
-            showToast("Loaded runbook from local file");
-        } catch (e) {
-            showToast("Invalid JSON file");
-        }
-    };
-    reader.onerror = () => showToast("Failed to read local file");
-    reader.readAsText(file);
+    loadFromFile(file)
+        .then(() => { render(); showToast("Loaded runbook from local file"); })
+        .catch(e => showToast(e.message || "Failed to read local file"));
 }
 
 function expandAll() {

@@ -83,15 +83,15 @@ Definition of done:
 Estimated effort:
 - 0.5 day
 
-**Phase 5**
+**Phase 5** ✅
 Split the main DOM renderer into focused modules.
 
-1. Create dashboard/render/stats.js: Move renderGlobalStats from runbookDashboard.html into a pure renderer that accepts a derived stats model.
-2. Create dashboard/render/timeline.js: Move renderTimeline from runbookDashboard.html and make it depend only on visible categories and selector output.
-3. Create dashboard/render/categories.js: Move the category card and task row rendering logic from runbookDashboard.html into isolated functions for category header, progress bar, task row, status popup, and assignee editor markup.
-4. Create dashboard/render/issues.js: Move renderIssues from runbookDashboard.html into its own renderer with a small API for form state and issue collections.
-5. Create dashboard/render/summary.js: Move generateSummary and copySummaryToClipboard from runbookDashboard.html into a summary renderer plus clipboard helper.
-6. Update runbookDashboard.html: Replace the monolithic render function with a coordinator that calls renderStats, renderIssues, renderTimeline, and renderCategories in order.
+1. ~~Create dashboard/render/stats.js: Move renderGlobalStats from runbookDashboard.html into a pure renderer that accepts a derived stats model.~~ ✅ (also includes renderHealthIndicator)
+2. ~~Create dashboard/render/timeline.js: Move renderTimeline from runbookDashboard.html and make it depend only on visible categories and selector output.~~ ✅ (accepts renderAll callback for click-to-expand)
+3. ~~Create dashboard/render/categories.js: Move the category card and task row rendering logic from runbookDashboard.html into isolated functions for category header, progress bar, task row, status popup, and assignee editor markup.~~ ✅ (accepts renderAll + showToast callbacks)
+4. ~~Create dashboard/render/issues.js: Move renderIssues from runbookDashboard.html into its own renderer with a small API for form state and issue collections.~~ ✅ (also exports toggleIssueForm, saveIssue, closeIssue, reopenIssue, editIssue, deleteIssue)
+5. ~~Create dashboard/render/summary.js: Move generateSummary and copySummaryToClipboard from runbookDashboard.html into a summary renderer plus clipboard helper.~~ ✅
+6. ~~Update runbookDashboard.html: Replace the monolithic render function with a coordinator that calls renderStats, renderIssues, renderTimeline, and renderCategories in order.~~ ✅ (render() is now 6 lines: stats → issues → teamFilter → timeline → categories)
 
 Definition of done:
 - each visual surface has one renderer file

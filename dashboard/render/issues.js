@@ -37,7 +37,8 @@ export function renderIssues() {
             </button>
         </div>
 
-        <div class="issue-add-form ${state.issueFormOpen ? 'open' : ''}" id="issueForm">
+        <div class="issue-add-form-wrapper ${state.issueFormOpen ? 'open' : ''}" id="issueFormWrapper">
+        <div class="issue-add-form" id="issueForm">
             <div class="issue-form-row">
                 <div class="issue-field" style="flex:2">
                     <label>Description</label>
@@ -75,6 +76,7 @@ export function renderIssues() {
                 <button class="issue-btn" onclick="toggleIssueForm()">Cancel</button>
                 <button class="issue-btn save" onclick="saveIssue()">${state.editingIssueId !== null ? 'Update' : 'Add Issue'}</button>
             </div>
+        </div>
         </div>
 
         <div id="issuesList" style="display:${state.issuesPanelOpen ? 'block' : 'none'}">

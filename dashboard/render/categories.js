@@ -59,7 +59,8 @@ export function renderCategories(categories, renderAll, showToast) {
                 </div>
             </div>
             <div class="cat-progress"><div class="cat-progress-fill" style="width:${pct}%; background:${fillColor}"></div></div>
-            <div class="tasks ${isOpen ? 'open' : ''}">
+            <div class="tasks-wrapper ${isOpen ? 'open' : ''}">
+            <div class="tasks">
                 ${(state.searchQuery || state.teamFilter !== "all" ? matchingTasks : tasks).map((t, i) => {
                     const realIdx = tasks.indexOf(t);
                     const ns = normalizeStatus(t.status);
@@ -84,6 +85,7 @@ export function renderCategories(categories, renderAll, showToast) {
                         </div>
                     </div>`;
                 }).join("")}
+            </div>
             </div>
         `;
         container.appendChild(div);

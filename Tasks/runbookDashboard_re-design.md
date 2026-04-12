@@ -28,35 +28,33 @@
 
 ## P1 — High (Visual Polish)
 
-### 4. Typography upgrade
-- Replace `'Segoe UI', system-ui` with a distinctive sans-serif (e.g. DM Sans, IBM Plex Sans, Outfit)
-- Replace `'Consolas'` with a modern monospace (e.g. JetBrains Mono, IBM Plex Mono)
-- Add a proper type scale as CSS custom properties: `--text-xs` through `--text-3xl`
-- Use a bolder/different face for the page title `h1`
-- **Files:** `runbookDashboard.html` (`<head>` for font loading, CSS body/font rules)
+### ~~4. Typography upgrade~~ ✅ Done (2026-04-13)
+- ~~Body font: Outfit (Google Fonts), monospace: JetBrains Mono~~
+- ~~Type scale CSS custom properties: `--text-xs` through `--text-3xl`~~
+- ~~All font-family references updated to `var(--font-sans)` / `var(--font-mono)`~~
+- **Files:** `runbookDashboard.html` (`<head>` font loading, `:root` type scale, body/font rules)
 
-### 5. Smooth accordion animations
-- Current: `.tasks` toggles `display: none/block` — instant appearance
-- Target: `max-height` + `overflow: hidden` transition, or CSS `grid-template-rows: 0fr → 1fr`
-- Also animate the issue form open/close
-- **Files:** `runbookDashboard.html` (CSS `.tasks`, `.issue-add-form`), `dashboard/render/categories.js`
+### ~~5. Smooth accordion animations~~ ✅ Done (2026-04-13)
+- ~~`.tasks` wrapped in `.tasks-wrapper` using `grid-template-rows: 0fr → 1fr` transition~~
+- ~~Issue form wrapped in `.issue-add-form-wrapper` with same grid animation~~
+- **Files:** `runbookDashboard.html` (CSS), `dashboard/render/categories.js`, `dashboard/render/issues.js`
 
-### 6. Sticky filter bar
-- Make `.controls` stick below the header on scroll (`position: sticky; top: 0; z-index: 10`)
-- Add a subtle background/backdrop-blur and bottom border when stuck
-- **Files:** `runbookDashboard.html` (CSS `.controls`)
+### ~~6. Sticky filter bar~~ ✅ Done (2026-04-13)
+- ~~`.controls` sticky with `position: sticky; top: 0; z-index: 10`~~
+- ~~Backdrop-blur via `@supports`, border appears when stuck (IntersectionObserver)~~
+- **Files:** `runbookDashboard.html` (CSS), `dashboard/app.js` (scroll observer)
 
-### 7. Accessible filter buttons
-- Convert `div.filterBtn` to `<button>` elements
-- Add `aria-pressed` toggling
-- Add visible `:focus-visible` ring styles
-- **Files:** `runbookDashboard.html` (markup + CSS)
+### ~~7. Accessible filter buttons~~ ✅ Done (2026-04-13)
+- ~~`div.filterBtn` → `button.filterBtn` with `aria-pressed` toggling~~
+- ~~`:focus-visible` ring style added~~
+- ~~Filter group has `role="group"` + `aria-label`~~
+- **Files:** `runbookDashboard.html` (markup + CSS), `dashboard/app.js` (aria-pressed logic)
 
-### 8. Compact top bar header
-- Replace centered decorative header with a compact top bar layout
-- Logo left, project name + subtitle center/left, theme toggle + settings right
-- Reduce vertical space consumed by the header section
-- **Files:** `runbookDashboard.html` (markup + CSS `.header`)
+### ~~8. Compact top bar header~~ ✅ Done (2026-04-13)
+- ~~Horizontal layout: logo left, project name + subtitle, health center, clock + toggles right~~
+- ~~`flex-wrap` for narrow viewports; header vertical space reduced~~
+- ~~Theme & palette toggles moved into header-right~~
+- **Files:** `runbookDashboard.html` (markup + CSS `.header`), `dashboard/app.js`
 
 ---
 

@@ -108,10 +108,11 @@ function togglePalette() {
 }
 
 function updatePaletteButton() {
-    const btn = document.getElementById("paletteToggle");
-    if (!btn) return;
     const isNeon = document.documentElement.getAttribute("data-palette") === "neon";
-    btn.textContent = isNeon ? "🟢 Neon" : "Corporate";
+    const label = isNeon ? "🟢 Neon" : "Corporate";
+    document.querySelectorAll("#paletteToggle, #paletteToggle2").forEach(btn => {
+        if (btn) btn.textContent = label;
+    });
 }
 
 // ── Health ─────────────────────────────────────────────────
@@ -323,27 +324,44 @@ function detectAssets() {
 // ── Static event listeners ─────────────────────────────────
 
 function bindEvents() {
-    // Theme toggle
-    document.getElementById("themeToggle").addEventListener("click", toggleTheme);
+    // Theme toggle (primary in header-right, fallback hidden wrap)
+    document.querySelectorAll("#themeToggle, #themeToggle2").forEach(el => {
+        if (el) el.addEventListener("click", toggleTheme);
+    });
 
-    // Palette toggle
-    const paletteBtn = document.getElementById("paletteToggle");
-    if (paletteBtn) paletteBtn.addEventListener("click", togglePalette);
+    // Palette toggle (primary in header-right, fallback hidden wrap)
+    document.querySelectorAll("#paletteToggle, #paletteToggle2").forEach(el => {
+        if (el) el.addEventListener("click", togglePalette);
+    });
 
     // Health dots
     document.querySelectorAll(".health-dot").forEach(dot => {
         dot.addEventListener("click", () => setHealth(dot.dataset.health));
     });
 
-    // Filter buttons
+    // Filter buttons (accessible: button elements with aria-pressed)
     document.querySelectorAll(".filterBtn").forEach(btn => {
         btn.addEventListener("click", () => {
-            document.querySelectorAll(".filterBtn").forEach(b => b.classList.remove("active"));
+            document.querySelectorAll(".filterBtn").forEach(b => {
+                b.classList.remove("active");
+                b.setAttribute("aria-pressed", "false");
+            });
             btn.classList.add("active");
+            btn.setAttribute("aria-pressed", "true");
             state.filterState = btn.dataset.filter;
             render();
         });
     });
+
+    // Sticky filter bar scroll detection
+    const controlsBar = document.getElementById("controlsBar");
+    if (controlsBar) {
+        const observer = new IntersectionObserver(
+            ([e]) => controlsBar.classList.toggle("stuck", e.intersectionRatio < 1),
+            { threshold: [1], rootMargin: "-1px 0px 0px 0px" }
+        );
+        observer.observe(controlsBar);
+    }
 
     // Search
     document.getElementById("searchBox").addEventListener("input", (e) => {

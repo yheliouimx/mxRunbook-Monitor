@@ -5,6 +5,9 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Go-Live Runbook Dashboard</title>
 <link rel="icon" id="favicon" type="image/png" href="">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
 <style>
     /* ═══════════════════════════════════════════════════════
        SEMANTIC DESIGN TOKENS — Corporate Palette (Dark)
@@ -230,12 +233,26 @@
         --color-toast-text: #2e7d32;
     }
 
+    /* ═══ TYPE SCALE ═══ */
+    :root {
+        --font-sans: 'Outfit', system-ui, -apple-system, sans-serif;
+        --font-mono: 'JetBrains Mono', 'Consolas', 'Courier New', monospace;
+        --text-xs: 0.68rem;
+        --text-sm: 0.78rem;
+        --text-base: 0.88rem;
+        --text-md: 0.95rem;
+        --text-lg: 1.1rem;
+        --text-xl: 1.35rem;
+        --text-2xl: 1.65rem;
+        --text-3xl: 2rem;
+    }
+
     *, *::before, *::after { box-sizing: border-box; }
 
     body {
         background: var(--bg);
         color: var(--text);
-        font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+        font-family: var(--font-sans);
         margin: 0 auto;
         padding: 20px 30px;
         max-width: 1280px;
@@ -258,32 +275,45 @@
     }
     [data-theme="light"] .bg-overlay { opacity: 0.80; }
 
-    /* HEADER */
+    /* HEADER — compact top bar */
     .header {
-        text-align: center;
-        margin-bottom: 30px;
-        padding-bottom: 20px;
+        display: flex;
+        align-items: center;
+        gap: 16px;
+        margin-bottom: 20px;
+        padding: 12px 16px;
         border-bottom: 1px solid var(--divider);
         position: relative;
+        flex-wrap: wrap;
     }
     [data-theme="light"] .header {
         background: rgba(255,255,255,0.7);
         backdrop-filter: blur(6px);
         -webkit-backdrop-filter: blur(6px);
         border-radius: 14px;
-        padding: 20px 20px 20px;
-        margin: -10px -10px 30px;
+        padding: 14px 20px;
+        margin: -10px -10px 20px;
+    }
+    .header-left {
+        display: flex;
+        align-items: center;
+        gap: 14px;
+        flex: 1 1 300px;
+        min-width: 0;
+    }
+    .header-info {
+        display: flex;
+        flex-direction: column;
+        min-width: 0;
     }
     .header-row {
         display: flex;
         align-items: center;
-        justify-content: center;
         gap: 16px;
-        margin-bottom: 6px;
     }
     .client-logo {
-        width: 54px;
-        height: 54px;
+        width: 44px;
+        height: 44px;
         object-fit: contain;
         flex-shrink: 0;
         border-radius: 6px;
@@ -291,51 +321,69 @@
     .client-logo.hidden { display: none; }
     .header h1 {
         margin: 0;
-        font-size: 1.6em;
+        font-size: var(--text-lg);
+        font-weight: 700;
         color: var(--text);
-        letter-spacing: 0.5px;
+        letter-spacing: -0.01em;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
     }
     .header .subtitle {
         color: var(--text-muted);
-        font-size: 0.9em;
+        font-size: var(--text-xs);
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
     }
     .header .clock {
-        margin-top: 8px;
-        font-size: 1.1em;
+        font-size: var(--text-sm);
         color: var(--green);
-        font-family: 'Consolas', 'Courier New', monospace;
+        font-family: var(--font-mono);
         transition: color 0.3s ease;
+        white-space: nowrap;
+    }
+    .header-center {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        flex-shrink: 0;
+    }
+    .header-right {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        flex-shrink: 0;
     }
 
     /* HEALTH INDICATOR */
     .health-bar {
         display: flex;
         align-items: center;
-        justify-content: center;
-        gap: 14px;
-        margin-top: 14px;
+        gap: 10px;
     }
     .health-label {
-        font-size: 0.82em;
+        font-size: var(--text-xs);
         color: var(--text-muted);
         text-transform: uppercase;
         letter-spacing: 1px;
+        white-space: nowrap;
     }
     .health-indicator {
         display: flex;
         gap: 6px;
     }
     .health-dot {
-        min-width: 44px;
-        height: 38px;
-        padding: 0 10px;
-        border-radius: 19px;
-        border: 3px solid var(--input-border);
+        min-width: 38px;
+        height: 32px;
+        padding: 0 8px;
+        border-radius: 16px;
+        border: 2px solid var(--input-border);
         cursor: pointer;
         display: flex;
         align-items: center;
         justify-content: center;
-        font-size: 0.7em;
+        font-size: var(--text-xs);
         font-weight: bold;
         transition: all 0.2s;
         opacity: 0.3;
@@ -351,7 +399,7 @@
     .health-dot.red { background: var(--health-red-bg); border-color: var(--health-red); color: var(--health-red); }
     .health-dot.red.active { box-shadow: 0 0 20px rgba(255,51,51,0.3); }
     .health-text {
-        font-size: 1em;
+        font-size: var(--text-sm);
         font-weight: 700;
         letter-spacing: 1px;
     }
@@ -388,7 +436,7 @@
         z-index: 1;
     }
     .stats-master .master-pct {
-        font-size: 1.8em;
+        font-size: var(--text-2xl);
         font-weight: bold;
         color: #fff;
         text-shadow: 0 1px 4px rgba(0,0,0,0.6);
@@ -434,11 +482,11 @@
         min-width: 0;
     }
     .stat-card .stat-value {
-        font-size: 1.8em;
+        font-size: var(--text-2xl);
         font-weight: bold;
     }
     .stat-card .stat-label {
-        font-size: 0.7em;
+        font-size: var(--text-xs);
         color: var(--text-muted);
         text-transform: uppercase;
         letter-spacing: 1px;
@@ -490,13 +538,40 @@
         text-shadow: 0 0 4px rgba(0,0,0,0.8);
     }
 
-    /* CONTROLS */
+    /* CONTROLS — sticky filter bar */
     .controls {
         display: flex;
         gap: 10px;
         margin-bottom: 20px;
         flex-wrap: wrap;
         align-items: center;
+        position: sticky;
+        top: 0;
+        z-index: 10;
+        background: var(--bg);
+        padding: 10px 0;
+        transition: background 0.3s;
+    }
+    .controls::after {
+        content: '';
+        position: absolute;
+        bottom: 0;
+        left: -30px;
+        right: -30px;
+        height: 1px;
+        background: var(--divider);
+        opacity: 0;
+        transition: opacity 0.2s;
+    }
+    .controls.stuck::after {
+        opacity: 1;
+    }
+    @supports (backdrop-filter: blur(8px)) {
+        .controls {
+            background: color-mix(in srgb, var(--bg) 85%, transparent);
+            backdrop-filter: blur(8px);
+            -webkit-backdrop-filter: blur(8px);
+        }
     }
     .filter-group {
         display: flex;
@@ -509,12 +584,14 @@
         border-radius: 6px;
         cursor: pointer;
         color: var(--text-muted);
-        font-size: 0.85em;
+        font-family: inherit;
+        font-size: var(--text-sm);
         transition: all 0.2s;
         user-select: none;
     }
     .filterBtn:hover { background: var(--bar-bg); color: var(--text); }
     .filterBtn.active { background: var(--input-border); color: var(--text); border-color: var(--text-dim); }
+    .filterBtn:focus-visible { outline: 2px solid var(--color-info); outline-offset: 2px; }
 
     .search-box {
         flex: 1;
@@ -629,9 +706,9 @@
         flex-shrink: 0;
     }
     .cat-time {
-        font-size: 0.72em;
+        font-size: var(--text-xs);
         color: var(--text-dim);
-        font-family: 'Consolas', monospace;
+        font-family: var(--font-mono);
     }
     .status-tag {
         padding: 3px 10px;
@@ -659,12 +736,22 @@
         border-radius: 5px;
     }
 
-    /* TASK LIST */
+    /* TASK LIST — animated accordion */
+    .tasks-wrapper {
+        display: grid;
+        grid-template-rows: 0fr;
+        transition: grid-template-rows 0.3s ease;
+    }
+    .tasks-wrapper.open {
+        grid-template-rows: 1fr;
+    }
     .tasks {
-        display: none;
+        overflow: hidden;
+        padding: 0 18px;
+    }
+    .tasks-wrapper.open .tasks {
         padding: 4px 18px 14px;
     }
-    .tasks.open { display: block; }
 
     .task-row {
         display: flex;
@@ -812,9 +899,9 @@
         flex-shrink: 0;
     }
     .task-time {
-        font-size: 0.7em;
+        font-size: var(--text-xs);
         color: var(--text-dim);
-        font-family: 'Consolas', monospace;
+        font-family: var(--font-mono);
         white-space: nowrap;
     }
     .task-status-dot {
@@ -1010,15 +1097,24 @@
         font-size: 0.75em;
         font-weight: 600;
     }
+    .issue-add-form-wrapper {
+        display: grid;
+        grid-template-rows: 0fr;
+        transition: grid-template-rows 0.3s ease;
+    }
+    .issue-add-form-wrapper.open {
+        grid-template-rows: 1fr;
+    }
     .issue-add-form {
-        display: none;
+        overflow: hidden;
         background: var(--issue-form-bg);
         border: 1px solid var(--card-border);
         border-radius: 8px;
-        padding: 14px;
         margin-bottom: 14px;
     }
-    .issue-add-form.open { display: block; }
+    .issue-add-form-wrapper.open .issue-add-form {
+        padding: 14px;
+    }
     .issue-form-row {
         display: flex;
         gap: 10px;
@@ -1180,7 +1276,7 @@
         position: absolute;
         top: 20px;
         right: 30px;
-        display: flex;
+        display: none;
         align-items: center;
         gap: 6px;
         z-index: 10;
@@ -1210,7 +1306,7 @@
 
 <body>
 
-<div class="theme-toggle-wrap">
+<div class="theme-toggle-wrap" id="headerToggles" style="display:none">
     <button class="palette-btn" id="paletteToggle" title="Switch color palette">Corporate</button>
     <span class="theme-toggle-label">🌙</span>
     <div class="theme-toggle" id="themeToggle" title="Toggle light/dark mode">
@@ -1224,20 +1320,30 @@
 <div id="snapshot-area">
 
 <div class="header">
-    <div class="header-row">
+    <div class="header-left">
         <img id="clientLogo" class="client-logo hidden" alt="Client Logo">
-        <h1>Go-Live Runbook</h1>
-    </div>
-    <div class="subtitle"></div>
-    <div class="clock" id="clock"></div>
-    <div class="health-bar">
-        <span class="health-label">Go-Live Health:</span>
-        <div class="health-indicator">
-            <div class="health-dot green" data-health="Green" title="Green - On Track">GO</div>
-            <div class="health-dot amber" data-health="Amber" title="Amber - At Risk">AT RISK</div>
-            <div class="health-dot red" data-health="Red" title="Red - Rollback">STOP</div>
+        <div class="header-info">
+            <h1>Go-Live Runbook</h1>
+            <div class="subtitle"></div>
         </div>
-        <span class="health-text" id="healthText"></span>
+    </div>
+    <div class="header-center">
+        <div class="health-bar">
+            <span class="health-label">Health:</span>
+            <div class="health-indicator">
+                <div class="health-dot green" data-health="Green" title="Green - On Track">GO</div>
+                <div class="health-dot amber" data-health="Amber" title="Amber - At Risk">AT RISK</div>
+                <div class="health-dot red" data-health="Red" title="Red - Rollback">STOP</div>
+            </div>
+            <span class="health-text" id="healthText"></span>
+        </div>
+    </div>
+    <div class="header-right">
+        <div class="clock" id="clock"></div>
+        <button class="palette-btn" id="paletteToggle2" title="Switch color palette">Corporate</button>
+        <div class="theme-toggle" id="themeToggle2" title="Toggle light/dark mode">
+            <div class="theme-toggle-knob"></div>
+        </div>
     </div>
 </div>
 
@@ -1247,14 +1353,14 @@
 
 </div><!-- end snapshot-area -->
 
-<div class="controls">
-    <div class="filter-group">
-        <div class="filterBtn active" data-filter="all">All</div>
-        <div class="filterBtn" data-filter="done">Completed</div>
-        <div class="filterBtn" data-filter="inprogress">In Progress</div>
-        <div class="filterBtn" data-filter="notstarted">Not Started</div>
-        <div class="filterBtn" data-filter="blocked">Blocked</div>
-        <div class="filterBtn" data-filter="unneeded">Unneeded</div>
+<div class="controls" id="controlsBar">
+    <div class="filter-group" role="group" aria-label="Filter tasks by status">
+        <button class="filterBtn active" data-filter="all" aria-pressed="true">All</button>
+        <button class="filterBtn" data-filter="done" aria-pressed="false">Completed</button>
+        <button class="filterBtn" data-filter="inprogress" aria-pressed="false">In Progress</button>
+        <button class="filterBtn" data-filter="notstarted" aria-pressed="false">Not Started</button>
+        <button class="filterBtn" data-filter="blocked" aria-pressed="false">Blocked</button>
+        <button class="filterBtn" data-filter="unneeded" aria-pressed="false">Unneeded</button>
     </div>
     <input type="text" class="search-box" id="searchBox" placeholder="Search tasks...">
     <select class="team-select" id="teamFilter">

@@ -173,24 +173,26 @@ Definition of done:
 Estimated effort:
 - 0.5 day
 
-**Phase 10**
+**Phase 10** ✅
 Add test infrastructure and initial unit test coverage.
 
-1. Initialize npm project and install Vitest + happy-dom as dev dependencies. Add `"test"` script to package.json.
-2. Create vitest.config.js with happy-dom environment so tests get a lightweight DOM without a real browser.
-3. Create tests/validation.test.js: Test validate() rejects non-objects, missing required fields, non-array categories; test normalize() fills null/undefined optional fields; test formatErrors() truncation logic; test validateAndNormalize() end-to-end with valid and invalid payloads.
-4. Create tests/selectors.test.js: Test normalizeStatus() canonical mapping and unknown-status passthrough; test computeCategoryStatus() for all status combinations; test getGlobalStats() counts; test getOpenIssues(), getBlockingIssues(), getCompletionPct() against a seeded state; test sortCategories() for each sort mode; test matchesSearch() and matchesTeam() filtering; test escapeHtml() against XSS vectors.
-5. Create tests/constants.test.js: Assert STATUS values match the keys in STATUS_LABELS; assert HEALTH_META covers all HEALTH_STATUSES; assert RESERVED_KEYS values start with underscore. These are contract guards, not logic tests.
-6. Create tests/persistence.test.js: Mock fetch and localStorage; test loadInitialRunbook() prefers localStorage draft over server fetch; test loadInitialRunbook() falls through to fetch on corrupt localStorage; test saveDraft() writes to localStorage and triggers download; test resetRunbook() clears state and localStorage; test applyLoadedRunbook() rejects invalid JSON via validation.
-7. Create tests/state.test.js: Test initial state shape has all expected keys; test that mutating state is reflected in selector output (integration smoke test).
-8. Add tests for any render, actions, or export modules that exist by this phase — at minimum verify they export the expected functions and don't throw on basic input.
+1. ~~Initialize npm project and install Vitest + happy-dom as dev dependencies. Add `"test"` script to package.json.~~ ✅
+2. ~~Create vitest.config.js with happy-dom environment so tests get a lightweight DOM without a real browser.~~ ✅
+3. ~~Create tests/validation.test.js: Test validate() rejects non-objects, missing required fields, non-array categories; test normalize() fills null/undefined optional fields; test formatErrors() truncation logic; test validateAndNormalize() end-to-end with valid and invalid payloads.~~ ✅ (29 tests)
+4. ~~Create tests/selectors.test.js: Test normalizeStatus() canonical mapping and unknown-status passthrough; test computeCategoryStatus() for all status combinations; test getGlobalStats() counts; test getOpenIssues(), getBlockingIssues(), getCompletionPct() against a seeded state; test sortCategories() for each sort mode; test matchesSearch() and matchesTeam() filtering; test escapeHtml() against XSS vectors.~~ ✅ (59 tests)
+5. ~~Create tests/constants.test.js: Assert STATUS values match the keys in STATUS_LABELS; assert HEALTH_META covers all HEALTH_STATUSES; assert RESERVED_KEYS values start with underscore. These are contract guards, not logic tests.~~ ✅ (23 tests)
+6. ~~Create tests/persistence.test.js: Mock fetch and localStorage; test loadInitialRunbook() prefers localStorage draft over server fetch; test loadInitialRunbook() falls through to fetch on corrupt localStorage; test saveDraft() writes to localStorage and triggers download; test resetRunbook() clears state and localStorage; test applyLoadedRunbook() rejects invalid JSON via validation.~~ ✅ (18 tests)
+7. ~~Create tests/state.test.js: Test initial state shape has all expected keys; test that mutating state is reflected in selector output (integration smoke test).~~ ✅ (12 tests)
+8. ~~Add tests for any render, actions, or export modules that exist by this phase — at minimum verify they export the expected functions and don't throw on basic input.~~ ✅ (tests/actions.test.js: 31 tests for tasks, issues, health actions; tests/modules.test.js: 12 export-smoke tests for all render, export, and app modules)
+
+Results: **7 test files, 184 tests, all passing** via `npm test` (Vitest 2.1.9 + happy-dom)
 
 Definition of done:
-- `npm test` runs all suites from the command line
-- pure modules (validation, selectors, constants) have full coverage
-- persistence has coverage for all load/save/reset paths with mocked browser APIs
-- CI-ready: no browser required, no network required
-- test failures surface as actionable messages, not generic assertion dumps
+- ~~`npm test` runs all suites from the command line~~ ✅
+- ~~pure modules (validation, selectors, constants) have full coverage~~ ✅
+- ~~persistence has coverage for all load/save/reset paths with mocked browser APIs~~ ✅
+- ~~CI-ready: no browser required, no network required~~ ✅
+- ~~test failures surface as actionable messages, not generic assertion dumps~~ ✅
 
 Estimated effort:
 - 1 to 1.5 days

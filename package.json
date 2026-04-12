@@ -1,0 +1,17 @@
+{
+  "name": "mxrunbook-monitor",
+  "version": "1.0.0",
+  "description": "A lightweight, zero-infrastructure monitoring tool for production go-live events. Track task progress, export status snapshots, and share updates — all from a single HTML file opened in a browser.",
+  "main": "_serve.js",
+  "scripts": {
+    "test": "vitest run",
+    "test:watch": "vitest"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "devDependencies": {
+    "happy-dom": "^20.8.9",
+    "vitest": "^2.1.9"
+  }
+}

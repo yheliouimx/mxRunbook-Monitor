@@ -1,5 +1,6 @@
 import { state } from "./state.js";
 import { RESERVED_KEYS } from "./constants.js";
+import { validateAndNormalize, formatErrors } from "./validation.js";
 
 // ── Internal helpers ──
 
@@ -25,15 +26,15 @@ export async function loadInitialRunbook() {
     const saved = localStorage.getItem("runbook_progress");
     if (saved) {
         try {
-            state.runbookData = JSON.parse(saved);
-            readReservedKeys();
+            const parsed = JSON.parse(saved);
+            applyLoadedRunbook(parsed);
             return { source: "browser draft" };
         } catch (e) { /* fall through to fetch */ }
     }
     const res = await fetch("runbook.json");
     if (!res.ok) throw new Error("HTTP " + res.status);
-    state.runbookData = await res.json();
-    readReservedKeys();
+    const fetched = await res.json();
+    applyLoadedRunbook(fetched);
     return { source: "runbook.json" };
 }
 
@@ -70,13 +71,14 @@ export function loadFromFile(file) {
 
 /**
  * Apply a parsed runbook object as the active in-memory state.
- * Validates minimally, reads reserved keys, resets UI state.
+ * Validates against schema, normalizes optional fields, then applies.
  */
 export function applyLoadedRunbook(fresh) {
-    if (!fresh || typeof fresh !== "object" || Array.isArray(fresh)) {
-        throw new Error("Invalid JSON structure");
+    const { errors, data } = validateAndNormalize(fresh);
+    if (errors.length > 0) {
+        throw new Error(formatErrors(errors));
     }
-    state.runbookData = fresh;
+    state.runbookData = data;
     readReservedKeys();
     state.issueFormOpen = false;
     state.editingIssueId = null;

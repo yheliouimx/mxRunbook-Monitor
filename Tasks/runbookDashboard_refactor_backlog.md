@@ -66,14 +66,14 @@ Definition of done:
 Estimated effort:
 - 0.5 to 1 day
 
-**Phase 4**
+**Phase 4** ✅
 Add browser-side validation aligned with the Python schema.
 
-1. Create dashboard/validation.js: Mirror the structural checks from schema.py for root object, category arrays, and required task and status fields.
-2. Create dashboard/validation.js: Add normalization helpers for optional fields such as item, assignee, startTime, and endTime so the UI always receives a stable shape.
-3. Create dashboard/validation.js: Add user-facing error formatting that turns raw validation errors into short toast-friendly messages.
-4. Update runbookDashboard.html: Replace the loose object check in applyLoadedRunbook with validate then normalize then apply.
-5. Update runbookDashboard.html: Make both reload-from-server and load-from-file pass through the same validation and normalization path.
+1. ~~Create dashboard/validation.js: Mirror the structural checks from schema.py for root object, category arrays, and required task and status fields.~~ ✅
+2. ~~Create dashboard/validation.js: Add normalization helpers for optional fields such as item, assignee, startTime, and endTime so the UI always receives a stable shape.~~ ✅
+3. ~~Create dashboard/validation.js: Add user-facing error formatting that turns raw validation errors into short toast-friendly messages.~~ ✅
+4. ~~Update runbookDashboard.html: Replace the loose object check in applyLoadedRunbook with validate then normalize then apply.~~ ✅ (applyLoadedRunbook in persistence.js now calls validateAndNormalize)
+5. ~~Update runbookDashboard.html: Make both reload-from-server and load-from-file pass through the same validation and normalization path.~~ ✅ (loadInitialRunbook, loadFromServer, loadFromFile all route through applyLoadedRunbook → validateAndNormalize)
 
 Definition of done:
 - invalid JSON cannot reach render

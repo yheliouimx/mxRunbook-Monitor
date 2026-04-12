@@ -101,17 +101,17 @@ Definition of done:
 Estimated effort:
 - 1.5 to 2 days
 
-**Phase 6**
+**Phase 6** ✅
 Isolate issue actions and task actions from rendering.
 
-1. Create dashboard/actions/tasks.js: Move task status updates, bulk-complete logic, assignee editing commit logic, expandAll, and collapseAll out of runbookDashboard.html and runbookDashboard.html.
-2. Create dashboard/actions/issues.js: Move toggleIssueForm, saveIssue, closeIssue, reopenIssue, editIssue, and deleteIssue out of runbookDashboard.html.
-3. Create dashboard/actions/health.js: Move setHealth and health-related state updates out of runbookDashboard.html.
-4. Update runbookDashboard.html: Keep only top-level event registration in the entry file.
+1. ~~Create dashboard/actions/tasks.js: Move task status updates, bulk-complete logic, assignee editing commit logic, expandAll, and collapseAll out of runbookDashboard.html and runbookDashboard.html.~~ ✅ (setTaskStatus, completeAllInCategory, setAssignee, expandAll, collapseAll, toggleCategory)
+2. ~~Create dashboard/actions/issues.js: Move toggleIssueForm, saveIssue, closeIssue, reopenIssue, editIssue, and deleteIssue out of runbookDashboard.html.~~ ✅ (also toggleIssuesPanel, getDefaultIssueTime; saveIssue accepts field object and returns {ok, reason})
+3. ~~Create dashboard/actions/health.js: Move setHealth and health-related state updates out of runbookDashboard.html.~~ ✅
+4. ~~Update runbookDashboard.html: Keep only top-level event registration in the entry file.~~ ✅ (thin wrappers call action → then renderer → then toast)
 
 Definition of done:
-- user actions are separated from markup generation
-- renderers render, actions mutate state, selectors derive data
+- ~~user actions are separated from markup generation~~ ✅
+- ~~renderers render, actions mutate state, selectors derive data~~ ✅
 
 Estimated effort:
 - 1 day

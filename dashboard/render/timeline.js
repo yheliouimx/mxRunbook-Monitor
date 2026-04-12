@@ -1,5 +1,6 @@
 import { state } from "../state.js";
 import { normalizeStatus, computeCategoryStatus } from "../selectors.js";
+import { toggleCategory } from "../actions/tasks.js";
 
 /**
  * Render the phase timeline bar.
@@ -23,7 +24,7 @@ export function renderTimeline(categories, renderAll) {
         el.title = cat + ": " + done + "/" + tasks.length + " completed";
 
         el.addEventListener("click", () => {
-            state.openCategories.add(cat);
+            if (!state.openCategories.has(cat)) toggleCategory(cat);
             renderAll();
             const target = document.getElementById("cat-" + cat.replace(/[^a-zA-Z0-9]/g, "_"));
             if (target) target.scrollIntoView({ behavior: "smooth", block: "start" });

@@ -4,6 +4,7 @@ import {
     formatTime, formatTimeShort, getEarliestTime,
     matchesSearch, matchesTeam, escapeHtml, getUniqueTeams,
 } from "../selectors.js";
+import { setTaskStatus, completeAllInCategory, setAssignee, toggleCategory } from "../actions/tasks.js";
 
 /**
  * Render all category cards into the container.
@@ -88,8 +89,7 @@ export function renderCategories(categories, renderAll, showToast) {
 
         // Attach header click
         div.querySelector(".category-header").addEventListener("click", () => {
-            if (state.openCategories.has(cat)) state.openCategories.delete(cat);
-            else state.openCategories.add(cat);
+            toggleCategory(cat);
             renderAll();
         });
 
@@ -116,7 +116,7 @@ export function renderCategories(categories, renderAll, showToast) {
                     opt.title = s.label;
                     opt.addEventListener("click", (ev) => {
                         ev.stopPropagation();
-                        state.runbookData[c][idx].status = s.key;
+                        setTaskStatus(c, idx, s.key);
                         popup.remove();
                         renderAll();
                     });
@@ -137,9 +137,7 @@ export function renderCategories(categories, renderAll, showToast) {
                 const pending = state.runbookData[c].filter(t => normalizeStatus(t.status) !== "Completed" && normalizeStatus(t.status) !== "Unneeded").length;
                 if (pending === 0) { showToast("All tasks already completed or unneeded"); return; }
                 if (!confirm(`Mark all ${pending} remaining tasks in "${c}" as Completed?`)) return;
-                state.runbookData[c].forEach(t => {
-                    if (normalizeStatus(t.status) !== "Unneeded") t.status = "Completed";
-                });
+                completeAllInCategory(c);
                 renderAll();
                 showToast(`All tasks in "${c}" marked as Completed`);
             });
@@ -177,7 +175,7 @@ export function renderCategories(categories, renderAll, showToast) {
 
                 const commit = () => {
                     const val = input.value.trim();
-                    state.runbookData[c][idx].assignee = val || undefined;
+                    setAssignee(c, idx, val);
                     renderAll();
                 };
                 input.addEventListener("blur", commit);

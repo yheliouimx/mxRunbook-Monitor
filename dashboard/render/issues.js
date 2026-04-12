@@ -1,11 +1,14 @@
 import { state } from "../state.js";
 import { getCategoryNames, escapeHtml } from "../selectors.js";
-
-function getDefaultIssueTime() {
-    const now = new Date();
-    return now.toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit', hour12: false })
-        + ' ' + now.toLocaleDateString('en-GB', { day: '2-digit', month: 'short' });
-}
+import {
+    getDefaultIssueTime,
+    toggleIssueForm as doToggleIssueForm,
+    saveIssue as doSaveIssue,
+    closeIssue as doCloseIssue,
+    reopenIssue as doReopenIssue,
+    editIssue as doEditIssue,
+    deleteIssue as doDeleteIssue,
+} from "../actions/issues.js";
 
 /**
  * Render the issues panel into #issuesPanel.
@@ -122,65 +125,41 @@ export function renderIssues() {
 }
 
 export function toggleIssueForm() {
-    state.issueFormOpen = !state.issueFormOpen;
-    if (!state.issueFormOpen) state.editingIssueId = null;
+    doToggleIssueForm();
     renderIssues();
 }
 
 export function saveIssue(showToast) {
     const desc = document.getElementById('if_desc').value.trim();
-    if (!desc) { showToast('Please enter a description'); return; }
     const cat = document.getElementById('if_cat').value;
     const sev = document.getElementById('if_sev').value;
     const st = document.getElementById('if_status').value;
     const timeInput = document.getElementById('if_time');
-    const timeStr = timeInput && timeInput.value.trim() ? timeInput.value.trim() : getDefaultIssueTime();
+    const timeStr = timeInput && timeInput.value.trim() ? timeInput.value.trim() : '';
 
-    if (state.editingIssueId !== null) {
-        const iss = state.issues.find(i => i.id === state.editingIssueId);
-        if (iss) {
-            iss.description = desc;
-            iss.category = cat;
-            iss.severity = sev;
-            iss.issueStatus = st;
-            iss.time = timeStr;
-        }
-        state.editingIssueId = null;
-    } else {
-        state.issues.push({
-            id: Date.now(),
-            description: desc,
-            category: cat,
-            severity: sev,
-            issueStatus: st,
-            time: timeStr
-        });
-    }
-    state.issueFormOpen = false;
+    const result = doSaveIssue({ desc, cat, sev, status: st, time: timeStr });
+    if (!result.ok) { showToast(result.reason); return; }
     renderIssues();
     showToast('Issue saved');
 }
 
 export function closeIssue(id) {
-    const iss = state.issues.find(i => i.id === id);
-    if (iss) iss.issueStatus = 'Closed';
+    doCloseIssue(id);
     renderIssues();
 }
 
 export function reopenIssue(id) {
-    const iss = state.issues.find(i => i.id === id);
-    if (iss) iss.issueStatus = 'Ongoing';
+    doReopenIssue(id);
     renderIssues();
 }
 
 export function editIssue(id) {
-    state.editingIssueId = id;
-    state.issueFormOpen = true;
+    doEditIssue(id);
     renderIssues();
 }
 
 export function deleteIssue(id, showToast) {
-    state.issues = state.issues.filter(i => i.id !== id);
+    doDeleteIssue(id);
     renderIssues();
     showToast('Issue deleted');
 }

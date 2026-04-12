@@ -1269,6 +1269,9 @@ import { renderTimeline } from "./dashboard/render/timeline.js";
 import { renderCategories } from "./dashboard/render/categories.js";
 import { renderIssues, toggleIssueForm, saveIssue as doSaveIssue, closeIssue as doCloseIssue, reopenIssue as doReopenIssue, editIssue as doEditIssue, deleteIssue as doDeleteIssue } from "./dashboard/render/issues.js";
 import { generateSummary as doGenerateSummary, copySummaryToClipboard as doCopySummaryToClipboard } from "./dashboard/render/summary.js";
+import { setHealth as doSetHealth } from "./dashboard/actions/health.js";
+import { expandAll as doExpandAll, collapseAll as doCollapseAll } from "./dashboard/actions/tasks.js";
+import { toggleIssuesPanel as doToggleIssuesPanel } from "./dashboard/actions/issues.js";
 
 async function loadConfig() {
     try {
@@ -1303,8 +1306,7 @@ function toggleTheme() {
 })();
 
 function setHealth(status) {
-    state.healthStatus = status;
-    state.runbookData._health = status;
+    doSetHealth(status);
     renderHealthIndicator();
     renderGlobalStats();
 }
@@ -2380,12 +2382,12 @@ function handleRunbookFileSelected(event) {
 }
 
 function expandAll() {
-    Object.keys(state.runbookData).filter(k => !k.startsWith("_")).forEach(cat => state.openCategories.add(cat));
+    doExpandAll();
     render();
 }
 
 function collapseAll() {
-    state.openCategories.clear();
+    doCollapseAll();
     render();
 }
 
@@ -2485,7 +2487,7 @@ function detectAssets() {
 }
 
 function toggleIssuesPanel(el) {
-    state.issuesPanelOpen = !state.issuesPanelOpen;
+    doToggleIssuesPanel();
     document.getElementById('issuesList').style.display = state.issuesPanelOpen ? 'block' : 'none';
     el.querySelector('.iss-chevron').classList.toggle('open', state.issuesPanelOpen);
 }

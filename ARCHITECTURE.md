@@ -6,13 +6,43 @@ Technical reference for AI models and developers extending this codebase.
 
 ## File Map
 
-### `runbookDashboard.html` (~2530 lines, single self-contained file)
+### `runbookDashboard.html`
 
-| Section | Lines | Content |
-|---------|-------|---------|
-| CSS | 8–919 | All styles. Uses CSS custom properties for theming. |
-| HTML | 919–1003 | Header, stats, filters, timeline, task container, action buttons, issues panel, summary box, toast. |
-| JS | 1003–2532 | All logic, state management, canvas renderers, asset detection. |
+| Section | Content |
+|---------|---------|
+| CSS | All styles. Uses CSS custom properties for theming. |
+| HTML | Header, stats, filters, timeline, task container, action buttons, issues panel, summary box, toast. |
+| JS (inline) | Bootstrap: imports ES modules from `dashboard/`, calls `init()`. |
+
+### `dashboard/` — Modular JS Layer (ES Modules)
+
+```
+dashboard/
+├── app.js          ← Entry point: init(), render(), event wiring
+├── state.js        ← Global state (runbookData, filterState, issues, etc.)
+├── constants.js    ← Status labels, class mappings, cycle order
+├── dom.js          ← DOM element references (cached selectors)
+├── selectors.js    ← Derived state queries (getGlobalStats, computeCategoryStatus)
+├── persistence.js  ← localStorage save/load, JSON export, file upload
+├── validation.js   ← Status normalization, input sanitization
+├── actions/
+│   ├── health.js   ← Health indicator (Go/At Risk/Stop) toggle + render
+│   ├── issues.js   ← Issues CRUD (add, edit, delete, toggle status)
+│   └── tasks.js    ← Task status cycling, assignee editing
+├── render/
+│   ├── categories.js ← Category cards + task rows (targeted DOM patches)
+│   ├── issues.js     ← Issues panel rendering
+│   ├── stats.js      ← Stat cards + progress bar (value-diffing updates)
+│   ├── summary.js    ← Text summary generation
+│   └── timeline.js   ← Horizontal phase timeline
+└── export/
+    ├── canvas.js     ← Shared canvas utilities
+    ├── phone.js      ← Phone export (1080×1920 portrait, WhatsApp-optimized)
+    ├── email.js      ← Email export (1920×1080 landscape, corporate)
+    ├── gantt.js      ← Gantt chart export (1920×dynamic, NOW line)
+    ├── shared.js     ← Shared export helpers (blob download, share API)
+    └── theme.js      ← Theme toggle (dark/light)
+```
 
 ### CSS Theming
 
@@ -27,7 +57,7 @@ Key variable groups:
 
 When adding a new visual element, always use CSS variables. Never hardcode hex colors in CSS rules.
 
-### JS Global State
+### JS State (`dashboard/state.js`)
 
 ```
 runbookData      — Object: category → task array. Reserved keys prefixed with _.
@@ -42,40 +72,47 @@ clientLogoImg    — Image | null: loaded from assets/clientLogo-*
 clientBgImg      — Image | null: loaded from assets/background-*
 ```
 
-### JS Function Map
+### JS Module Map
 
-#### Startup
-| Function | Line | Purpose |
-|----------|------|---------|
-| `loadConfig()` | 1023 | Fetches `config.json`, merges into `projectConfig`, calls `applyConfig()` |
-| `applyConfig()` | 1032 | Updates page title, h1, subtitle from `projectConfig` |
-| `loadRunbook()` | 1145 | Loads from localStorage (if saved) or fetches `runbook.json` |
-| `detectAssets()` | 2467 | Auto-discovers `clientLogo-*` and `background-*` in `assets/` |
-| `setFavicon()` | 2462 | Sets browser tab icon from logo |
+#### Entry & Init (`dashboard/app.js`)
+| Function | Purpose |
+|----------|---------|
+| `init()` | Fetches `config.json`, merges into `projectConfig`, calls `applyConfig()`, wires events |
+| `applyConfig()` | Updates page title, h1, subtitle from `projectConfig` |
+| `loadRunbook()` | Loads from localStorage (if saved) or fetches `runbook.json` |
+| `render()` | Main loop: renders stats, issues, timeline, all categories + tasks |
+| `detectAssets()` | Auto-discovers `clientLogo-*` and `background-*` in `assets/` |
 
-Init sequence (bottom of script):
+Init sequence (in `runbookDashboard.html`):
 ```
-detectAssets() → updateClock() → setInterval(clock) → loadConfig().then(loadRunbook)
+detectAssets() → updateClock() → setInterval(clock) → init()
 ```
 
-#### Core Rendering
-| Function | Line | Purpose |
-|----------|------|---------|
-| `render()` | 1237 | Main loop: renders stats, issues, timeline, all categories + tasks |
-| `renderGlobalStats()` | 1188 | 7 stat cards: Total, Completed, In Progress, Not Started, %, Open Issues, Blocking |
-| `renderTimeline()` | 1347 | Horizontal phase timeline at top |
-| `renderIssues()` | 1387 | Issues panel with CRUD operations |
-| `renderHealthIndicator()` | 1060 | Updates health dot + text |
+#### Rendering (`dashboard/render/`)
+| Module | Function | Purpose |
+|--------|----------|---------|
+| `stats.js` | `renderGlobalStats()` | 7 stat cards: Total, Completed, In Progress, Not Started, %, Open Issues, Blocking |
+| `stats.js` | `updateStatsValues()` | Targeted value-diffing update (skips unchanged DOM nodes) |
+| `stats.js` | `renderHealthIndicator()` | Updates health dot + text |
+| `timeline.js` | `renderTimeline()` | Horizontal phase timeline at top |
+| `timeline.js` | `patchTimelineStep()` | Patches a single timeline dot without full re-render |
+| `issues.js` | `renderIssues()` | Issues panel with CRUD operations |
+| `categories.js` | `renderCategories()` | All collapsible category cards with task rows |
+| `categories.js` | `patchTaskRow()` | In-place DOM patch for a single task row |
+| `categories.js` | `patchCategoryCard()` | In-place DOM patch for a single category header/progress |
+| `summary.js` | `generateSummary()` | Text summary output |
 
-#### Status Logic
-| Function | Line | Purpose |
-|----------|------|---------|
-| `normalizeStatus(s)` | 1086 | Normalizes any status string → one of 5 canonical values |
-| `statusClass(s)` | 1096 | Maps status → CSS class name (done/inprogress/notstarted/blocked/unneeded) |
-| `computeCategoryStatus(tasks)` | 1129 | Derives category-level status from its tasks |
-| `getGlobalStats()` | 1171 | Returns `{total, done, inProg, notStarted, blocking}`. Unneeded counts as done. |
+**Targeted DOM Patching**: Instead of rebuilding the full DOM on every change, the render modules use `patchTaskRow()`, `patchCategoryCard()`, and `patchTimelineStep()` to update only the affected elements. CSS animations are suppressed after initial page load using the `html.loaded` class to prevent visual flicker.
 
-**Status cycle** (click handler in `render()`):
+#### State Queries (`dashboard/selectors.js`)
+| Function | Purpose |
+|----------|---------|
+| `normalizeStatus(s)` | Normalizes any status string → one of 5 canonical values |
+| `statusClass(s)` | Maps status → CSS class name (done/inprogress/notstarted/blocked/unneeded) |
+| `computeCategoryStatus(tasks)` | Derives category-level status from its tasks |
+| `getGlobalStats()` | Returns `{total, done, inProg, notStarted, blocking}`. Unneeded counts as done. |
+
+**Status cycle** (click handler in `dashboard/actions/tasks.js`):
 ```
 Not Started → In Progress → Completed → Blocking → Unneeded → Not Started
 ```
@@ -84,12 +121,12 @@ Not Started → In Progress → Completed → Blocking → Unneeded → Not Star
 - `Unneeded` tasks count as `Completed` in all stats, progress bars, and exports
 - The `Blocking` stat card = blocking tasks + blocking issues (unified count)
 
-#### Canvas Image Exports
-| Function | Line | Dimensions | Style |
-|----------|------|------------|-------|
-| `exportSnapshot()` | 1596 | 1080×1920 portrait | Dark bg, neon colors. For phone/WhatsApp. |
-| `exportEmailSnapshot()` | 1892 | 1920×1080 landscape | White bg, corporate colors. For email. |
-| `exportGantt()` | 2134 | 1920×dynamic | Timeline bars with NOW line. |
+#### Canvas Image Exports (`dashboard/export/`)
+| Module | Dimensions | Style |
+|--------|------------|-------|
+| `phone.js` | 1080×1920 portrait | Dark bg, neon colors. For phone/WhatsApp. |
+| `email.js` | 1920×1080 landscape | White bg, corporate colors. For email. |
+| `gantt.js` | 1920×dynamic | Timeline bars with NOW line. |
 
 All three renderers:
 - Use `projectConfig` for titles, subtitle, changeRef, accentColor
@@ -98,11 +135,12 @@ All three renderers:
 - Export as PNG via `canvas.toBlob()`
 - Phone export offers `navigator.share()` on mobile, falls back to download
 
-#### Data Persistence
-| Function | Line | Purpose |
-|----------|------|---------|
-| `saveToLocalStorage()` | 1375 | Saves entire `runbookData` (including `_issues`, `_health`) to localStorage key `runbook_progress` |
-| `exportJSON()` | 2408 | Downloads current state as `.json` file |
+#### Data Persistence (`dashboard/persistence.js`)
+| Function | Purpose |
+|----------|---------|
+| `saveToLocalStorage()` | Saves entire `runbookData` (including `_issues`, `_health`) to localStorage key `runbook_progress` |
+| `exportJSON()` | Downloads current state as `.json` file |
+| `loadFromFile()` | Reads uploaded `.json` file and restores state |
 
 localStorage is auto-saved on every status change, issue change, and health change.
 
@@ -185,28 +223,28 @@ category_mapping:                  # Fix typos/encoding in category names
 
 ### Adding a new task status
 
-1. **CSS**: Add variables in `:root` and `[data-theme="light"]` for the new status color
+1. **CSS** (`runbookDashboard.html`): Add variables in `:root` and `[data-theme="light"]` for the new status color
 2. **CSS**: Add styles for `.stat-card.newstatus`, `.tag-newstatus`, `.tl-newstatus`, `.task-status-btn.s-newstatus`, `.task-row.newstatus`, `.dot-newstatus`
-3. **JS `normalizeStatus()`**: Add mapping from raw strings to the canonical name
-4. **JS `statusClass()`**: Add mapping to CSS class
-5. **JS `computeCategoryStatus()`**: Update logic
-6. **JS `getGlobalStats()`**: Decide how it counts (as done? as incomplete? separate?)
-7. **JS `renderGlobalStats()`**: Add/update stat card
-8. **JS `render()`**: Update task row class, icon, and status cycle
-9. **Canvas exports**: Update all 3 export functions' stats arrays
-10. **JS `generateSummary()`**: Update text output
+3. **`dashboard/validation.js`**: Add mapping in `normalizeStatus()` from raw strings to the canonical name
+4. **`dashboard/constants.js`**: Add mapping in `statusClass()` to CSS class
+5. **`dashboard/selectors.js`**: Update `computeCategoryStatus()` and `getGlobalStats()` logic
+6. **`dashboard/render/stats.js`**: Add/update stat card
+7. **`dashboard/render/categories.js`**: Update task row class, icon, and in `patchTaskRow()`
+8. **`dashboard/actions/tasks.js`**: Update status cycle order
+9. **`dashboard/export/`**: Update all 3 export modules' stats arrays
+10. **`dashboard/render/summary.js`**: Update text output
 11. **Filter buttons**: Add filter in HTML
 
 ### Adding a new canvas export
 
-1. Create a new function following `exportSnapshot()` as template
+1. Create a new module in `dashboard/export/` following `phone.js` as template
 2. Set canvas dimensions, draw background
 3. Use `projectConfig` for all text (never hardcode project strings)
 4. Use `projectConfig.accentColor` for brand-colored bars
 5. Draw `clientLogoImg` if available
 6. Call `getGlobalStats()` for numbers
-7. Export via `canvas.toBlob()` → download or share
-8. Add a button in the HTML actions bar
+7. Export via `canvas.toBlob()` → download or share (use helpers from `shared.js`)
+8. Wire the button in `dashboard/app.js` event setup
 
 ### Adding a new parser
 
@@ -218,7 +256,42 @@ category_mapping:                  # Fix typos/encoding in category names
 
 ### Adding a new config field
 
-1. Add default value in `projectConfig` object (JS global)
+1. Add default value in `projectConfig` object (`dashboard/state.js`)
 2. Add to `config.json`
-3. Use via `projectConfig.fieldName` anywhere in JS
-4. If it affects the HTML header, update `applyConfig()`
+3. Use via `projectConfig.fieldName` anywhere in JS modules
+4. If it affects the HTML header, update `applyConfig()` in `dashboard/app.js`
+
+---
+
+## Testing
+
+Unit tests live in `tests/` and use **Vitest** with **happy-dom**.
+
+```bash
+npm test          # Run all tests once
+npm run test:watch  # Watch mode
+```
+
+Test files mirror the module structure:
+| Test File | Covers |
+|-----------|--------|
+| `state.test.js` | State management |
+| `constants.test.js` | Status mappings, cycle order |
+| `selectors.test.js` | `getGlobalStats`, `computeCategoryStatus` |
+| `validation.test.js` | `normalizeStatus`, input sanitization |
+| `persistence.test.js` | localStorage save/load |
+| `actions.test.js` | Task status cycling, issue CRUD |
+| `modules.test.js` | Module import/export integrity |
+
+---
+
+## Dev Server
+
+`_serve.js` is a zero-dependency Node.js static file server (port 8090):
+
+```bash
+node _serve.js
+# → http://localhost:8090/
+```
+
+It serves `runbookDashboard.html` as the default route and resolves all assets, JSON, and JS modules with correct MIME types. ES module imports from `dashboard/` require a proper HTTP server — opening the HTML file directly via `file://` will fail.

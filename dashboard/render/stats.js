@@ -12,6 +12,12 @@ export function renderHealthIndicator() {
     const clockEl = document.getElementById('clock');
     const clockColorMap = { Green: 'var(--color-success)', Amber: 'var(--color-warning)', Red: 'var(--color-danger)' };
     clockEl.style.color = clockColorMap[state.healthStatus] || clockColorMap.Green;
+    // Update health-based class on stats-master without full rebuild
+    const master = document.querySelector('.stats-master');
+    if (master) {
+        master.className = master.className.replace(/\bhealth-\w+/g, '').trim()
+            + ' health-' + (state.healthStatus || 'Green').toLowerCase();
+    }
 }
 
 export function renderGlobalStats() {
@@ -52,4 +58,29 @@ export function renderGlobalStats() {
         </div>
     `;
     renderHealthIndicator();
+}
+
+/**
+ * Patch stat values in-place without rebuilding the entire #globalStats DOM.
+ * Only updates text content of .stat-value cells that actually changed,
+ * plus the master progress bar.
+ */
+export function updateStatsValues() {
+    const { total, done, inProg, notStarted, blocking } = getGlobalStats();
+    const pct = getCompletionPct();
+    const openIss = getOpenIssues().length;
+    const blockIss = getBlockingIssues().length;
+    const totalBlocking = blocking + blockIss;
+    const gs = document.getElementById("globalStats");
+    const vals = { blocking: totalBlocking, issues: openIss, total, done, inprog: inProg, notstarted: notStarted };
+    Object.keys(vals).forEach(sel => {
+        const el = gs.querySelector(`.stat-card.${sel} .stat-value`);
+        if (el && el.textContent !== String(vals[sel])) el.textContent = vals[sel];
+    });
+    const fill = gs.querySelector('.progress-fill');
+    if (fill) { const w = pct + '%'; if (fill.style.width !== w) fill.style.width = w; }
+    const masterPct = gs.querySelector('.master-pct');
+    if (masterPct) { const t = pct + '%'; if (masterPct.textContent !== t) masterPct.textContent = t; }
+    const masterDetail = gs.querySelector('.master-detail');
+    if (masterDetail) { const t = done + ' / ' + total + ' tasks completed'; if (masterDetail.textContent !== t) masterDetail.textContent = t; }
 }

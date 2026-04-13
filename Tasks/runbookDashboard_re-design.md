@@ -60,38 +60,38 @@
 
 ## P2 — Medium (Feature & UX Enhancements)
 
-### 9. Timeline → horizontal stepper/pipeline
-- Replace current tag-pill list with a connected node stepper (dots + lines)
-- Nodes colored by category status, connected by a progress line
-- Clicking a node scrolls to the category (keep current behavior)
-- **Files:** `dashboard/render/timeline.js`, `runbookDashboard.html` (CSS `#timeline`, `.timelineItem`)
+### ~~9. Timeline → horizontal stepper/pipeline~~ ✅ Done (2026-04-13)
+- ~~Connected-node stepper: dots centered on a horizontal line, labels + counts below~~
+- ~~Nodes colored by category status; line segments turn green when preceding step is done~~
+- ~~Clicking a node opens the category and scrolls to it~~
+- ~~Category toggle is now local DOM (no full re-render)~~
+- **Files:** `dashboard/render/timeline.js`, `runbookDashboard.html` (CSS `.timeline-step`, `.timeline-dot`, `.timeline-line-left/right`)
 
-### 10. Action button grouping + overflow menu
-- Group into: Primary (`Save`), Secondary (`Reload`, `Load File`), Export (dropdown menu for Phone/Email/Gantt/JSON/Summary)
-- Add `Expand All` / `Collapse All` as icon-only toggle buttons
-- Reduce visual clutter from 9 flat buttons
-- **Files:** `runbookDashboard.html` (markup `.actions`), likely new CSS for dropdown
+### ~~10. Action button grouping + overflow menu~~ ✅ Done (2026-04-13)
+- ~~Primary (Save), Secondary (Reload, Load File), Export dropdown (Phone/Email/Gantt/JSON/Summary)~~
+- ~~Expand All / Collapse All as icon-only toggle buttons (⊞ ⊟)~~
+- ~~Visual dividers between groups; dropdown closes on outside click~~
+- **Files:** `runbookDashboard.html` (markup + CSS `.action-group`, `.export-dropdown`), `dashboard/app.js`
 
-### 11. Loading skeleton
-- Show skeleton cards (pulsing gray placeholders) during `loadRunbook()` instead of empty page
-- Remove skeleton after `render()` completes
-- **Files:** `runbookDashboard.html` (add skeleton markup/CSS), entry-point `<script>`
+### ~~11. Loading skeleton~~ ✅ Done (2026-04-13)
+- ~~Shimmer-animated skeleton placeholders for stats, timeline, and category cards~~
+- ~~Automatically replaced when `render()` sets `innerHTML` on those containers~~
+- **Files:** `runbookDashboard.html` (CSS `@keyframes skeletonShimmer`, skeleton markup)
 
-### 12. Responsive breakpoints
-- Add `@media (max-width: 768px)` for tablet: stack stats, collapse filter group
-- Add `@media (max-width: 480px)` for mobile: single-column, hamburger for actions
-- Fix touch targets (minimum 44px)
+### ~~12. Responsive breakpoints~~ ✅ Done (2026-04-13)
+- ~~`@media (max-width: 768px)`: stacked stats, wrapped filters, smaller health dots~~
+- ~~`@media (max-width: 480px)`: single-column layout, 44px touch targets, stacked actions~~
 - **Files:** `runbookDashboard.html` (CSS media queries)
 
-### 13. Styled confirmation modals
-- Replace `confirm()` calls (e.g. reset runbook, delete issue) with styled modal dialogs
-- Match dashboard theme, include clear destructive-action styling
-- **Files:** `runbookDashboard.html` (new modal CSS), `dashboard/render/issues.js`, reset function
+### ~~13. Styled confirmation modals~~ ✅ Done (2026-04-13)
+- ~~`showConfirm()` returns a Promise; themed modal with backdrop-blur~~
+- ~~Replaces native `confirm()` in reset runbook and complete-all-in-category~~
+- **Files:** `runbookDashboard.html` (CSS `.confirm-overlay`), `dashboard/app.js`, `dashboard/persistence.js`, `dashboard/render/categories.js`
 
-### 14. Page load animation
-- Staggered fade-in on stat cards and category cards using `animation-delay`
-- Progress bar fill animation on initial render
-- **Files:** `runbookDashboard.html` (CSS `@keyframes`), `dashboard/render/stats.js`, `dashboard/render/categories.js`
+### ~~14. Page load animation~~ ✅ Done (2026-04-13)
+- ~~Staggered `fadeInUp` on stat cards, category cards, and timeline steps~~
+- ~~Progress bar `progressGrow` animation on initial render~~
+- **Files:** `runbookDashboard.html` (CSS `@keyframes fadeInUp`, `@keyframes progressGrow`, `nth-child` delays)
 
 ---
 

@@ -118,11 +118,10 @@ export function exportRunbookJson() {
 
 /**
  * Reset all tasks to "Not Started", clear issues and health.
- * Returns false if user cancelled, true if reset was performed.
+ * Confirmation is handled by the caller (app.js showConfirm modal).
+ * Returns true when reset was performed.
  */
 export function resetRunbook() {
-    if (!confirm("⚠ WARNING: This will reset ALL task statuses back to \"Not Started\" and clear all issues.\n\nThis action cannot be undone.\n\nAre you sure?")) return false;
-    if (!confirm("FINAL CONFIRMATION: You are about to reset the ENTIRE runbook. Continue?")) return false;
     Object.keys(state.runbookData).filter(k => !k.startsWith("_")).forEach(cat => {
         state.runbookData[cat].forEach(t => { t.status = STATUS.NOT_STARTED; });
     });

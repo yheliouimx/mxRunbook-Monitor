@@ -15,7 +15,7 @@
 import { state } from "./state.js";
 import { getCategoryNames, getUniqueTeams, sortCategories, escapeHtml } from "./selectors.js";
 import { loadInitialRunbook, loadFromServer, loadFromFile, saveDraft, exportRunbookJson, resetRunbook as doReset } from "./persistence.js";
-import { renderGlobalStats, renderHealthIndicator } from "./render/stats.js";
+import { renderGlobalStats, renderHealthIndicator, updateStatsValues } from "./render/stats.js";
 import { renderTimeline } from "./render/timeline.js";
 import { renderCategories } from "./render/categories.js";
 import { renderIssues, toggleIssueForm, saveIssue as doSaveIssue, closeIssue as doCloseIssue, reopenIssue as doReopenIssue, editIssue as doEditIssue, deleteIssue as doDeleteIssue } from "./render/issues.js";
@@ -34,6 +34,34 @@ function showToast(msg) {
     t.textContent = msg;
     t.classList.add("show");
     setTimeout(() => t.classList.remove("show"), 2500);
+}
+
+/**
+ * Show a styled confirmation modal. Returns a Promise<boolean>.
+ * @param {string} title - Dialog heading
+ * @param {string} message - Body text
+ * @param {object} [opts] - { confirmLabel, confirmClass }
+ */
+function showConfirm(title, message, opts = {}) {
+    return new Promise(resolve => {
+        const overlay = document.createElement("div");
+        overlay.className = "confirm-overlay";
+        overlay.innerHTML = `
+            <div class="confirm-dialog">
+                <h3>${title}</h3>
+                <p>${message}</p>
+                <div class="confirm-actions">
+                    <button class="confirm-btn" data-role="cancel">Cancel</button>
+                    <button class="confirm-btn ${opts.confirmClass || 'danger'}" data-role="confirm">${opts.confirmLabel || 'Confirm'}</button>
+                </div>
+            </div>`;
+        document.body.appendChild(overlay);
+        const cleanup = (val) => { overlay.remove(); resolve(val); };
+        overlay.querySelector('[data-role="cancel"]').addEventListener("click", () => cleanup(false));
+        overlay.querySelector('[data-role="confirm"]').addEventListener("click", () => cleanup(true));
+        overlay.addEventListener("click", (e) => { if (e.target === overlay) cleanup(false); });
+        overlay.querySelector('[data-role="cancel"]').focus();
+    });
 }
 
 function updateClock() {
@@ -120,7 +148,6 @@ function updatePaletteButton() {
 function setHealth(status) {
     doSetHealth(status);
     renderHealthIndicator();
-    renderGlobalStats();
 }
 
 // ── Team filter ────────────────────────────────────────────
@@ -153,6 +180,12 @@ async function loadRunbook() {
         const { source } = await loadInitialRunbook();
         showToast(source === "browser draft" ? "Loaded saved progress" : "Loaded runbook.json");
         render();
+        // After initial render completes, suppress intro animations on future re-renders
+        requestAnimationFrame(() => {
+            requestAnimationFrame(() => {
+                document.documentElement.classList.add("loaded");
+            });
+        });
     } catch (e) {
         document.getElementById("container").innerHTML =
             '<div class="no-results">Failed to load runbook.json. Make sure the file is in the same directory.</div>';
@@ -162,9 +195,16 @@ async function loadRunbook() {
 // ── Action wrappers ────────────────────────────────────────
 
 function resetRunbook() {
-    if (!doReset()) return;
-    render();
-    showToast("Runbook has been reset");
+    showConfirm(
+        "⚠ Reset Entire Runbook",
+        "This will reset ALL task statuses back to &ldquo;Not Started&rdquo; and clear all issues.<br><br><strong>This action cannot be undone.</strong>",
+        { confirmLabel: "Reset Runbook", confirmClass: "danger" }
+    ).then(ok => {
+        if (!ok) return;
+        if (!doReset()) return;
+        render();
+        showToast("Runbook has been reset");
+    });
 }
 
 function saveToLocalStorage() {
@@ -385,11 +425,24 @@ function bindEvents() {
     document.querySelector('[data-action="save"]').addEventListener("click", saveToLocalStorage);
     document.querySelector('[data-action="reload"]').addEventListener("click", reloadRunbookJSON);
     document.querySelector('[data-action="load-file"]').addEventListener("click", triggerFileRunbookLoad);
-    document.querySelector('[data-action="phone-export"]').addEventListener("click", showPhoneExportOptions);
-    document.querySelector('[data-action="email-export"]').addEventListener("click", showEmailExportOptions);
-    document.querySelector('[data-action="gantt-export"]').addEventListener("click", exportGantt);
-    document.querySelector('[data-action="summary"]').addEventListener("click", generateSummary);
-    document.querySelector('[data-action="export-json"]').addEventListener("click", exportJSON);
+
+    // Export dropdown
+    const exportTrigger = document.querySelector('[data-action="export-menu"]');
+    const exportMenu = document.getElementById("exportMenu");
+    if (exportTrigger && exportMenu) {
+        exportTrigger.addEventListener("click", () => {
+            exportMenu.classList.toggle("open");
+        });
+        document.addEventListener("click", (e) => {
+            if (!e.target.closest("#exportDropdown")) exportMenu.classList.remove("open");
+        });
+    }
+    exportMenu.querySelector('[data-action="phone-export"]').addEventListener("click", () => { exportMenu.classList.remove("open"); showPhoneExportOptions(); });
+    exportMenu.querySelector('[data-action="email-export"]').addEventListener("click", () => { exportMenu.classList.remove("open"); showEmailExportOptions(); });
+    exportMenu.querySelector('[data-action="gantt-export"]').addEventListener("click", () => { exportMenu.classList.remove("open"); exportGantt(); });
+    exportMenu.querySelector('[data-action="summary"]').addEventListener("click", () => { exportMenu.classList.remove("open"); generateSummary(); });
+    exportMenu.querySelector('[data-action="export-json"]').addEventListener("click", () => { exportMenu.classList.remove("open"); exportJSON(); });
+
     document.querySelector('[data-action="expand-all"]').addEventListener("click", expandAll);
     document.querySelector('[data-action="collapse-all"]').addEventListener("click", collapseAll);
 
@@ -415,6 +468,7 @@ Object.assign(window, {
     toggleIssueForm, saveIssue, closeIssue, reopenIssue, editIssue, deleteIssue,
     toggleIssuesPanel,
     copySummaryToClipboard,
+    showConfirm,
 });
 
 // ── Boot ───────────────────────────────────────────────────

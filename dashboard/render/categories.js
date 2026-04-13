@@ -6,6 +6,150 @@ import {
     matchesSearch, matchesTeam, escapeHtml, getUniqueTeams,
 } from "../selectors.js";
 import { setTaskStatus, completeAllInCategory, setAssignee, toggleCategory } from "../actions/tasks.js";
+import { updateStatsValues } from "./stats.js";
+
+/* ── Helpers for local DOM patching ───────────────────────── */
+
+const STATUS_ICONS = {
+    [STATUS.COMPLETED]: "✓", [STATUS.IN_PROGRESS]: "▶",
+    [STATUS.BLOCKING]: "✕", [STATUS.UNNEEDED]: "—", [STATUS.NOT_STARTED]: ""
+};
+const ROW_EXTRA_CLASS = {
+    [STATUS.COMPLETED]: "completed", [STATUS.BLOCKING]: "blocked",
+    [STATUS.UNNEEDED]: "unneeded"
+};
+
+/**
+ * Patch a single task row after its status changed.
+ */
+function patchTaskRow(row, ns) {
+    const sc = statusClass(ns);
+    // Update row classes
+    row.className = "task-row" + (ROW_EXTRA_CLASS[ns] ? " " + ROW_EXTRA_CLASS[ns] : "");
+    // Update status button
+    const btn = row.querySelector(".task-status-btn");
+    if (btn) {
+        btn.className = "task-status-btn s-" + sc;
+        btn.textContent = STATUS_ICONS[ns] || "";
+    }
+    // Update status dot
+    const dot = row.querySelector(".task-status-dot");
+    if (dot) dot.className = "task-status-dot dot-" + sc;
+}
+
+/**
+ * Patch category header counters & progress bar after a task status change.
+ */
+function patchCategoryCard(catDiv, cat) {
+    const tasks = state.runbookData[cat];
+    const done = tasks.filter(t => { const st = normalizeStatus(t.status); return st === STATUS.COMPLETED || st === STATUS.UNNEEDED; }).length;
+    const pct = Math.round((done / tasks.length) * 100);
+    const catStatus = computeCategoryStatus(tasks);
+    const fillColor = pct === 100 ? "var(--color-success)" : pct > 0 ? "var(--color-warning-text)" : "var(--color-danger-text)";
+    // Update tag
+    const tag = catDiv.querySelector(".status-tag");
+    if (tag) { tag.textContent = done + "/" + tasks.length; tag.className = "status-tag tag-" + catStatus; }
+    // Update progress bar
+    const fill = catDiv.querySelector(".cat-progress-fill");
+    if (fill) { fill.style.width = pct + "%"; fill.style.background = fillColor; }
+}
+
+/**
+ * Patch a single timeline step after the category's status may have changed.
+ */
+function patchTimelineStep(cat, categories) {
+    const idx = categories.indexOf(cat);
+    if (idx < 0) return;
+    const steps = document.querySelectorAll(".timeline-step");
+    const step = steps[idx];
+    if (!step) return;
+    const tasks = state.runbookData[cat];
+    const s = computeCategoryStatus(tasks);
+    const done = tasks.filter(t => { const st = normalizeStatus(t.status); return st === STATUS.COMPLETED || st === STATUS.UNNEEDED; }).length;
+    // Dot
+    const dot = step.querySelector(".timeline-dot");
+    if (dot) {
+        dot.className = "timeline-dot tl-" + s;
+        dot.textContent = s === "done" ? "✓" : s === "inprogress" ? "▶" : s === "blocked" ? "✕" : "";
+    }
+    // Right line of this step
+    const lineR = step.querySelector(".timeline-line-right");
+    if (lineR) lineR.classList.toggle("done", s === "done");
+    // Left line of the NEXT step (depends on this step being done)
+    const nextStep = steps[idx + 1];
+    if (nextStep) {
+        const nextLineL = nextStep.querySelector(".timeline-line-left");
+        if (nextLineL) nextLineL.classList.toggle("done", s === "done");
+    }
+    // Count label
+    const countEl = step.querySelector(".timeline-count");
+    if (countEl) countEl.textContent = done + "/" + tasks.length;
+    // Title
+    step.title = cat + ": " + done + "/" + tasks.length + " completed";
+}
+
+/**
+ * Attach click-to-edit behavior on an assignee badge.
+ * Creates an inline <input> on click; on commit, swaps back to a badge.
+ */
+function attachAssigneeEdit(badge, c, idx) {
+    badge.addEventListener("click", (e) => {
+        e.stopPropagation();
+        const span = e.currentTarget;
+        const current = state.runbookData[c][idx].assignee || "";
+
+        const input = document.createElement("input");
+        input.type = "text";
+        input.className = "task-assignee-edit";
+        input.value = current;
+        input.placeholder = "Assignee name...";
+
+        const dlId = "dl_teams_" + Date.now();
+        const dl = document.createElement("datalist");
+        dl.id = dlId;
+        getUniqueTeams().forEach(t => {
+            const opt = document.createElement("option");
+            opt.value = t;
+            dl.appendChild(opt);
+        });
+        input.setAttribute("list", dlId);
+
+        span.replaceWith(input);
+        input.parentElement.appendChild(dl);
+        input.focus();
+        input.select();
+
+        const commit = () => {
+            if (input._committed) return;
+            input._committed = true;
+            const val = input.value.trim();
+            setAssignee(c, idx, val);
+            // Create replacement badge (no full re-render)
+            const newBadge = document.createElement("span");
+            newBadge.className = "task-assignee";
+            newBadge.dataset.cat = c;
+            newBadge.dataset.idx = String(idx);
+            if (val) {
+                newBadge.textContent = val;
+                newBadge.title = "Click to edit assignee";
+            } else {
+                newBadge.textContent = "+ assign";
+                newBadge.title = "Click to assign";
+                newBadge.style.opacity = "0.4";
+                newBadge.style.border = "1px dashed var(--input-border)";
+            }
+            attachAssigneeEdit(newBadge, c, idx);
+            const dlEl = input.parentElement && input.parentElement.querySelector("datalist");
+            if (dlEl) dlEl.remove();
+            input.replaceWith(newBadge);
+        };
+        input.addEventListener("blur", commit);
+        input.addEventListener("keydown", (ev) => {
+            if (ev.key === "Enter") { ev.preventDefault(); input.blur(); }
+            if (ev.key === "Escape") { input.value = current; input.blur(); }
+        });
+    });
+}
 
 /**
  * Render all category cards into the container.
@@ -90,10 +234,14 @@ export function renderCategories(categories, renderAll, showToast) {
         `;
         container.appendChild(div);
 
-        // Attach header click
+        // Attach header click — local DOM toggle (no full re-render)
         div.querySelector(".category-header").addEventListener("click", () => {
             toggleCategory(cat);
-            renderAll();
+            const isNowOpen = state.openCategories.has(cat);
+            const wrapper = div.querySelector(".tasks-wrapper");
+            const chevron = div.querySelector(".cat-chevron");
+            if (wrapper) wrapper.classList.toggle("open", isNowOpen);
+            if (chevron) chevron.classList.toggle("open", isNowOpen);
         });
 
         // Attach status button clicks — show status popup
@@ -121,7 +269,13 @@ export function renderCategories(categories, renderAll, showToast) {
                         ev.stopPropagation();
                         setTaskStatus(c, idx, s.key);
                         popup.remove();
-                        renderAll();
+                        // Local DOM patch — no full re-render
+                        const ns = normalizeStatus(s.key);
+                        const row = btn.closest(".task-row");
+                        if (row) patchTaskRow(row, ns);
+                        patchCategoryCard(div, c);
+                        updateStatsValues();
+                        patchTimelineStep(c, categories);
                     });
                     popup.appendChild(opt);
                 });
@@ -139,54 +293,37 @@ export function renderCategories(categories, renderAll, showToast) {
                 const c = e.currentTarget.dataset.cat;
                 const pending = state.runbookData[c].filter(t => normalizeStatus(t.status) !== STATUS.COMPLETED && normalizeStatus(t.status) !== STATUS.UNNEEDED).length;
                 if (pending === 0) { showToast("All tasks already completed or unneeded"); return; }
-                if (!confirm(`Mark all ${pending} remaining tasks in "${c}" as Completed?`)) return;
-                completeAllInCategory(c);
-                renderAll();
-                showToast(`All tasks in "${c}" marked as Completed`);
+                const confirmFn = window.showConfirm || ((_t, _m) => Promise.resolve(confirm(_t)));
+                confirmFn(
+                    "Complete All Tasks",
+                    `Mark all <strong>${pending}</strong> remaining tasks in &ldquo;${c}&rdquo; as Completed?`,
+                    { confirmLabel: "Complete All", confirmClass: "danger" }
+                ).then(ok => {
+                    if (!ok) return;
+                    completeAllInCategory(c);
+                    // Patch all task rows in this category
+                    div.querySelectorAll(".task-row").forEach(row => {
+                        const btn = row.querySelector(".task-status-btn");
+                        if (btn) {
+                            const catName = btn.dataset.cat;
+                            const taskIdx = parseInt(btn.dataset.idx);
+                            const ns = normalizeStatus(state.runbookData[catName][taskIdx].status);
+                            patchTaskRow(row, ns);
+                        }
+                    });
+                    patchCategoryCard(div, c);
+                    updateStatsValues();
+                    patchTimelineStep(c, categories);
+                    showToast(`All tasks in "${c}" marked as Completed`);
+                });
             });
         }
 
         // Attach assignee click-to-edit
         div.querySelectorAll(".task-assignee").forEach(badge => {
-            badge.addEventListener("click", (e) => {
-                e.stopPropagation();
-                const span = e.currentTarget;
-                const c = span.dataset.cat;
-                const idx = parseInt(span.dataset.idx);
-                const current = state.runbookData[c][idx].assignee || "";
-
-                const input = document.createElement("input");
-                input.type = "text";
-                input.className = "task-assignee-edit";
-                input.value = current;
-                input.placeholder = "Assignee name...";
-
-                const dlId = "dl_teams_" + Date.now();
-                const dl = document.createElement("datalist");
-                dl.id = dlId;
-                getUniqueTeams().forEach(t => {
-                    const opt = document.createElement("option");
-                    opt.value = t;
-                    dl.appendChild(opt);
-                });
-                input.setAttribute("list", dlId);
-
-                span.replaceWith(input);
-                input.parentElement.appendChild(dl);
-                input.focus();
-                input.select();
-
-                const commit = () => {
-                    const val = input.value.trim();
-                    setAssignee(c, idx, val);
-                    renderAll();
-                };
-                input.addEventListener("blur", commit);
-                input.addEventListener("keydown", (ev) => {
-                    if (ev.key === "Enter") { ev.preventDefault(); commit(); }
-                    if (ev.key === "Escape") { renderAll(); }
-                });
-            });
+            const c = badge.dataset.cat;
+            const idx = parseInt(badge.dataset.idx);
+            attachAssigneeEdit(badge, c, idx);
         });
     });
 

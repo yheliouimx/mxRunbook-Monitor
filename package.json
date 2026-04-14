@@ -5,13 +5,20 @@
   "main": "_serve.js",
   "scripts": {
     "test": "vitest run",
-    "test:watch": "vitest"
+    "test:watch": "vitest",
+    "build": "node _bundle.js",
+    "build:full": "node _bundle.js --runbook runbook.json",
+    "build:exe": "nexe _launcher.js --output dist/RunbookDashboard.exe --target windows-x64-14.15.3 --name RunbookDashboard",
+    "build:package": "node _package.js",
+    "build:package:zip": "node _package.js --skip-exe"
   },
   "keywords": [],
   "author": "",
   "license": "ISC",
   "devDependencies": {
+    "esbuild": "^0.28.0",
     "happy-dom": "^20.8.9",
+    "nexe": "^5.0.0-beta.4",
     "vitest": "^2.1.9"
   }
 }

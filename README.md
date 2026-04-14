@@ -145,6 +145,61 @@ That's it. You should see the dashboard with your data loaded.
 
 ---
 
+## Portable Distribution (No Install)
+
+For users with no Node.js or Python available, two distribution options exist:
+
+### Option A — Single portable HTML file
+
+A completely self-contained HTML file with all JS, config, and assets base64-inlined. Works by double-clicking in any browser — no server required.
+
+```bash
+npm run build         # config + assets inlined, user loads runbook via "Load File"
+npm run build:full    # also inlines runbook.json (fully self-contained)
+```
+
+Output: `dist/runbookDashboard-portable.html`
+
+> Image exports (Phone / Email / Gantt) require an internet connection for html2canvas CDN. Google Fonts also requires internet; the dashboard falls back to system fonts if offline.
+
+### Option B — Portable Windows executable
+
+A standalone `RunbookDashboard.exe` that bundles the Node.js runtime + HTTP server. Users copy the folder, double-click the exe, and the dashboard opens in their browser automatically.
+
+**Build the exe:**
+```bash
+npm run build:exe
+```
+
+**Build the exe and zip a ready-to-share release package:**
+```bash
+npm run build:package          # rebuilds exe, then zips
+npm run build:package:zip      # zip only (reuses existing exe)
+```
+
+Output: `dist/RunbookDashboard-v<version>-portable.zip`
+
+**Contents of the zip:**
+```
+RunbookDashboard.exe      ← double-click to start (auto-opens browser)
+runbookDashboard.html
+config.json               ← edit this for your project
+runbook.json              ← your task data
+dashboard/                ← JS source modules
+assets/assets/
+  Murex_background6.jpg
+```
+
+**To deploy to end users** (no Node/Python needed on their machine):
+1. Extract the zip to any local folder
+2. Edit `config.json` with your project details
+3. Replace `runbook.json` with your task data
+4. Double-click `RunbookDashboard.exe`
+
+> The exe auto-detects a free port (starts at 8090, tries 8091, 8092…) and opens the browser automatically. Progress is saved to the browser's localStorage.
+
+---
+
 ## Limitations
 
 **This tool is not:**
@@ -166,6 +221,9 @@ That's it. You should see the dashboard with your data loaded.
 runbook-dashboard/
 ├── runbookDashboard.html    ← Dashboard HTML + CSS
 ├── _serve.js                ← Dev server (Node.js, port 8090)
+├── _launcher.js             ← Portable server (bundled into exe)
+├── _bundle.js               ← Build script → single portable HTML
+├── _package.js              ← Build script → portable zip release
 ├── config.json              ← Project-specific metadata
 ├── mapping.yml              ← Column mapping for source runbook
 ├── runbook.json             ← Task data (generated, never hand-edit)
@@ -186,6 +244,10 @@ runbook-dashboard/
 │   ├── convert.py           ← CLI: source file → runbook.json
 │   ├── schema.py            ← JSON validation
 │   └── parsers/             ← CSV + Excel parsers
+├── dist/                    ← Build outputs (git-ignored)
+│   ├── RunbookDashboard.exe            ← Portable Windows server
+│   ├── runbookDashboard-portable.html  ← Single-file HTML build
+│   └── RunbookDashboard-v*-portable.zip← Shareable release package
 └── tests/                   ← Vitest unit tests
 ```
 
@@ -249,6 +311,16 @@ npm test       # run all tests
 node _serve.js
 # Dashboard at http://localhost:8090/
 ```
+
+### Build scripts
+
+| Command | Output | Notes |
+|---------|--------|-------|
+| `npm run build` | `dist/runbookDashboard-portable.html` | Single HTML, no runbook inlined |
+| `npm run build:full` | `dist/runbookDashboard-portable.html` | Single HTML with `runbook.json` inlined |
+| `npm run build:exe` | `dist/RunbookDashboard.exe` | Portable Windows server (~54 MB) |
+| `npm run build:package` | `dist/RunbookDashboard-v*-portable.zip` | Rebuilds exe + zips release folder |
+| `npm run build:package:zip` | `dist/RunbookDashboard-v*-portable.zip` | Zip only, reuses existing exe |
 
 ---
 

@@ -440,10 +440,13 @@ function bindEvents() {
     });
 
     // System filter (v2 — only visible when runbook has system-tagged tasks)
-    document.getElementById("systemFilter").addEventListener("change", (e) => {
-        state.systemFilter = e.target.value;
-        render();
-    });
+    const systemFilterEl = document.getElementById("systemFilter");
+    if (systemFilterEl) {
+        systemFilterEl.addEventListener("change", (e) => {
+            state.systemFilter = e.target.value;
+            render();
+        });
+    }
 
     // Sort
     document.getElementById("sortSelect").addEventListener("change", (e) => {
@@ -466,13 +469,13 @@ function bindEvents() {
         document.addEventListener("click", (e) => {
             if (!e.target.closest("#exportDropdown")) exportMenu.classList.remove("open");
         });
+        exportMenu.querySelector('[data-action="phone-export"]').addEventListener("click", () => { exportMenu.classList.remove("open"); showPhoneExportOptions(); });
+        exportMenu.querySelector('[data-action="email-export"]').addEventListener("click", () => { exportMenu.classList.remove("open"); showEmailExportOptions(); });
+        exportMenu.querySelector('[data-action="gantt-export"]').addEventListener("click", () => { exportMenu.classList.remove("open"); exportGantt(); });
+        exportMenu.querySelector('[data-action="summary"]').addEventListener("click", () => { exportMenu.classList.remove("open"); generateSummary(); });
+        exportMenu.querySelector('[data-action="export-json"]').addEventListener("click", () => { exportMenu.classList.remove("open"); exportJSON(); });
+        exportMenu.querySelector('[data-action="final-report"]').addEventListener("click", () => { exportMenu.classList.remove("open"); exportReport(); });
     }
-    exportMenu.querySelector('[data-action="phone-export"]').addEventListener("click", () => { exportMenu.classList.remove("open"); showPhoneExportOptions(); });
-    exportMenu.querySelector('[data-action="email-export"]').addEventListener("click", () => { exportMenu.classList.remove("open"); showEmailExportOptions(); });
-    exportMenu.querySelector('[data-action="gantt-export"]').addEventListener("click", () => { exportMenu.classList.remove("open"); exportGantt(); });
-    exportMenu.querySelector('[data-action="summary"]').addEventListener("click", () => { exportMenu.classList.remove("open"); generateSummary(); });
-    exportMenu.querySelector('[data-action="export-json"]').addEventListener("click", () => { exportMenu.classList.remove("open"); exportJSON(); });
-    exportMenu.querySelector('[data-action="final-report"]').addEventListener("click", () => { exportMenu.classList.remove("open"); exportReport(); });
 
     document.querySelector('[data-action="expand-all"]').addEventListener("click", expandAll);
     document.querySelector('[data-action="collapse-all"]').addEventListener("click", collapseAll);

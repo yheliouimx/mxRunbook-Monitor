@@ -63,7 +63,9 @@ When adding a new visual element, always use CSS variables. Never hardcode hex c
 runbookData      — Object: category → task array. Reserved keys prefixed with _.
 projectConfig    — Object: loaded from config.json. Fields: projectName, subtitle, changeRef, client, environment, release, accentColor.
 filterState      — String: "all" | "done" | "inprogress" | "notstarted" | "blocked" | "unneeded"
-searchQuery      — String: free-text search filter
+searchQuery      — String: free-text search filter (matches task, item, taskId, system, comment)
+teamFilter       — String: "all" | <assignee value>
+systemFilter     — String: "all" | <system value> — dropdown hidden when no tasks have system values
 sortMode         — String: "timeline" | "completion" | "alpha"
 openCategories   — Set: which category sections are currently expanded
 issues           — Array: issue objects with {id, description, category, severity, issueStatus}
@@ -111,13 +113,41 @@ detectAssets() → updateClock() → setInterval(clock) → init()
 | `statusClass(s)` | Maps status → CSS class name (done/inprogress/notstarted/blocked/unneeded) |
 | `computeCategoryStatus(tasks)` | Derives category-level status from its tasks |
 | `getGlobalStats()` | Returns `{total, done, inProg, notStarted, blocking}`. Unneeded counts as done. |
+| `matchesSearch(task)` | Tests free-text against task, item, taskId, system, comment |
+| `matchesTeam(task)` | Tests against `state.teamFilter` |
+| `matchesSystem(task)` | Tests against `state.systemFilter` |
+| `getUniqueSystems()` | Returns sorted array of distinct `system` values across all tasks |
+| `getUniqueTeams()` | Returns sorted array of distinct `assignee` values |
+| `escapeHtml(text)` | XSS-safe HTML encoding; null/undefined → empty string |
+
+#### Task Actions (`dashboard/actions/tasks.js`)
+| Function | Purpose |
+|----------|---------|
+| `setTaskStatus(cat, idx, status)` | Cycles or sets task status, saves state |
+| `setAssignee(cat, idx, assignee)` | Updates assignee field |
+| `setEndTime(cat, idx, endTime)` | Updates actual end time. Stored as local ISO `YYYY-MM-DDTHH:MM` (no UTC conversion). |
+| `setComment(cat, idx, comment)` | Updates operator comment; empty string clears it |
+| `toggleCategory(cat)` | Adds/removes from `state.openCategories` |
 
 **Status cycle** (click handler in `dashboard/actions/tasks.js`):
 ```
 Not Started → In Progress → Completed → Blocking → Unneeded → Not Started
 ```
 
-**Stat merging**:
+#### v2 Task Fields
+
+All v2 fields are optional. They are sourced from Excel/CSV columns via `mapping.yml` and normalised in `dashboard/validation.js`.
+
+| Field | Type | Dashboard display | Editable in UI |
+|-------|------|-------------------|-----------------|
+| `taskId` | string | Yellow `#ID` badge | No |
+| `system` | string | Cyan outlined pill tag | No (filter dropdown) |
+| `party` | string | Colored filled badge (Client/Murex/Joint) | No |
+| `estimatedEnd` | ISO string | Used for Gantt planned-end `P` marker and delta `(+15m)` display | No |
+| `endTime` | ISO string | Displayed after `—`; dashed underline = clickable to edit | Yes — datetime-local input |
+| `comment` | string | Amber `💬 note` pill; block with left accent border when set | Yes — inline textarea |
+
+Time fields (`startTime`, `endTime`, `estimatedEnd`) use **local ISO** format `YYYY-MM-DDTHH:MM` with no UTC offset. The dashboard stores and displays them as-is — no timezone conversion is applied.
 - `Unneeded` tasks count as `Completed` in all stats, progress bars, and exports
 - The `Blocking` stat card = blocking tasks + blocking issues (unified count)
 
@@ -178,22 +208,38 @@ Rules:
 - All other keys must be arrays of task objects
 - Each task must have `task` (string) and `status` (string)
 - `item`, `startTime`, `endTime` are optional
+- v2 optional fields validated when present: `taskId`, `system`, `party`, `estimatedEnd`, `comment`
+- `party` must be one of `Client`, `Murex`, `Joint` if set
+- Time fields must be valid ISO datetime strings if set
 
-### `parsers/generic_csv.py`
+### `quality.py` — Quality Checks
 
-`parse(source_path, mapping) -> OrderedDict`
+`quality_check(data: dict) -> dict`: Returns `{warnings, errors}` lists.
 
-- Tries encodings in order: utf-8-sig, utf-8, cp1252, latin-1
-- `_clean_text()`: Fixes non-breaking spaces, unicode hyphens, collapses whitespace
-- Supports `category_mapping` to normalize messy category names
+Checks performed:
+- Tasks with bare time strings (HH:MM) instead of full ISO — warns to set `runbook_date`
+- Tasks where `endTime` < `startTime` (overnight crossing auto-corrected)
+- Task text containing raw newlines `\n`
+- Tasks where `item` and `task` are identical (redundant)
+- Party values not in the allowed set
+- `endTime` significantly later than `estimatedEnd` (overrun flag)
 
 ### `parsers/excel_parser.py`
 
 `parse(source_path, mapping) -> OrderedDict`
 
 - Requires `openpyxl` (`pip install openpyxl`)
+- Raises `PermissionError` with a friendly message if the file is open in Excel
 - Same mapping structure as CSV parser
 - Supports `sheet` key in mapping to specify which worksheet
+- `_resolve_time()` handles `datetime.time` cells and Excel 1900-epoch artifacts
+- Maps v2 columns: `taskId`, `system`, `party`, `estimatedEnd` when defined in `mapping.yml`
+
+`parse(source_path, mapping) -> OrderedDict`
+
+- Tries encodings in order: utf-8-sig, utf-8, cp1252, latin-1
+- `_clean_text()`: Fixes non-breaking spaces, unicode hyphens, collapses whitespace
+- Supports `category_mapping` to normalize messy category names
 
 ### Mapping Structure (`mapping.yml`)
 
@@ -204,10 +250,17 @@ columns:
   startTime: "Source Column Name"  # Optional
   endTime: "Source Column Name"    # Optional
   item: "Source Column Name"       # Optional
+  # v2 optional fields
+  taskId:  "Task Id"               # Optional: reference ID badge
+  system:  "System"                # Optional: system/component filter tag
+  party:   "Owner"                 # Optional: Client | Murex | Joint
+  estimatedEnd: "Planned End"      # Optional: planned end for Gantt delta
+  comment: "Comments"              # Optional: operator notes
 
 category_column: "Phase Column"    # Groups tasks. Omit to put all in one category.
 default_category: "Tasks"          # Fallback when category is empty
 sheet: "Sheet1"                    # Excel only, optional
+runbook_date: "2026-04-15"         # Anchor date for time-only cells (HH:MM → full ISO)
 
 status_mapping:                    # Source value → dashboard status
   "Done": "Completed"

@@ -90,3 +90,6 @@ export const EXPORT_FILTERS = {
 
 // HEALTH_STATUSES
 export const HEALTH_STATUSES = ["Green", "Amber", "Red"];
+
+// PARTY_OPTIONS — valid values for task.party field
+export const PARTY_OPTIONS = ["Client", "Murex", "Joint"];

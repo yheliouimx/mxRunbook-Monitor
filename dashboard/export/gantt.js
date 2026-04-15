@@ -189,6 +189,27 @@ export function exportGanttChart(showToast) {
             const endLabel = new Date(catBounds.catMax).toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit", hour12: false });
             drawText(ctx, startLabel, bx1, barY + barH + 14, "11px Consolas, monospace", "#aaa", "left");
             drawText(ctx, endLabel, bx1 + bw, barY + barH + 14, "11px Consolas, monospace", "#aaa", "right");
+
+            // Planned-end marker: dashed tick at max estimatedEnd across category tasks
+            const estEndMs = Math.max(
+                ...[...cs.tasks.map(t => t.estimatedEnd ? new Date(t.estimatedEnd).getTime() : 0).filter(v => v > 0)]
+            );
+            if (isFinite(estEndMs) && estEndMs > 0 && estEndMs !== catBounds.catMax) {
+                const xEst = chartX + ((estEndMs - globalMin) / span) * chartW;
+                if (xEst >= chartX && xEst <= chartX + chartW) {
+                    ctx.save();
+                    ctx.strokeStyle = "#888888";
+                    ctx.lineWidth = 2;
+                    ctx.setLineDash([3, 3]);
+                    ctx.beginPath();
+                    ctx.moveTo(xEst, barY - 3);
+                    ctx.lineTo(xEst, barY + barH + 3);
+                    ctx.stroke();
+                    ctx.setLineDash([]);
+                    ctx.restore();
+                    drawText(ctx, "P", xEst + 4, barY + 12, "bold 10px Segoe UI, sans-serif", "#888", "left");
+                }
+            }
         }
     });
 

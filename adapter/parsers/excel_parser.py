@@ -11,12 +11,17 @@ except ImportError:
 
 DEFAULT_MAPPING = {
     "columns": {
-        "task": "task",
-        "status": "status",
-        "startTime": "startTime",
-        "endTime": "endTime",
-        "item": "item",
-        "assignee": "assignee"
+        # Core fields (always required)
+        "task":         "task",
+        "status":       "status",
+        "startTime":    "startTime",
+        "endTime":      "endTime",
+        "item":         "item",
+        "assignee":     "assignee",
+        # v2 fields (optional — set to None to skip, or map to Excel column name)
+        "taskId":       None,  # e.g. "Task ID"
+        "system":       None,  # e.g. "Impacted System"
+        "party":        None,  # e.g. "Responsible Party" — expected: Client/Murex/Joint
     },
     "category_column": None,
     "default_category": "Tasks",
@@ -46,12 +51,24 @@ def parse(source_path: str, mapping: dict | None = None) -> OrderedDict:
 
     # Anchor date for resolving time-only cells (e.g. "09:00:00" → full ISO datetime)
     raw_anchor = m.get("runbook_date")
-    try:
-        anchor: date | None = date.fromisoformat(str(raw_anchor)) if raw_anchor else None
-    except (ValueError, TypeError):
-        anchor = None
+    anchor: date | None = None
+    if raw_anchor:
+        try:
+            anchor = date.fromisoformat(str(raw_anchor).strip())
+        except (ValueError, TypeError):
+            raise ValueError(
+                f"Invalid runbook_date '{raw_anchor}' in mapping — "
+                f"must be ISO format YYYY-MM-DD (e.g. '2026-04-15')"
+            )
 
-    wb = openpyxl.load_workbook(source_path, read_only=True, data_only=True)
+    try:
+        wb = openpyxl.load_workbook(source_path, read_only=True, data_only=True)
+    except PermissionError:
+        raise PermissionError(
+            f"\n\n  \u274c Cannot open '{source_path}'.\n"
+            f"  The file appears to be locked — please close it in Excel (or any other\n"
+            f"  application that has it open) and run the script again.\n"
+        ) from None
     ws = wb[sheet_name] if sheet_name and sheet_name in wb.sheetnames else wb.active
 
     rows = list(ws.iter_rows(values_only=True))
@@ -61,6 +78,14 @@ def parse(source_path: str, mapping: dict | None = None) -> OrderedDict:
     # First row is headers
     headers = [str(h).strip() if h else "" for h in rows[0]]
     header_idx = {h: i for i, h in enumerate(headers) if h}
+
+    # Validate category_column exists before iterating rows
+    if cat_col and cat_col not in header_idx:
+        available = ", ".join(f"'{h}'" for h in headers if h)
+        raise ValueError(
+            f"category_column '{cat_col}' not found in sheet headers. "
+            f"Available columns: {available}"
+        )
 
     result = OrderedDict()
 
@@ -91,17 +116,24 @@ def parse(source_path: str, mapping: dict | None = None) -> OrderedDict:
         raw_status = get_val("status")
         status = status_map.get(raw_status, raw_status) if raw_status else "Not Started"
 
-        task_text = get_val("task")
+        task_text = get_val("task").replace("\n", " ").strip()
         if not task_text:
             continue
 
+        end_time = _resolve_time(get_raw("endTime"), anchor)
         task = {
-            "item": (get_val("item") or "").replace("\n", " ").strip() or None,
-            "task": task_text.replace("\n", " ").strip(),
-            "status": status,
-            "startTime": _resolve_time(get_raw("startTime"), anchor),
-            "endTime": _resolve_time(get_raw("endTime"), anchor),
-            "assignee": get_val("assignee") or None
+            "item":         (get_val("item") or "").replace("\n", " ").strip() or None,
+            "task":         task_text,
+            "status":       status,
+            "startTime":    _resolve_time(get_raw("startTime"), anchor),
+            "endTime":      end_time,
+            # estimatedEnd is frozen at import time (original planned end — never edited by dashboard)
+            "estimatedEnd": end_time,
+            "assignee":     (get_val("assignee") or "").replace("\n", " ").strip() or None,
+            # v2 fields — only written when column is mapped
+            "taskId":  (get_val("taskId") or "").replace("\n", " ").strip() or None,
+            "system":  (get_val("system") or "").replace("\n", " ").strip() or None,
+            "party":   (get_val("party") or "").replace("\n", " ").strip() or None,
         }
 
         result.setdefault(category, []).append(task)

@@ -71,6 +71,9 @@ export function generateSummary() {
                 html += `<td style="padding:3px 6px;text-align:center;font-size:11px;color:#888;">${time}</td>`;
                 html += `<td style="padding:3px 6px;text-align:center;"><span style="color:${sColor};font-size:11px;font-weight:600;">${s.toUpperCase()}</span></td>`;
                 html += `</tr>`;
+                if (t.comment) {
+                    html += `<tr style="background:${rowBg};"><td colspan="3" style="padding:2px 10px 5px 36px;font-size:11px;color:#888;font-style:italic;border-left:3px solid ${accent};">\ud83d\udcac ${escapeHtml(t.comment)}</td></tr>`;
+                }
             }
         });
     });

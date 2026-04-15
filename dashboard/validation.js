@@ -50,8 +50,21 @@ export function normalize(data) {
             if (typeof t !== "object" || t === null) continue;
             if (t.item == null)      t.item = "";
             if (t.assignee == null)  t.assignee = "";
-            if (t.startTime == null) t.startTime = "";
-            if (t.endTime == null)   t.endTime = "";
+            // Time fields: coerce null→"" and guard against non-ISO strings
+            // that would cause new Date(val) to return Invalid Date and crash renders
+            for (const tf of ["startTime", "endTime", "estimatedEnd"]) {
+                if (t[tf] == null) {
+                    t[tf] = "";
+                } else if (t[tf] !== "" && isNaN(new Date(t[tf]))) {
+                    console.warn(`[runbook] Task '${t.task}': invalid date string in '${tf}': '${t[tf]}' — clearing`);
+                    t[tf] = "";
+                }
+            }
+            // v2 fields — ensure stable shape even on older runbook files
+            if (t.taskId    == null) t.taskId    = "";
+            if (t.system    == null) t.system    = "";
+            if (t.party     == null) t.party     = "";
+            if (t.comment   == null) t.comment   = "";
         }
     }
     return data;

@@ -13,7 +13,7 @@
 // ============================================================
 
 import { state } from "./state.js";
-import { getCategoryNames, getUniqueTeams, sortCategories, escapeHtml } from "./selectors.js";
+import { getCategoryNames, getUniqueTeams, getUniqueSystems, sortCategories, escapeHtml } from "./selectors.js";
 import { loadInitialRunbook, loadFromServer, loadFromFile, saveDraft, exportRunbookJson, resetRunbook as doReset } from "./persistence.js";
 import { renderGlobalStats, renderHealthIndicator, updateStatsValues } from "./render/stats.js";
 import { renderTimeline } from "./render/timeline.js";
@@ -161,12 +161,25 @@ function populateTeamFilter() {
     sel.value = current;
 }
 
+function populateSystemFilter() {
+    const sel = document.getElementById("systemFilter");
+    if (!sel) return;
+    const current = sel.value;
+    const systems = getUniqueSystems();
+    sel.style.display = systems.length > 0 ? "" : "none";
+    if (systems.length === 0) { state.systemFilter = "all"; return; }
+    sel.innerHTML = '<option value="all">All Systems</option>' +
+        systems.map(s => `<option value="${escapeHtml(s)}">${escapeHtml(s)}</option>`).join("");
+    if (systems.includes(current)) sel.value = current;
+}
+
 // ── Core render ────────────────────────────────────────────
 
 function render() {
     renderGlobalStats();
     renderIssues();
     populateTeamFilter();
+    populateSystemFilter();
 
     let categories = sortCategories(getCategoryNames());
     renderTimeline(categories, render);
@@ -412,6 +425,12 @@ function bindEvents() {
     // Team filter
     document.getElementById("teamFilter").addEventListener("change", (e) => {
         state.teamFilter = e.target.value;
+        render();
+    });
+
+    // System filter (v2 — only visible when runbook has system-tagged tasks)
+    document.getElementById("systemFilter").addEventListener("change", (e) => {
+        state.systemFilter = e.target.value;
         render();
     });
 

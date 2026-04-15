@@ -3,9 +3,9 @@ import { STATUS, statusLabel } from "../constants.js";
 import {
     normalizeStatus, statusClass, computeCategoryStatus,
     formatTime, formatTimeShort, getEarliestTime,
-    matchesSearch, matchesTeam, escapeHtml, getUniqueTeams,
+    matchesSearch, matchesTeam, matchesSystem, escapeHtml, getUniqueTeams,
 } from "../selectors.js";
-import { setTaskStatus, completeAllInCategory, setAssignee, toggleCategory } from "../actions/tasks.js";
+import { setTaskStatus, completeAllInCategory, setAssignee, setEndTime, setComment, toggleCategory } from "../actions/tasks.js";
 import { updateStatsValues } from "./stats.js";
 
 /* ── Helpers for local DOM patching ───────────────────────── */
@@ -18,6 +18,24 @@ const ROW_EXTRA_CLASS = {
     [STATUS.COMPLETED]: "completed", [STATUS.BLOCKING]: "blocked",
     [STATUS.UNNEEDED]: "unneeded"
 };
+
+/* ── v2 field helpers ─────────────────────────── */
+const PARTY_COLORS = { Client: "#1565c0", Murex: "#c2185b", Joint: "#7b1fa2" };
+
+function partyBadge(party) {
+    if (!party) return "";
+    const bg = PARTY_COLORS[party] || "#555555";
+    return `<span class="task-party" style="background:${bg}">${escapeHtml(party)}</span>`;
+}
+
+function endDelta(t) {
+    if (!t.estimatedEnd || !t.endTime) return "";
+    const diff = Math.round((new Date(t.endTime) - new Date(t.estimatedEnd)) / 60000);
+    if (!isFinite(diff) || diff === 0) return "";
+    return diff > 0
+        ? `<span class="task-overrun">(+${diff}m)</span>`
+        : `<span class="task-ahead">(${Math.abs(diff)}m early)</span>`;
+}
 
 /**
  * Patch a single task row after its status changed.
@@ -151,6 +169,99 @@ function attachAssigneeEdit(badge, c, idx) {
     });
 }
 
+/* ── endTime & comment editing (v2) ─────────────────────── */
+
+/**
+ * Attach click-to-edit on an end-time span. Opens a datetime-local input;
+ * on commit saves ISO string to state via setEndTime().
+ */
+function attachEndTimeEdit(span, c, idx) {
+    span.addEventListener("click", (e) => {
+        e.stopPropagation();
+        const current = state.runbookData[c][idx].endTime || "";
+        // datetime-local inputs expect "YYYY-MM-DDTHH:MM" — slice to 16 chars, no UTC conversion
+        const localVal = current ? current.slice(0, 16) : "";
+        const input = document.createElement("input");
+        input.type = "datetime-local";
+        input.className = "task-time-edit";
+        input.value = localVal;
+        span.replaceWith(input);
+        input.focus();
+        const commit = () => {
+            if (input._committed) return;
+            input._committed = true;
+            const val = input.value;
+            const newEnd = val ? val.slice(0, 16) : "";  // keep as local "YYYY-MM-DDTHH:MM", no UTC conversion
+            setEndTime(c, idx, newEnd);
+            const newSpan = document.createElement("span");
+            newSpan.className = span.className;
+            Object.assign(newSpan.dataset, { cat: c, idx: String(idx) });
+            newSpan.title = span.title;
+            const t = state.runbookData[c][idx];
+            if (newEnd) {
+                newSpan.textContent = formatTimeShort(newEnd);
+            } else {
+                newSpan.innerHTML = "<span style='opacity:0.35'>+end</span>";
+            }
+            attachEndTimeEdit(newSpan, c, idx);
+            input.replaceWith(newSpan);
+            const next = newSpan.nextElementSibling;
+            if (next && (next.classList.contains("task-overrun") || next.classList.contains("task-ahead"))) next.remove();
+            const deltaHtml = endDelta(t);
+            if (deltaHtml) newSpan.insertAdjacentHTML("afterend", deltaHtml);
+        };
+        input.addEventListener("blur", commit);
+        input.addEventListener("keydown", (ev) => {
+            if (ev.key === "Enter") { ev.preventDefault(); input.blur(); }
+            if (ev.key === "Escape") { input.value = localVal; input.blur(); }
+        });
+    });
+}
+
+/**
+ * Attach pencil-button click for inline comment editing.
+ * Opens a textarea in-place; Ctrl+Enter or blur commits, Escape cancels.
+ */
+function attachCommentEdit(btn, c, idx) {
+    btn.addEventListener("click", (e) => {
+        e.stopPropagation();
+        const content = btn.closest(".task-content");
+        if (!content || content.querySelector(".task-comment-edit")) return; // already open
+        const current = state.runbookData[c][idx].comment || "";
+        const existing = content.querySelector(".task-comment");
+        if (existing) existing.remove();
+        const textarea = document.createElement("textarea");
+        textarea.className = "task-comment-edit";
+        textarea.value = current;
+        textarea.placeholder = "Add a note about this task\u2026";
+        btn.insertAdjacentElement("afterend", textarea);
+        textarea.focus();
+        const len = textarea.value.length;
+        textarea.setSelectionRange(len, len);
+        const commit = () => {
+            if (textarea._committed) return;
+            textarea._committed = true;
+            const val = textarea.value.trim();
+            setComment(c, idx, val);
+            textarea.remove();
+            const old = content.querySelector(".task-comment");
+            if (old) old.remove();
+            if (val) {
+                const div = document.createElement("div");
+                div.className = "task-comment";
+                div.textContent = val;
+                btn.insertAdjacentElement("afterend", div);
+            }
+            btn.title = val ? "Edit note" : "Add note";
+        };
+        textarea.addEventListener("blur", commit);
+        textarea.addEventListener("keydown", (ev) => {
+            if (ev.key === "Escape") { textarea.value = current; textarea.blur(); }
+            if ((ev.ctrlKey || ev.metaKey) && ev.key === "Enter") { ev.preventDefault(); textarea.blur(); }
+        });
+    });
+}
+
 /**
  * Render all category cards into the container.
  * @param {string[]} categories — sorted category names
@@ -169,8 +280,9 @@ export function renderCategories(categories, renderAll, showToast) {
 
         if (state.filterState !== "all" && state.filterState !== catStatus) return;
 
-        const matchingTasks = tasks.filter(t => matchesSearch(t) && matchesTeam(t));
-        if ((state.searchQuery || state.teamFilter !== "all") && matchingTasks.length === 0) return;
+        const isFiltered = !!(state.searchQuery || state.teamFilter !== "all" || state.systemFilter !== "all");
+        const matchingTasks = tasks.filter(t => matchesSearch(t) && matchesTeam(t) && matchesSystem(t));
+        if (isFiltered && matchingTasks.length === 0) return;
 
         anyVisible = true;
 
@@ -201,13 +313,14 @@ export function renderCategories(categories, renderAll, showToast) {
             <div class="cat-progress"><div class="cat-progress-fill" style="width:${pct}%; background:${fillColor}"></div></div>
             <div class="tasks-wrapper ${isOpen ? 'open' : ''}">
             <div class="tasks">
-                ${(state.searchQuery || state.teamFilter !== "all" ? matchingTasks : tasks).map((t, i) => {
+                ${(isFiltered ? matchingTasks : tasks).map((t, i) => {
                     const realIdx = tasks.indexOf(t);
                     const ns = normalizeStatus(t.status);
                     const sc = statusClass(ns);
-                    const timeStr = t.startTime
-                        ? formatTimeShort(t.startTime) + (t.endTime ? " - " + formatTimeShort(t.endTime) : "")
-                        : "";
+                    const startTStr = t.startTime ? `<span class="task-time">${formatTimeShort(t.startTime)}</span> — ` : "";
+                    const endTStr = `<span class="task-time-end" data-cat="${escapeHtml(cat)}" data-idx="${realIdx}" title="Click to edit actual end time">${t.endTime ? formatTimeShort(t.endTime) : "<span style='opacity:0.35'>+end</span>"}</span>`;
+                    const deltaStr = endDelta(t);
+                    const timePart = (t.startTime || t.endTime) ? (startTStr + endTStr + deltaStr) : "";
                     return `
                     <div class="task-row ${ns === STATUS.COMPLETED ? 'completed' : ns === STATUS.BLOCKING ? 'blocked' : ns === STATUS.UNNEEDED ? 'unneeded' : ''}">
                         <div class="task-status-btn s-${sc}" title="Click to cycle status"
@@ -215,12 +328,17 @@ export function renderCategories(categories, renderAll, showToast) {
                             ${ns === STATUS.COMPLETED ? '✓' : ns === STATUS.IN_PROGRESS ? '▶' : ns === STATUS.BLOCKING ? '✕' : ns === STATUS.UNNEEDED ? '—' : ''}
                         </div>
                         <div class="task-content">
-                            ${t.item ? '<span class="task-item-label">' + escapeHtml(t.item) + '</span>' : ''}
-                            <span class="task-text">${escapeHtml(t.task)}</span>
+                            ${t.taskId ? '<span class="task-id-badge">#' + escapeHtml(t.taskId) + '</span>' : ''}
+                            ${(t.item && t.item !== t.task) ? '<span class="task-item-label">' + escapeHtml(t.item) + '</span>' : ''}
+                            <span class="task-text">${escapeHtml(t.task || t.item || '')}</span>
+                            ${t.system ? '<span class="task-system-tag">' + escapeHtml(t.system) + '</span>' : ''}
                             ${t.assignee ? '<span class="task-assignee" title="Click to edit assignee" data-cat="' + escapeHtml(cat) + '" data-idx="' + realIdx + '">' + escapeHtml(t.assignee) + '</span>' : '<span class="task-assignee" title="Click to assign" data-cat="' + escapeHtml(cat) + '" data-idx="' + realIdx + '" style="opacity:0.4;border:1px dashed var(--input-border)">+ assign</span>'}
+                            ${partyBadge(t.party)}
+                            <span class="task-comment-btn" data-cat="${escapeHtml(cat)}" data-idx="${realIdx}" title="${t.comment ? 'Edit note' : 'Add note'}">💬 ${t.comment ? 'edit' : 'note'}</span>
+                            ${t.comment ? '<div class="task-comment">' + escapeHtml(t.comment) + '</div>' : ''}
                         </div>
                         <div class="task-meta">
-                            ${timeStr ? '<span class="task-time">' + timeStr + '</span>' : ''}
+                            ${timePart}
                             <span class="task-status-dot dot-${sc}"></span>
                         </div>
                     </div>`;
@@ -320,6 +438,20 @@ export function renderCategories(categories, renderAll, showToast) {
             const c = badge.dataset.cat;
             const idx = parseInt(badge.dataset.idx);
             attachAssigneeEdit(badge, c, idx);
+        });
+
+        // Attach end time click-to-edit (v2)
+        div.querySelectorAll(".task-time-end").forEach(span => {
+            const c = span.dataset.cat;
+            const idx = parseInt(span.dataset.idx);
+            if (c && !isNaN(idx)) attachEndTimeEdit(span, c, idx);
+        });
+
+        // Attach comment edit (v2)
+        div.querySelectorAll(".task-comment-btn").forEach(btn => {
+            const c = btn.dataset.cat;
+            const idx = parseInt(btn.dataset.idx);
+            if (c && !isNaN(idx)) attachCommentEdit(btn, c, idx);
         });
     });
 

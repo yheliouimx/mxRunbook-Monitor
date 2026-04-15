@@ -1,11 +1,12 @@
 {
-  "projectName": "Fermat Treasury Migration",
-  "subtitle": "Day 0 - Weekend Release (SoE)",
-  "changeRef": "CHG2736681",
-  "client": "Lloyds Banking Group",
-  "environment": "MAS_PROD",
-  "release": "release_mas_2.2",
+  "projectName": "DZ Bank MK",
+  "subtitle": "Dress Rehearsal",
+  "changeRef": "DR2",
+  "client": "DZ Bank",
+  "environment": "PROD",
+  "release": "",
   "accentColor": "#003a2d",
-  "logoFile": "clientLogo-lloyds.png",
-  "backgroundFile": "Murex_background6.jpg"
+  "logoFile": "clientLogo-dzBank.png",
+  "backgroundFile": "Murex_background6.jpg",
+  "runbookFile": "dz_runbook.json"
 }

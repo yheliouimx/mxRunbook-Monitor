@@ -1,6 +1,6 @@
 # Plan: Schema Hardening + New Task Fields
 
-## Status: DRAFT — awaiting user approval
+## Status: Phase 1 COMPLETE ✅ | Phase 2 COMPLETE ✅ | Phase 3 COMPLETE ✅
 
 ## TL;DR
 Three-phase plan:
@@ -13,28 +13,28 @@ Three-phase plan:
 ## Phase 1 — Validation Hardening (crash-proof)
 
 ### 1A. Python: `adapter/schema.py`
-- Add `additionalProperties: true` to RUNBOOK_SCHEMA (allow forward-compat new fields)
-- Add per-task time format validation: if `startTime`/`endTime` present, must match ISO pattern OR be null
-- Add `assignee` to schema properties
-- Add category name length check (> 100 chars → warning)
+- [x] Add `additionalProperties: true` to RUNBOOK_SCHEMA (allow forward-compat new fields)
+- [x] Add per-task time format validation: if `startTime`/`endTime` present, must match ISO pattern OR be null
+- [x] Add `assignee` to schema properties
+- [x] Add category name length check (> 100 chars → warning)
 
 ### 1B. Python: `adapter/quality.py`
-- Add time format check: warn if startTime/endTime is bare `"HH:MM:SS"` (no anchor → JS won't sort)
-- Add check: if `endTime < startTime` across midnight crossing (currently false-flags overnight tasks)
-- Add check: warn if task text contains unstripped `\n`
-- Add check: warn if `item` == `task` (redundant field, usually a mapping error)
+- [x] Add time format check: warn if startTime/endTime is bare `"HH:MM:SS"` (no anchor → JS won't sort)
+- [x] Add check: if `endTime < startTime` across midnight crossing (currently false-flags overnight tasks)
+- [x] Add check: warn if task text contains unstripped `\n`
+- [x] Add check: warn if `item` == `task` (redundant field, usually a mapping error)
 
 ### 1C. Python: `adapter/parsers/excel_parser.py`
-- Already fixed time parsing — add one more guard: strip leading/trailing whitespace from ALL string fields
-- If `category_column` points to a column that doesn't exist → raise clear error (currently silently falls back)
-- Validate `runbook_date` format at parse start, not silently ignore bad values
+- [x] Already fixed time parsing — add one more guard: strip leading/trailing whitespace from ALL string fields
+- [x] If `category_column` points to a column that doesn't exist → raise clear error (currently silently falls back)
+- [x] Validate `runbook_date` format at parse start, not silently ignore bad values
 
 ### 1D. JS: `dashboard/validation.js`
-- Add time string validation in `normalize()`: if startTime/endTime is a non-empty string AND `new Date(val)` is NaN → set to `""` with a console.warn (prevents render crashes silently)
-- Add `comment`, `taskId`, `system`, `party`, `estimatedEnd` to normalize() defaults (empty string / null)
+- [x] Add time string validation in `normalize()`: if startTime/endTime is a non-empty string AND `new Date(val)` is NaN → set to `""` with a console.warn (prevents render crashes silently)
+- [x] Add `comment`, `taskId`, `system`, `party`, `estimatedEnd` to normalize() defaults (empty string / null)
 
 ### 1E. JS: `dashboard/selectors.js` — `formatTimeShort()`
-- Already has isNaN guard — no change needed
+- [x] Already has isNaN guard — no change needed
 
 ---
 
@@ -54,50 +54,50 @@ New optional fields added to task objects:
 `estimatedEnd` is the planned end time (read-only, from import).
 
 ### 2A. Python: `adapter/schema.py`
-- Add 5 new properties to RUNBOOK_SCHEMA task object (all optional, string|null)
+- [x] Add 5 new properties to RUNBOOK_SCHEMA task object (all optional, string|null)
 
 ### 2B. Python: `adapter/parsers/excel_parser.py`
-- Add 5 new keys to `DEFAULT_MAPPING["columns"]` (all default to None)
-- `get_raw()` / `get_val()` already generic — just add the new fields to the task dict
-- `estimatedEnd` = copy of `endTime` value at parse time (frozen planned value)
+- [x] Add 5 new keys to `DEFAULT_MAPPING["columns"]` (all default to None)
+- [x] `get_raw()` / `get_val()` already generic — just add the new fields to the task dict
+- [x] `estimatedEnd` = copy of `endTime` value at parse time (frozen planned value)
 
 ### 2C. Python: `adapter/quality.py`
-- Add check: if `estimatedEnd` present and `endTime` present, warn if actual > estimated by > 30 min
-- Add check: if `party` present, warn if value not in {"Client", "Murex", "Joint", null}
+- [x] Add check: if `estimatedEnd` present and `endTime` present, warn if actual > estimated by > 30 min
+- [x] Add check: if `party` present, warn if value not in {"Client", "Murex", "Joint", null}
 
 ### 2D. Mapping files (`lbg_fermat_mapping.yml`, `dz_mapping.yml`)
-- Add commented-out column mappings for new fields (opt-in, no breaking change)
+- [x] Add commented-out column mappings for new fields (opt-in, no breaking change)
 
 ### 2E. JS: `dashboard/validation.js` — `normalize()`
-- Add new fields to normalization defaults
+- [x] Add new fields to normalization defaults
 
 ### 2F. JS: `dashboard/constants.js`
-- Add `PARTY_OPTIONS = ["Client", "Murex", "Joint"]`
+- [x] Add `PARTY_OPTIONS = ["Client", "Murex", "Joint"]`
 
 ---
 
 ## Phase 3 — Dashboard UI for New Fields
 
 ### 3A. Task card rendering (`dashboard/render/categories.js`)
-- Show `taskId` as a small badge before item label (if present)
-- Show `system` as a small tag after task text (if present)  
-- Show `party` as a colored badge (Client=blue, Murex=green, Joint=gray)
-- Show `comment` as an expandable note below task text with inline edit (pencil icon → textarea → save)
-- Show `estimatedEnd` vs `endTime` delta when both present: "(+15m)" in orange if overrun
+- [x] Show `taskId` as a small badge before item label (if present)
+- [x] Show `system` as a small tag after task text (if present)  
+- [x] Show `party` as a colored badge (Client=blue, Murex=magenta, Joint=purple)
+- [x] Show `comment` as an expandable note below task text with inline edit (pencil icon → textarea → save)
+- [x] Show `estimatedEnd` vs `endTime` delta when both present: "(+15m)" in orange if overrun
 
 ### 3B. `endTime` inline editing
-- The existing assignee click-to-edit pattern (`attachAssigneeEdit`) is the template
-- Add similar click-to-edit on the task time display for `endTime` — ISO datetime input
-- On save: update `state.runbookData[cat][idx].endTime`, trigger local DOM patch
+- [x] The existing assignee click-to-edit pattern (`attachAssigneeEdit`) is the template
+- [x] Add similar click-to-edit on the task time display for `endTime` — ISO datetime input
+- [x] On save: update `state.runbookData[cat][idx].endTime`, trigger local DOM patch
 
 ### 3C. Filtering/search (`dashboard/selectors.js`)
-- Extend `matchesSearch()` to also match `taskId`, `system`, `comment`
-- Add `systemFilter` state and dropdown (parallel to `teamFilter`) — only shown if any task has `system`
+- [x] Extend `matchesSearch()` to also match `taskId`, `system`, `comment`
+- [x] Add `systemFilter` state and dropdown (parallel to `teamFilter`) — only shown if any task has `system`
 
 ### 3D. Stats/exports
-- `export/shared.js` `getExportCategories()` — no change needed (spreads full task objects)
-- Gantt: show `estimatedEnd` as a lighter bar behind actual `endTime` bar (planned vs actual)
-- Summary export: add `comment` column if any tasks have comments
+- [x] `export/shared.js` `getExportCategories()` — no change needed (spreads full task objects)
+- [x] Gantt: show `estimatedEnd` as a lighter bar behind actual `endTime` bar (planned vs actual)
+- [x] Summary export: add `comment` column if any tasks have comments
 
 ---
 

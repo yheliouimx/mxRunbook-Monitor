@@ -95,13 +95,28 @@ export function getUniqueTeams() {
 export function matchesSearch(task) {
     if (!state.searchQuery) return true;
     const q = state.searchQuery.toLowerCase();
-    const text = ((task.item || "") + " " + (task.task || "") + " " + (task.assignee || "")).toLowerCase();
+    const text = [task.item, task.task, task.assignee, task.taskId, task.system, task.comment]
+        .map(v => v || "").join(" ").toLowerCase();
     return text.includes(q);
 }
 
 export function matchesTeam(task) {
     if (state.teamFilter === "all") return true;
     return (task.assignee || "") === state.teamFilter;
+}
+
+export function matchesSystem(task) {
+    if (state.systemFilter === "all") return true;
+    return (task.system || "") === state.systemFilter;
+}
+
+export function getUniqueSystems() {
+    const systems = new Set();
+    Object.entries(state.runbookData).forEach(([key, tasks]) => {
+        if (key.startsWith("_") || !Array.isArray(tasks)) return;
+        tasks.forEach(t => { if (t.system) systems.add(t.system); });
+    });
+    return [...systems].sort((a, b) => a.localeCompare(b));
 }
 
 export function sortCategories(categories) {
@@ -130,7 +145,7 @@ export function sortCategories(categories) {
 
 export function escapeHtml(text) {
     const div = document.createElement("div");
-    div.textContent = text;
+    div.textContent = text == null ? "" : String(text);
     return div.innerHTML;
 }
 

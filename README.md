@@ -17,12 +17,37 @@ Built for short-lived, high-pressure events (releases, migrations, cutovers) whe
 - **3 image exports**:
   - Phone (1080×1920 portrait) — optimized for WhatsApp sharing
   - Email (1920×1080 landscape) — corporate style for email updates
-  - Gantt chart (1920×dynamic) — timeline visualization with NOW line
-- **Text summary**: Copy-paste-ready status summary
+  - Gantt chart (1920×dynamic) — timeline visualization with NOW line, planned-end marker
+- **Text summary**: Copy-paste-ready status summary with operator comments
 - **Dark/Light mode**: Toggle between dark (default) and light themes
 - **Client branding**: Auto-detects logo and background from `assets/` folder
 - **Offline**: Everything runs locally, no network required after initial load
 - **State persistence**: Progress saved to browser localStorage
+
+### v2 task fields (optional, sourced from Excel)
+
+When your runbook spreadsheet includes extra columns, the adapter maps them to these v2 fields and the dashboard displays them in-line on each task row:
+
+| Field | Dashboard display | Example |
+|-------|-------------------|---------|
+| `taskId` | Yellow `#ID` badge | `#15` |
+| `system` | Cyan outlined pill | `MX/PROD` |
+| `party` | Colored filled badge | `Client` / `Murex` / `Joint` |
+| `estimatedEnd` | Planned-end baseline for Gantt & delta display | `2026-04-15T14:00` |
+| `endTime` | Actual end — click-to-edit inline on the task row | `13:45` |
+| `comment` | Amber 💬 note button → inline textarea editor | operator notes |
+
+Enable them in your `mapping.yml`:
+```yaml
+columns:
+  # ... required columns ...
+  taskId:  "Task Id"
+  system:  "System"
+  party:   "Owner"          # values: Client / Murex / Joint
+  estimatedEnd: "Planned End"
+  endTime: "Actual End"
+  comment: "Comments"
+```
 
 ### Dark & Light themes
 ![Dashboard — dark mode (left) and light mode (right)](assets/screenshot-themes.png)
@@ -86,6 +111,12 @@ columns:
   startTime: "Planned Start"       # Optional: start time column
   endTime: "Planned End"           # Optional: end time column
   item: "Task ID"                  # Optional: item label column
+  # v2 optional fields
+  taskId:  "Task Id"               # Optional: task reference ID
+  system:  "System"                # Optional: system/component tag
+  party:   "Owner"                 # Optional: Client / Murex / Joint
+  estimatedEnd: "Planned End"      # Optional: planned end (for Gantt delta)
+  comment: "Comments"              # Optional: operator notes column
 
 category_column: "Phase"           # Column that groups tasks into categories
 default_category: "Tasks"          # Fallback if a row has no category
@@ -233,19 +264,32 @@ runbook-dashboard/
 │   ├── app.js               ← Entry point, render loop, event wiring
 │   ├── state.js             ← Global state
 │   ├── constants.js         ← Status labels, class mappings
-│   ├── selectors.js         ← Derived queries (stats, status logic)
+│   ├── selectors.js         ← Derived queries (stats, filters, system list)
 │   ├── persistence.js       ← localStorage, JSON export/import
-│   ├── validation.js        ← Status normalization
+│   ├── validation.js        ← Status normalization, v2 field defaults
 │   ├── actions/             ← User interaction handlers
+│   │   ├── health.js
+│   │   ├── issues.js
+│   │   └── tasks.js         ← setTaskStatus, setAssignee, setEndTime, setComment
 │   ├── render/              ← DOM rendering (targeted patches)
+│   │   ├── categories.js    ← Task rows with v2 badges, inline editing
+│   │   ├── issues.js
+│   │   ├── stats.js
+│   │   ├── summary.js       ← Includes comment rows in HTML export
+│   │   └── timeline.js
 │   └── export/              ← Canvas image exports + theme
+│       ├── gantt.js         ← Gantt with planned-end (P) marker
+│       └── ...
 ├── assets/
 │   ├── clientLogo-*.png     ← Client logo (auto-detected)
 │   └── background-*.jpg     ← Background image (auto-detected)
 ├── adapter/
 │   ├── convert.py           ← CLI: source file → runbook.json
-│   ├── schema.py            ← JSON validation
-│   └── parsers/             ← CSV + Excel parsers
+│   ├── schema.py            ← JSON validation (incl. v2 fields)
+│   ├── quality.py           ← Quality checks (time conflicts, party values)
+│   └── parsers/
+│       ├── excel_parser.py  ← Excel parser, maps v2 columns
+│       └── generic_csv.py
 ├── dist/                    ← Build outputs (git-ignored)
 │   ├── RunbookDashboard.exe            ← Portable Windows server
 │   ├── runbookDashboard-portable.html  ← Single-file HTML build
@@ -264,11 +308,16 @@ The dashboard expects this structure:
 {
   "Category Name": [
     {
-      "item": "TASK-1",
       "task": "Description of the task",
       "status": "Not Started",
-      "startTime": "2026-03-27T18:00:00",
-      "endTime": "2026-03-27T19:00:00"
+      "item": "TASK-1",
+      "startTime": "2026-03-27T18:00",
+      "endTime": "2026-03-27T19:00",
+      "taskId": "15",
+      "system": "MX/PROD",
+      "party": "Murex",
+      "estimatedEnd": "2026-03-27T19:30",
+      "comment": "Operator note goes here"
     }
   ],
   "Another Category": [ ... ],
@@ -278,9 +327,11 @@ The dashboard expects this structure:
 ```
 
 - Categories are displayed in source order
-- `item` and time fields are optional (can be `null`)
-- `_issues` and `_health` are reserved keys (prefixed with `_`), managed by the dashboard UI
-- `status` should be one of: `Completed`, `In Progress`, `Not Started`, `Blocking`, `Unneeded`
+- `item`, `taskId`, `system`, `party`, `estimatedEnd`, `comment` are all optional (omit or `null`)
+- `startTime` / `endTime` use local ISO format `YYYY-MM-DDTHH:MM` (no UTC offset needed)
+- `endTime` is editable in the dashboard — click the time on any task row
+- `comment` is editable in the dashboard — click the 💬 note button on any task row
+- `_issues` and `_health` are reserved keys managed by the dashboard UI
 
 ---
 

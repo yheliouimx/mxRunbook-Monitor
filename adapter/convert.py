@@ -156,7 +156,11 @@ def main():
     print(f"Converting: {args.source} (format: {fmt})")
 
     # Convert
-    data = convert(args.source, fmt, mapping)
+    try:
+        data = convert(args.source, fmt, mapping)
+    except PermissionError as e:
+        print(str(e), file=sys.stderr)
+        sys.exit(1)
 
     # Merge preserved keys
     if not args.no_merge:

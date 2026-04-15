@@ -1,8 +1,13 @@
 """Runbook quality checker - analyzes data for completeness, consistency, and potential issues."""
-from datetime import datetime
+import re
+from datetime import datetime, timedelta
 from collections import Counter
 
 VALID_STATUSES = {"Completed", "In Progress", "Not Started", "Blocking", "Unneeded"}
+VALID_PARTIES = {"Client", "Murex", "Joint"}
+
+# Bare time string (no date part) — JS new Date() cannot parse these
+_BARE_TIME_RE = re.compile(r"^\d{2}:\d{2}(:\d{2})?$")
 
 
 def check(data: dict) -> dict:
@@ -62,17 +67,52 @@ def check(data: dict) -> dict:
             if not has_start and not has_end:
                 tasks_without_times += 1
 
+            # Warn if time strings are bare HH:MM:SS (no date — JS can't sort/display correctly)
+            if start and isinstance(start, str) and _BARE_TIME_RE.match(start.strip()):
+                warnings.append(f"{label}: startTime '{start}' has no date component — set runbook_date in mapping")
+            if end and isinstance(end, str) and _BARE_TIME_RE.match(end.strip()):
+                warnings.append(f"{label}: endTime '{end}' has no date component — set runbook_date in mapping")
+
             if has_start and has_end:
                 t_start = _parse_time(start)
                 t_end = _parse_time(end)
+                # Only flag end-before-start if the gap is more than a few minutes AND
+                # the end is not simply crossing midnight (gap < 12 hours)
                 if t_start and t_end and t_end < t_start:
-                    warnings.append(f"{label}: endTime ({end}) is before startTime ({start})")
+                    gap_hours = (t_start - t_end).total_seconds() / 3600
+                    if gap_hours < 12:  # genuine reversal, not overnight crossing
+                        warnings.append(f"{label}: endTime ({end}) is before startTime ({start})")
 
             if not task.get("item"):
                 tasks_without_item += 1
+            elif task.get("item") == task_text:
+                warnings.append(f"{label}: 'item' and 'task' are identical — possible mapping misconfiguration")
 
             if not task.get("assignee"):
                 tasks_without_assignee += 1
+
+            # Warn on unstripped newlines in text fields
+            for field in ("task", "item"):
+                fval = task.get(field, "") or ""
+                if "\n" in fval:
+                    warnings.append(f"{label}: field '{field}' contains newline characters — strip in mapping")
+
+            # Validate v2 fields if present
+            party = task.get("party")
+            if party and party not in VALID_PARTIES:
+                warnings.append(f"{label}: 'party' value '{party}' not in {sorted(VALID_PARTIES)}")
+
+            est_end = task.get("estimatedEnd")
+            if est_end and has_end:
+                t_actual = _parse_time(end)
+                t_estimated = _parse_time(est_end)
+                if t_actual and t_estimated and t_actual > t_estimated:
+                    overrun_min = (t_actual - t_estimated).total_seconds() / 60
+                    if overrun_min > 30:
+                        warnings.append(
+                            f"{label}: actual endTime overruns estimatedEnd by {overrun_min:.0f} min "
+                            f"({est_end} → {end})"
+                        )
 
     # Duplicate detection
     task_counter = Counter(text for _, text in all_task_texts)

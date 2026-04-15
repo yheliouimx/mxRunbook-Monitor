@@ -42,6 +42,26 @@ export function setAssignee(cat, idx, assignee) {
 }
 
 /**
+ * Set a task's actual end time (editable in the dashboard live view).
+ * @param {string} cat — category key
+ * @param {number} idx — task index
+ * @param {string} endTime — ISO datetime string, or empty string to clear
+ */
+export function setEndTime(cat, idx, endTime) {
+    state.runbookData[cat][idx].endTime = endTime || undefined;
+}
+
+/**
+ * Set or clear the operator comment on a task.
+ * @param {string} cat — category key
+ * @param {number} idx — task index
+ * @param {string} comment — comment text, or empty string to clear
+ */
+export function setComment(cat, idx, comment) {
+    state.runbookData[cat][idx].comment = comment || undefined;
+}
+
+/**
  * Expand all categories (add all to openCategories set).
  */
 export function expandAll() {

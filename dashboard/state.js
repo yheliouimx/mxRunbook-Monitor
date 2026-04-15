@@ -9,6 +9,7 @@ export const state = {
   filterState:    "all",
   searchQuery:    "",
   teamFilter:     "all",
+  systemFilter:   "all",
   sortMode:       "timeline",
   openCategories: new Set(),
 

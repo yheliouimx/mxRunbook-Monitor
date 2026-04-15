@@ -8,5 +8,5 @@
   "accentColor": "#003a2d",
   "logoFile": "clientLogo-dzBank.png",
   "backgroundFile": "Murex_background6.jpg",
-  "runbookFile": "dz_runbook.json"
+  "runbookFile": "runbook.json"
 }

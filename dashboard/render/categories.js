@@ -178,11 +178,7 @@ export function renderCategories(categories, renderAll, showToast) {
         const pct = Math.round((done / tasks.length) * 100);
         const isOpen = state.openCategories.has(cat);
         const earliest = getEarliestTime(tasks);
-        const timeRange = earliest ? formatTime(tasks.reduce((best, t) => {
-            if (!t.startTime) return best;
-            const d = new Date(t.startTime);
-            return (!best || d < best) ? d : best;
-        }, null).toISOString()) : "";
+        const timeRange = earliest ? formatTime(earliest.toISOString()) : "";
 
         const fillColor = pct === 100 ? "var(--color-success)" : pct > 0 ? "var(--color-warning-text)" : "var(--color-danger-text)";
 

@@ -18,7 +18,7 @@ export function getExportCategories() {
 
 /**
  * Get project header info.
- * @returns {{ projectName: string, subtitle: string, changeRef: string, accentColor: string }}
+ * @returns {{ projectName: string, subtitle: string, changeRef: string, client: string, environment: string, release: string, accentColor: string }}
  */
 export function getProjectInfo() {
     return { ...state.projectConfig };

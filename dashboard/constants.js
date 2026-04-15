@@ -65,13 +65,14 @@ export const RESERVED_KEYS = {
 
 // DEFAULT_PROJECT_CONFIG — matches current inline default in projectConfig
 export const DEFAULT_PROJECT_CONFIG = {
-  projectName: "Go-Live Runbook",
-  subtitle:    "",
-  changeRef:   "",
-  client:      "",
-  environment: "",
-  release:     "",
-  accentColor: "#003a2d",
+  projectName:  "Go-Live Runbook",
+  subtitle:     "",
+  changeRef:    "",
+  client:       "",
+  environment:  "",
+  release:      "",
+  accentColor:  "#003a2d",
+  runbookFile:  "runbook.json",
 };
 
 // SORT_MODES

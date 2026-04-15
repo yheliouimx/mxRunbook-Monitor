@@ -17,9 +17,17 @@ function readReservedKeys() {
 // ── Public API ──
 
 /**
+ * Return the runbook filename to fetch.
+ * Uses state.projectConfig.runbookFile if set, otherwise "runbook.json".
+ */
+function runbookFile() {
+    return (state.projectConfig && state.projectConfig.runbookFile) || "runbook.json";
+}
+
+/**
  * Load runbook on startup. Priority:
  *   1. localStorage ("runbook_progress") — working draft
- *   2. runbook.json (server fetch) — baseline template
+ *   2. runbookFile from config.json (server fetch) — baseline template
  * Returns { source: string } on success, throws on total failure.
  */
 export async function loadInitialRunbook() {
@@ -31,18 +39,20 @@ export async function loadInitialRunbook() {
             return { source: "browser draft" };
         } catch (e) { /* fall through to fetch */ }
     }
-    const res = await fetch("runbook.json");
+    const file = runbookFile();
+    const res = await fetch(file);
     if (!res.ok) throw new Error("HTTP " + res.status);
     const fetched = await res.json();
     applyLoadedRunbook(fetched);
-    return { source: "runbook.json" };
+    return { source: file };
 }
 
 /**
- * Reload runbook.json from server, discarding current draft.
+ * Reload runbook from server (uses configured filename), discarding current draft.
  */
 export async function loadFromServer() {
-    const res = await fetch("runbook.json?_ts=" + Date.now(), { cache: "no-store" });
+    const file = runbookFile();
+    const res = await fetch(file + "?_ts=" + Date.now(), { cache: "no-store" });
     if (!res.ok) throw new Error("HTTP " + res.status);
     const fresh = await res.json();
     applyLoadedRunbook(fresh);
@@ -85,7 +95,7 @@ export function applyLoadedRunbook(fresh) {
 }
 
 /**
- * Save working draft to localStorage AND download a runbook.json snapshot.
+ * Save working draft to localStorage AND download a JSON snapshot.
  */
 export function saveDraft() {
     syncReservedKeys();
@@ -94,7 +104,7 @@ export function saveDraft() {
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
     a.href = url;
-    a.download = "runbook.json";
+    a.download = runbookFile();
     a.click();
     URL.revokeObjectURL(url);
 }

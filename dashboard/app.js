@@ -90,7 +90,7 @@ function applyConfig() {
     const h1 = document.querySelector(".header h1");
     if (h1) h1.textContent = c.projectName + " - Go-Live Runbook";
     const sub = document.querySelector(".subtitle");
-    if (sub) sub.textContent = [c.subtitle, c.changeRef].filter(Boolean).join(" | ");
+    if (sub) sub.textContent = [c.client, c.environment, c.release, c.subtitle, c.changeRef].filter(Boolean).join(" | ");
     if (c.accentColor) {
         document.documentElement.style.setProperty('--color-primary', c.accentColor);
     }
@@ -178,7 +178,7 @@ function render() {
 async function loadRunbook() {
     try {
         const { source } = await loadInitialRunbook();
-        showToast(source === "browser draft" ? "Loaded saved progress" : "Loaded runbook.json");
+        showToast(source === "browser draft" ? "Loaded saved progress" : `Loaded ${source}`);
         render();
         // After initial render completes, suppress intro animations on future re-renders
         requestAnimationFrame(() => {
@@ -188,7 +188,7 @@ async function loadRunbook() {
         });
     } catch (e) {
         document.getElementById("container").innerHTML =
-            '<div class="no-results">Failed to load runbook.json. Make sure the file is in the same directory.</div>';
+            '<div class="no-results">Failed to load runbook file. Check that the file specified in config.json exists in the same directory.</div>';
     }
 }
 
@@ -209,7 +209,7 @@ function resetRunbook() {
 
 function saveToLocalStorage() {
     saveDraft();
-    showToast("Progress saved to runbook.json");
+    showToast("Progress saved to " + (state.projectConfig.runbookFile || "runbook.json"));
 }
 
 function saveIssue() { doSaveIssue(showToast); }
@@ -266,9 +266,9 @@ async function reloadRunbookJSON() {
     try {
         await loadFromServer();
         render();
-        showToast("Reloaded runbook.json");
+        showToast("Reloaded " + (state.projectConfig.runbookFile || "runbook.json"));
     } catch (e) {
-        showToast("Failed to reload runbook.json");
+        showToast("Failed to reload runbook file");
     }
 }
 

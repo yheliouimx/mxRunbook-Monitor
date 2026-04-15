@@ -6,3 +6,9 @@ node_modules/
 
 # Build outputs — regenerate with npm run build:*
 dist/
+
+# Python bytecode — never commit
+__pycache__/
+*.py[cod]
+*.pyo
+.pytest_cache/

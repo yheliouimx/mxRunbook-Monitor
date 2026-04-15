@@ -68,11 +68,13 @@ assets/           (create empty)
   "client": "Client Name",
   "environment": "PROD",
   "release": "v1.0",
-  "accentColor": "#003a2d"
+  "accentColor": "#003a2d",
+  "runbookFile": "runbook.json"
 }
 ```
 
 `accentColor` is used in canvas exports (top bar, footer). Use the client's brand color.
+`runbookFile` sets the JSON file the dashboard loads. Defaults to `runbook.json` if omitted — useful when managing multiple projects in the same folder.
 
 ### 3. Map your data columns — `mapping.yml`
 

@@ -26,6 +26,8 @@ import { toggleIssuesPanel as doToggleIssuesPanel } from "./actions/issues.js";
 import { exportPhoneSnapshot } from "./export/phone.js";
 import { exportEmailSnapshot } from "./export/email.js";
 import { exportGanttChart } from "./export/gantt.js";
+import { exportFinalReport } from "./export/finalReport.js";
+import { startAutoSnapshot, recordSnapshot } from "./history.js";
 
 // ── Helpers ────────────────────────────────────────────────
 
@@ -148,6 +150,7 @@ function updatePaletteButton() {
 function setHealth(status) {
     doSetHealth(status);
     renderHealthIndicator();
+    recordSnapshot(); // capture health transition immediately
 }
 
 // ── Team filter ────────────────────────────────────────────
@@ -269,6 +272,14 @@ function showEmailExportOptions() {
 }
 
 function exportGantt() { exportGanttChart(showToast); }
+
+async function exportReport() {
+    try {
+        await exportFinalReport(showToast);
+    } catch (e) {
+        showToast("Failed to generate report");
+    }
+}
 
 function exportJSON() {
     exportRunbookJson();
@@ -461,6 +472,7 @@ function bindEvents() {
     exportMenu.querySelector('[data-action="gantt-export"]').addEventListener("click", () => { exportMenu.classList.remove("open"); exportGantt(); });
     exportMenu.querySelector('[data-action="summary"]').addEventListener("click", () => { exportMenu.classList.remove("open"); generateSummary(); });
     exportMenu.querySelector('[data-action="export-json"]').addEventListener("click", () => { exportMenu.classList.remove("open"); exportJSON(); });
+    exportMenu.querySelector('[data-action="final-report"]').addEventListener("click", () => { exportMenu.classList.remove("open"); exportReport(); });
 
     document.querySelector('[data-action="expand-all"]').addEventListener("click", expandAll);
     document.querySelector('[data-action="collapse-all"]').addEventListener("click", collapseAll);
@@ -498,3 +510,4 @@ updateClock();
 setInterval(updateClock, 1000);
 bindEvents();
 loadConfig().then(() => { detectAssets(); loadRunbook(); });
+startAutoSnapshot(15 * 60 * 1000);

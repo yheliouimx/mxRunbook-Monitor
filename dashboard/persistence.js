@@ -127,7 +127,7 @@ export function exportRunbookJson() {
 }
 
 /**
- * Reset all tasks to "Not Started", clear issues and health.
+ * Reset all tasks to "Not Started", clear issues, health, and snapshot history.
  * Confirmation is handled by the caller (app.js showConfirm modal).
  * Returns true when reset was performed.
  */
@@ -140,5 +140,6 @@ export function resetRunbook() {
     state.healthStatus = "Green";
     state.runbookData[RESERVED_KEYS.health] = "Green";
     localStorage.removeItem("runbook_progress");
+    localStorage.removeItem("runbook_snapshots");
     return true;
 }

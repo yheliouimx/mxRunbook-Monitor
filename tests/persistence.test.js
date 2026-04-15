@@ -187,16 +187,11 @@ describe('persistence', () => {
   // ── resetRunbook ──
 
   describe('resetRunbook()', () => {
-    it('returns false if user cancels first confirm', () => {
-      vi.spyOn(globalThis, 'confirm').mockReturnValue(false);
-      expect(persistence.resetRunbook()).toBe(false);
-    });
-
-    it('returns false if user cancels second confirm', () => {
-      vi.spyOn(globalThis, 'confirm')
-        .mockReturnValueOnce(true)
-        .mockReturnValueOnce(false);
-      expect(persistence.resetRunbook()).toBe(false);
+    it('always returns true (confirmation is handled by the caller in app.js)', () => {
+      // resetRunbook() performs the reset unconditionally and signals success.
+      // The showConfirm() guard lives in app.js, not here.
+      state.runbookData = { Phase1: [{ task: 'A', status: 'Completed' }] };
+      expect(persistence.resetRunbook()).toBe(true);
     });
 
     it('resets all tasks to Not Started on double confirm', () => {

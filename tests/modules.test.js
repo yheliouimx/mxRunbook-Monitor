@@ -105,6 +105,24 @@ describe('export/gantt.js exports', () => {
   });
 });
 
+describe('export/finalReport.js exports', () => {
+  it('exports exportFinalReport', async () => {
+    const mod = await import('../dashboard/export/finalReport.js');
+    expect(typeof mod.exportFinalReport).toBe('function');
+  });
+});
+
+describe('history.js exports', () => {
+  it('exports expected functions', async () => {
+    const mod = await import('../dashboard/history.js');
+    expect(typeof mod.recordSnapshot).toBe('function');
+    expect(typeof mod.getSnapshots).toBe('function');
+    expect(typeof mod.clearSnapshots).toBe('function');
+    expect(typeof mod.startAutoSnapshot).toBe('function');
+    expect(typeof mod.stopAutoSnapshot).toBe('function');
+  });
+});
+
 // ── App entry point ──
 
 describe('app.js', () => {
@@ -131,7 +149,8 @@ describe('app.js', () => {
     }
     // Add data-action buttons
     const actions = ['save', 'reload', 'load-file', 'phone-export', 'email-export',
-                     'gantt-export', 'summary', 'export-json', 'expand-all', 'collapse-all', 'reset'];
+                     'gantt-export', 'summary', 'export-json', 'final-report',
+                     'expand-all', 'collapse-all', 'reset'];
     for (const a of actions) {
       const btn = document.createElement('button');
       btn.setAttribute('data-action', a);

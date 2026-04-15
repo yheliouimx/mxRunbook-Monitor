@@ -25,6 +25,8 @@ sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from schema import validate
 from quality import check as quality_check, format_report
 from parsers import generic_csv, excel_parser
+from autodetect import autodetect_mapping, format_yaml
+from template_generator import generate_template
 
 
 def load_mapping(path: str) -> dict:
@@ -120,6 +122,16 @@ def main():
         "--check", "-c", dest="check_path",
         help="Run quality report on a runbook.json file and exit"
     )
+    parser.add_argument(
+        "--generate-template", "-g", dest="generate_template",
+        action="store_true",
+        help="Generate an Excel template (.xlsx) from the mapping file and exit"
+    )
+    parser.add_argument(
+        "--auto-detect", "-a", dest="auto_detect",
+        action="store_true",
+        help="Detect column mapping from --source headers and print suggested mapping.yml"
+    )
 
     args = parser.parse_args()
 
@@ -142,8 +154,67 @@ def main():
         print(format_report(result))
         sys.exit(1 if result["errors"] else 0)
 
+    # Template generation mode
+    if args.generate_template:
+        if not args.mapping:
+            parser.error("--generate-template requires --mapping")
+        mapping = load_mapping(args.mapping)
+        out = args.output if args.output != "runbook.json" else "template.xlsx"
+        if not out.endswith(".xlsx"):
+            out += ".xlsx"
+        try:
+            generate_template(mapping, out)
+            print(f"Template written to: {os.path.abspath(out)}")
+        except ImportError as e:
+            print(f"ERROR: {e}", file=sys.stderr)
+            sys.exit(1)
+        except ValueError as e:
+            print(f"ERROR: {e}", file=sys.stderr)
+            sys.exit(1)
+        sys.exit(0)
+
+    # Auto-detect mapping mode
+    if args.auto_detect:
+        if not args.source:
+            parser.error("--auto-detect requires --source")
+        fmt = args.fmt or detect_format(args.source)
+        if fmt == "csv":
+            import csv
+            enc_order = ["utf-8-sig", "utf-8", "cp1252", "latin-1"]
+            headers = []
+            for enc in enc_order:
+                try:
+                    with open(args.source, newline="", encoding=enc) as f:
+                        headers = next(csv.reader(f), [])
+                    break
+                except (UnicodeDecodeError, StopIteration):
+                    continue
+        elif fmt == "excel":
+            try:
+                import openpyxl
+                wb = openpyxl.load_workbook(args.source, read_only=True, data_only=True)
+                ws = wb.active
+                first_row = next(ws.iter_rows(min_row=1, max_row=1, values_only=True), ())
+                headers = [str(h).strip() for h in first_row if h is not None]
+                wb.close()
+            except ImportError:
+                print("ERROR: openpyxl is required for Excel files. pip install openpyxl",
+                      file=sys.stderr)
+                sys.exit(1)
+        else:
+            parser.error(f"--auto-detect does not support format '{fmt}'")
+
+        if not headers:
+            print("ERROR: No headers found in source file.", file=sys.stderr)
+            sys.exit(1)
+
+        mapping = autodetect_mapping(headers)
+        print("# Auto-detected mapping — review and adjust before use")
+        print(format_yaml(mapping))
+        sys.exit(0)
+
     if not args.source:
-        parser.error("--source is required (or use --validate)")
+        parser.error("--source is required (or use --validate / --generate-template)")
 
     # Detect format
     fmt = args.fmt or detect_format(args.source)

@@ -8,7 +8,15 @@
 import { state } from "./state.js";
 import { getGlobalStats } from "./selectors.js";
 
-const STORAGE_KEY = "runbook_snapshots";
+// ── Per-client storage key ────────────────────────────────────
+// Mirrors the prefix logic in persistence.js — same clientKey, different suffix.
+function _clientPrefix() {
+    try {
+        const k = new URLSearchParams(window.location.search).get('clientKey');
+        return k ? k + ':' : '';
+    } catch (_) { return ''; }
+}
+const STORAGE_KEY = _clientPrefix() + 'runbook_snapshots';
 const MAX_SNAPSHOTS = 200;
 
 let _timerId = null;

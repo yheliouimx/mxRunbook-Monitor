@@ -547,6 +547,61 @@
     .stat-card.blocked .stat-value { color: var(--stat-blocked); }
     .stat-card.unneeded .stat-value { color: var(--stat-unneeded); }
 
+    /* RUN TIMER card */
+    .stat-card.timer {
+        min-width: 160px;
+        padding-bottom: 10px;
+    }
+    .stat-card.timer .timer-elapsed {
+        font-family: var(--font-mono, 'JetBrains Mono', monospace);
+        font-size: var(--text-xl);
+        color: var(--color-info);
+        letter-spacing: 2px;
+    }
+    .stat-card.timer .timer-status {
+        font-size: var(--text-xs);
+        color: var(--text-muted);
+        text-transform: uppercase;
+        letter-spacing: 1px;
+        margin-top: 2px;
+        margin-bottom: 8px;
+    }
+    .timer-controls {
+        display: flex;
+        gap: 5px;
+        justify-content: center;
+        flex-wrap: wrap;
+    }
+    .timer-btn {
+        font-size: 0.7em;
+        font-weight: 600;
+        border-radius: 6px;
+        border: 1px solid;
+        padding: 3px 8px;
+        cursor: pointer;
+        transition: opacity 0.15s, transform 0.1s;
+        line-height: 1.4;
+        white-space: nowrap;
+    }
+    .timer-btn:hover { opacity: 0.85; transform: scale(1.04); }
+    .timer-btn:active { transform: scale(0.97); }
+    .timer-btn.hidden { display: none; }
+    .timer-btn.timer-start {
+        background: var(--color-success-bg);
+        border-color: var(--color-success);
+        color: var(--color-success);
+    }
+    .timer-btn.timer-pause {
+        background: var(--color-warning-bg);
+        border-color: var(--color-warning);
+        color: var(--color-warning-text);
+    }
+    .timer-btn.timer-stop {
+        background: var(--color-danger-bg);
+        border-color: var(--color-danger);
+        color: var(--color-danger);
+    }
+
     /* GLOBAL PROGRESS */
     .global-progress {
         margin-bottom: 24px;

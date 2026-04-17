@@ -14,8 +14,8 @@
 
 import { state } from "./state.js";
 import { getCategoryNames, getUniqueTeams, getUniqueSystems, sortCategories, escapeHtml } from "./selectors.js";
-import { loadInitialRunbook, loadFromServer, loadFromFile, saveDraft, exportRunbookJson, resetRunbook as doReset } from "./persistence.js";
-import { renderGlobalStats, renderHealthIndicator, updateStatsValues } from "./render/stats.js";
+import { loadInitialRunbook, loadFromServer, loadFromFile, saveDraft, exportRunbookJson, resetRunbook as doReset, loadTimerState } from "./persistence.js";
+import { renderGlobalStats, renderHealthIndicator, updateStatsValues, updateTimerDisplay } from "./render/stats.js";
 import { renderTimeline } from "./render/timeline.js";
 import { renderCategories } from "./render/categories.js";
 import { renderIssues, toggleIssueForm, saveIssue as doSaveIssue, closeIssue as doCloseIssue, reopenIssue as doReopenIssue, editIssue as doEditIssue, deleteIssue as doDeleteIssue } from "./render/issues.js";
@@ -28,6 +28,7 @@ import { exportEmailSnapshot } from "./export/email.js";
 import { exportGanttChart } from "./export/gantt.js";
 import { exportFinalReport } from "./export/finalReport.js";
 import { startAutoSnapshot, recordSnapshot } from "./history.js";
+import { startTimer, pauseTimer, resumeTimer, stopTimer } from "./actions/timer.js";
 
 // ── Helpers ────────────────────────────────────────────────
 
@@ -335,15 +336,23 @@ function setFavicon(src) {
 
 function detectAssets() {
     const exts = ['png', 'jpg', 'jpeg', 'svg', 'webp'];
+    let logoLoaded = false;
+    let bgLoaded = false;
+    let autoDetectAttempted = false;
 
     function loadLogo(src) {
         const img = new Image();
         img.onload = () => {
+            logoLoaded = true;
             state.clientLogoImg = img;
             const el = document.getElementById('clientLogo');
             el.src = src;
             el.classList.remove('hidden');
             setFavicon(src);
+        };
+        img.onerror = () => {
+            // Fallback to auto-detect when explicit config path fails
+            tryAutoDetect();
         };
         img.src = src;
     }
@@ -351,38 +360,72 @@ function detectAssets() {
     function loadBg(src) {
         const bgImg = new Image();
         bgImg.onload = () => {
+            bgLoaded = true;
             state.clientBgImg = bgImg;
             document.getElementById('bgOverlay').style.backgroundImage = 'url(' + src + ')';
         };
+        bgImg.onerror = () => {
+            // Fallback to auto-detect when explicit config path fails
+            tryAutoDetect();
+        };
         bgImg.src = src;
+    }
+
+    function pickFirstMatch(html, patterns) {
+        for (const p of patterns) {
+            const m = html.match(p);
+            if (m) return m[1].replace(/.*\//, '');
+        }
+        return null;
+    }
+
+    function tryAutoDetect() {
+        if (autoDetectAttempted) return;
+        autoDetectAttempted = true;
+
+        fetch('assets/')
+            .then(r => r.ok ? r.text() : '')
+            .then(html => {
+                if (!html) return;
+
+                if (!logoLoaded) {
+                    // Preferred: exactly logo.<ext>. Backward-compatible fallback: clientLogo*.
+                    const logoName = pickFirstMatch(html, [
+                        /href="([^"]*\blog\.(png|jpg|jpeg|svg|webp))"/i,
+                        /href="([^"]*\bclientLogo[^"]*\.(png|jpg|jpeg|svg|webp))"/i,
+                        /href="([^"]*\blogo[^"]*\.(png|jpg|jpeg|svg|webp))"/i,
+                    ]);
+                    if (logoName) loadLogo('assets/' + logoName);
+                }
+
+                if (!bgLoaded) {
+                    const bgName = pickFirstMatch(html, [
+                        /href="([^"]*\bbackground[^"]*\.(png|jpg|jpeg|svg|webp))"/i,
+                    ]);
+                    if (bgName) loadBg('assets/' + bgName);
+                }
+            })
+            .catch(() => {
+                // Last-resort filename guesses when listing fails
+                if (!logoLoaded) {
+                    ['logo', 'clientLogo'].forEach(base => {
+                        exts.forEach(ext => loadLogo('assets/' + base + '.' + ext));
+                    });
+                }
+                if (!bgLoaded) {
+                    exts.forEach(ext => loadBg('assets/background.' + ext));
+                }
+            });
     }
 
     if (state.projectConfig.logoFile) loadLogo('assets/' + state.projectConfig.logoFile);
     if (state.projectConfig.backgroundFile) loadBg('assets/' + state.projectConfig.backgroundFile);
 
-    if (!state.projectConfig.logoFile || !state.projectConfig.backgroundFile) {
-        fetch('assets/')
-            .then(r => r.ok ? r.text() : '')
-            .then(html => {
-                if (!html) return;
-                if (!state.projectConfig.logoFile) {
-                    const m = html.match(/href="([^"]*clientLogo[^"]*\.(png|jpg|jpeg|svg|webp))"/i);
-                    if (m) loadLogo('assets/' + m[1].replace(/.*\//, ''));
-                }
-                if (!state.projectConfig.backgroundFile) {
-                    const m = html.match(/href="([^"]*background[^"]*\.(png|jpg|jpeg|svg|webp))"/i);
-                    if (m) loadBg('assets/' + m[1].replace(/.*\//, ''));
-                }
-            })
-            .catch(() => {
-                if (!state.projectConfig.logoFile) {
-                    exts.forEach(ext => loadLogo('assets/clientLogo.' + ext));
-                }
-                if (!state.projectConfig.backgroundFile) {
-                    exts.forEach(ext => loadBg('assets/background.' + ext));
-                }
-            });
-    }
+    // Always run a delayed auto-detect pass. If explicit files loaded, it no-ops;
+    // if they failed/missing, it recovers by probing assets listing/guesses.
+    setTimeout(() => {
+        if (!logoLoaded || !bgLoaded) tryAutoDetect();
+    }, 150);
 }
 
 // ── Static event listeners ─────────────────────────────────
@@ -486,6 +529,28 @@ function bindEvents() {
     // Reset
     document.querySelector('[data-action="reset"]').addEventListener("click", resetRunbook);
 
+    // Run timer controls (delegated — buttons live inside dynamically rendered #globalStats)
+    document.getElementById("globalStats").addEventListener("click", (e) => {
+        const btn = e.target.closest("[data-action]");
+        if (!btn) return;
+        const action = btn.dataset.action;
+        if (action === "timer-start") {
+            if (state.timerState === "paused") {
+                resumeTimer();
+            } else {
+                startTimer();
+            }
+            updateTimerDisplay();
+        } else if (action === "timer-pause") {
+            pauseTimer();
+            updateTimerDisplay();
+        } else if (action === "timer-stop") {
+            showConfirm("Stop Run Timer", "Stop the run timer and reset the elapsed time?",
+                { confirmLabel: "Stop Timer", confirmClass: "danger" }
+            ).then(ok => { if (ok) { stopTimer(); updateTimerDisplay(); } });
+        }
+    });
+
     // Keyboard shortcut: Ctrl+S to save
     document.addEventListener("keydown", (e) => {
         if ((e.ctrlKey || e.metaKey) && e.key === "s") {
@@ -511,6 +576,8 @@ initTheme();
 initPalette();
 updateClock();
 setInterval(updateClock, 1000);
+setInterval(updateTimerDisplay, 1000);
+loadTimerState();
 bindEvents();
 loadConfig().then(() => { detectAssets(); loadRunbook(); });
 startAutoSnapshot(15 * 60 * 1000);

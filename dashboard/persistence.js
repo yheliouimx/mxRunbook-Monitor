@@ -2,6 +2,21 @@ import { state } from "./state.js";
 import { RESERVED_KEYS, STATUS } from "./constants.js";
 import { validateAndNormalize, formatErrors } from "./validation.js";
 
+// ── Per-client localStorage key prefix ───────────────────────
+// electron-main.js injects ?clientKey=<slug> into the URL so each client
+// folder gets its own isolated storage bucket.
+// Falls back to no prefix so the browser / dev-server path is unaffected.
+function _clientPrefix() {
+    try {
+        const k = new URLSearchParams(window.location.search).get('clientKey');
+        return k ? k + ':' : '';
+    } catch (_) { return ''; }
+}
+const _PREFIX       = _clientPrefix();
+const PROGRESS_KEY  = _PREFIX + 'runbook_progress';
+const SNAPSHOTS_KEY = _PREFIX + 'runbook_snapshots';
+const TIMER_KEY     = _PREFIX + 'runbook_timer';
+
 // ── Internal helpers ──
 
 function syncReservedKeys() {
@@ -31,7 +46,7 @@ function runbookFile() {
  * Returns { source: string } on success, throws on total failure.
  */
 export async function loadInitialRunbook() {
-    const saved = localStorage.getItem("runbook_progress");
+    const saved = localStorage.getItem(PROGRESS_KEY);
     if (saved) {
         try {
             const parsed = JSON.parse(saved);
@@ -99,7 +114,7 @@ export function applyLoadedRunbook(fresh) {
  */
 export function saveDraft() {
     syncReservedKeys();
-    localStorage.setItem("runbook_progress", JSON.stringify(state.runbookData));
+    localStorage.setItem(PROGRESS_KEY, JSON.stringify(state.runbookData));
     const blob = new Blob([JSON.stringify(state.runbookData, null, 2)], { type: "application/json" });
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
@@ -139,7 +154,37 @@ export function resetRunbook() {
     state.runbookData[RESERVED_KEYS.issues] = [];
     state.healthStatus = "Green";
     state.runbookData[RESERVED_KEYS.health] = "Green";
-    localStorage.removeItem("runbook_progress");
-    localStorage.removeItem("runbook_snapshots");
+    // Reset timer
+    state.runStart       = null;
+    state.pausedDuration = 0;
+    state.pauseStart     = null;
+    state.timerState     = "stopped";
+    localStorage.removeItem(PROGRESS_KEY);
+    localStorage.removeItem(SNAPSHOTS_KEY);
+    localStorage.removeItem(TIMER_KEY);
     return true;
+}
+
+/**
+ * Persist run timer state to localStorage.
+ */
+export function saveTimerState() {
+    const { runStart, pausedDuration, pauseStart, timerState } = state;
+    localStorage.setItem(TIMER_KEY, JSON.stringify({ runStart, pausedDuration, pauseStart, timerState }));
+}
+
+/**
+ * Restore run timer state from localStorage.
+ * Called during app boot so the timer survives page refreshes.
+ */
+export function loadTimerState() {
+    const saved = localStorage.getItem(TIMER_KEY);
+    if (!saved) return;
+    try {
+        const { runStart, pausedDuration, pauseStart, timerState } = JSON.parse(saved);
+        state.runStart       = runStart       || null;
+        state.pausedDuration = pausedDuration || 0;
+        state.pauseStart     = pauseStart     || null;
+        state.timerState     = timerState     || "stopped";
+    } catch (_) { /* corrupt data — ignore */ }
 }

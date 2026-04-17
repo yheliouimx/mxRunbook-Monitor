@@ -29,4 +29,10 @@ export const state = {
   // Assets (set by detectAssets())
   clientLogoImg: null,
   clientBgImg:   null,
+
+  // Run timer (Phase 1 — elapsed time tracking)
+  runStart:       null,   // ms timestamp (Date.now()) when run was started
+  pausedDuration: 0,      // accumulated pause time in ms
+  pauseStart:     null,   // ms timestamp when current pause began
+  timerState:     "stopped", // "stopped" | "running" | "paused"
 };

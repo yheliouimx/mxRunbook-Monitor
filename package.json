@@ -12,7 +12,8 @@
     "build:package": "node _package.js",
     "build:package:zip": "node _package.js --skip-exe",
     "electron": "electron electron-main.js",
-    "dist": "node _electron-dist.js",
+    "create-icon": "node _create-icon.js",
+    "dist": "node _create-icon.js && node _electron-dist.js",
     "dist:zip": "node _electron-dist.js && powershell Compress-Archive -Force -Path dist-electron/win-x64/* -DestinationPath dist-electron/MXRunbookMonitor-win-x64.zip && echo Zip created: dist-electron/MXRunbookMonitor-win-x64.zip"
   },
   "keywords": [],
@@ -71,6 +72,8 @@
     "esbuild": "^0.28.0",
     "happy-dom": "^20.8.9",
     "nexe": "^5.0.0-beta.4",
+    "rcedit": "^4.0.1",
+    "sharp": "^0.34.5",
     "vitest": "^2.1.9"
   }
 }

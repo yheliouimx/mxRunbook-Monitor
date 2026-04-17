@@ -1,110 +1,168 @@
-# Auto Health Status — Design Analysis & Implementation Plan
+# Auto-Health Status — Feature Specification
 
-## Context & Intent
+## What It Is
 
-The current dashboard displays running time based on real-time progression, which makes it difficult to assess whether the client process is actually progressing according to plan. The intent is to introduce a mechanism that allows time tracking to start only when the client process effectively begins, rather than relying on absolute clock time.
-
----
-
-## 1. Is this a good idea operationally?
-
-**Yes, with caveats.** Go-live events are time-critical and the current dashboard only answers *"what has been done"* — not *"are we going to finish on time"*. The gap between completion % and time % is genuinely the most useful early-warning signal during a run.
-
-The main risk already identified: **the health auto-update is only as good as the estimation data.** If `estimatedEnd` fields are sparse or optimistic, the indicator will create noise rather than signal. A misleading "Red" health during a go-live is arguably worse than no indicator at all.
-
-A second operational risk: **scheduled pauses and wait states are not captured**. If the runbook has a "Wait for system restart (30 min)" step, the timer shouldn't count that as delay. Without pause/resume this degrades quickly in practice.
+An automated health-assessment feature that periodically evaluates dashboard metrics
+(blocking tasks, overdue tasks) and sets the health status (Green / Amber / Red)
+without requiring manual operator intervention.
 
 ---
 
-## 2. Where to Integrate
+## Phase 1 — Sentinel Strip UI + Assessment Engine
 
-The existing architecture has natural anchor points:
+### Why NOT a round button
 
-| Location | What fits |
-|---|---|
-| **Header / stat cards area** | A `RUN TIMER` card showing elapsed time and a `[▶ Start Run]` / `[⏸ Pause]` button — keeps it global and visible at a glance |
-| **Completion % stat card** | A secondary "time %" row under the completion %, showing `Elapsed 1h 20m / Est. 3h 00m (44%)` — this is where the delta makes most sense |
-| **Timeline stepper** | Per-phase estimated duration badge on each node — ties naturally into the existing category structure |
-| **Health indicator** | Keep manual override as primary; add auto-advisory as a **suggestion** with a small badge `⚠ auto` so the operator can accept or dismiss it — never override manual without confirmation |
+| Problem | Detail |
+|---------|--------|
+| Ambiguous state | A round button conveys "press me" but not whether automation is running, paused, or what it is monitoring |
+| No countdown visibility | Operators need to glance and know "next check in 2:14" without hovering |
+| Stressful context | Go-live operators are under pressure — controls should be self-labelling |
+| Orphaned visually | A circle floating between panels breaks the horizontal card rhythm without adding meaning |
 
-The **least invasive high-value starting point** is a global timer in the stats area + a second progress bar under the completion bar.
+### Proposed design: Sentinel Strip
 
----
-
-## 3. Minimum Data and Rules to Avoid Misleading Indicators
-
-### Minimum viable data requirement
-
-The timer needs a total estimated duration. The cleanest derivation:
-- Use the **latest `estimatedEnd`** value across all tasks minus the `runStart` timestamp
-- This only works if at least one task has `estimatedEnd` and that task is logically the last
-
-If using per-task `estimatedEnd`, surface coverage: if fewer than ~60% of tasks have this field, suppress the time-progress indicator entirely and show an "Insufficient estimation data" warning instead.
-
-### Rules
+A slim full-width monitoring bar inserted between the stat cards and the category
+stepper. NOT a stat card (no large number, no rounded box). Inspired by vital-signs
+monitors — appropriate for a go-live context.
 
 ```
-runStart          — stored in state + localStorage when ▶ Start pressed
-pausedDuration    — accumulated pause time (supports pause/resume)
-elapsedMs         — (now - runStart) - pausedDuration
-
-timeProgress %    — elapsedMs / totalEstimatedMs × 100
-completionPct     — existing (done + unneeded) / total × 100
-
-delta             — completionPct - timeProgress
-
-Health advisory:
-  delta > +5%     → "Ahead"    (suppress auto; manual can still be Amber/Red)
-  delta ≥ -10%    → "On track" → advisory Green
-  delta ≥ -25%    → "At risk"  → advisory Amber
-  delta < -25%    → "Delayed"  → advisory Red
+▐ ● AUTO-HEALTH   Blocking: 0 · Overdue: 0 → Green     Next check: 1:47   ⏸
 ```
 
-> Threshold values should be configurable in `config.json` — different clients have different risk tolerances.
+#### Anatomy
 
-### Edge cases to handle
+| Element | Purpose |
+|---------|---------|
+| 4 px left accent border | Current health color, always visible |
+| Pulsing dot (●) | Heartbeat animation — signals live monitoring |
+| Assessment summary | Self-documenting: operator sees WHY health is Green |
+| Countdown | "Next check: 1:47" — always visible, ticks every second |
+| ⏸ / ▶ toggle | Single click to pause/resume; strip dims when paused |
 
-| Case | Behaviour |
-|---|---|
-| Run not started yet | Show `[▶ Start Run]`; all time-progress indicators hidden |
-| Run paused | Elapsed counter frozen; delta frozen; no health change |
-| All tasks Completed | Show final elapsed time; freeze timer |
-| `estimatedEnd` < `runStart` (bad data) | Suppress indicator; show data warning |
-| Page refresh / localStorage restore | Restore `runStart`, `pausedDuration` from persisted state |
+#### States
 
----
+| State | Appearance |
+|-------|-----------|
+| **Active** | Left border + pulsing dot = current health color; countdown ticking |
+| **Paused** | Opacity 0.55, border grey, dot grey; label changes to "MANUAL OVERRIDE" |
+| **Disabled** | `display:none`; re-enabled via "Enable auto-health" link near health dots |
 
-## Recommended Implementation Path
-
-### Phase 1 — Timer + Elapsed Display (low risk, high value)
-- Add `runStart`, `pausedDuration`, `timerState` to `dashboard/state.js`
-- Add `[▶ Start Run]` / `[⏸ Pause]` / `[⏹ Stop]` controls to the header
-- Add a **RUN TIMER** stat card showing elapsed time
-- Persist timer state to localStorage
-- **No health auto-update yet** — lets the team validate UX and data quality first
-
-### Phase 2 — Time Progress Bar + Delta
-- Add a time progress bar alongside the existing completion bar
-- Show explicit delta: `(+12% ahead)` / `(-8% behind)`
-- Suppress bar entirely when estimation coverage < 60%
-
-### Phase 3 — Health Advisory
-- Add auto-advisory health suggestion with a visible `⚠ auto` badge
-- Manual override always preserved and always takes precedence
-- Operator can accept or dismiss the advisory — automation informs, never overrides
-- Thresholds exposed in `config.json`
+#### Manual override interaction
+Clicking a health dot (GO / AT RISK / STOP) in the header automatically pauses the
+automation, indicating the operator has taken manual control. Strip shows "MANUAL OVERRIDE".
+Clicking ▶ in the strip resumes auto-health from that moment.
 
 ---
 
-## Files to Modify
+## Auto-Health Logic
 
-| File | Change |
-|---|---|
-| `dashboard/state.js` | Add `runStart`, `pausedDuration`, `timerState`, `timerInterval` |
-| `dashboard/persistence.js` | Persist/restore timer fields in localStorage |
-| `dashboard/actions/` | New `timer.js` — start, pause, resume, stop logic |
-| `dashboard/render/stats.js` | Add RUN TIMER card; add time progress bar |
-| `dashboard/selectors.js` | Add `getTotalEstimatedMs()`, `getTimeDelta()`, `getEstimationCoverage()` |
-| `dashboard/app.js` | Wire timer button events; integrate advisory into health render |
-| `runbookDashboard.html` | Add timer control buttons; add CSS for time bar and delta badge |
-| `config.json` | Add `healthThresholds: { ahead, onTrack, atRisk }` |
+Evaluated every `intervalSec` seconds (default: 120 s, configurable via `config.json`).
+
+```
+blocking = count of tasks with status "Blocking"
+overdue  = count of non-Completed/Unneeded tasks whose estimatedEnd < now
+
+if blocking >= 3 OR overdue >= 4  → Red
+elif blocking > 0 OR overdue > 0  → Amber
+else                               → Green
+```
+
+Configurable key in `config.json`:
+```json
+{ "autoHealthIntervalSec": 120 }
+```
+
+---
+
+## Theme Integration
+
+All colors use existing CSS custom properties — zero new tokens required:
+
+```css
+.sentinel-strip {
+    border-left: 4px solid var(--sentinel-color);   /* set inline by JS */
+    background: var(--glass-bg, var(--card-bg));
+    border-top: 1px solid var(--glass-border, var(--card-border));
+    backdrop-filter: blur(var(--glass-blur, 0));
+}
+.sentinel-strip.paused { opacity: 0.55; }
+
+@keyframes sentinel-pulse {
+    0%, 100% { box-shadow: 0 0 0 0 var(--sentinel-color); }
+    50%       { box-shadow: 0 0 8px 3px var(--sentinel-color); }
+}
+.sentinel-dot { animation: sentinel-pulse 2.4s ease-in-out infinite; }
+```
+
+`--sentinel-color` is set inline to `var(--health-green)` / `var(--health-amber)` /
+`var(--health-red)` — these already have light-mode overrides in the theme.
+
+---
+
+## Files To Create / Modify
+
+| File | Action |
+|------|--------|
+| `dashboard/actions/autoHealth.js` | **CREATE** — timer + assessment logic |
+| `dashboard/render/autoHealthBar.js` | **CREATE** — sentinel strip DOM renderer |
+| `runbookDashboard.html` | **MODIFY** — add `#autoHealthBar` div + CSS |
+| `dashboard/app.js` | **MODIFY** — wire start + toggle handler |
+| `dashboard/actions/health.js` | **MODIFY** — pause auto-health on manual override |
+| `config.json` | **MODIFY** (optional) — add `autoHealthIntervalSec` |
+| `tests/autoHealth.test.js` | **CREATE** — unit tests |
+
+---
+
+## API of `dashboard/actions/autoHealth.js`
+
+```js
+export function startAutoHealth(intervalSec = 120)  // starts timer, applies immediately
+export function stopAutoHealth()                     // clears timer
+export function pauseAutoHealth()                    // pauses; keeps timer, skips apply
+export function resumeAutoHealth()                   // unpauses
+export function assessHealth()                       // returns 'Green'|'Amber'|'Red'
+export function getAutoHealthState()                 // { enabled, paused, nextCheckTs, intervalSec }
+```
+
+## API of `dashboard/render/autoHealthBar.js`
+
+```js
+export function renderAutoHealthBar()   // builds / updates #autoHealthBar innerHTML
+export function startCountdownTick()    // setInterval(renderAutoHealthBar, 1000)
+export function stopCountdownTick()
+```
+
+---
+
+## Unit Test Coverage (`tests/autoHealth.test.js`)
+
+- `assessHealth()` returns Green when no blocking / overdue tasks
+- `assessHealth()` returns Amber when 1 blocking task exists
+- `assessHealth()` returns Red when 3+ blocking tasks
+- `startAutoHealth()` sets `enabled: true`
+- `pauseAutoHealth()` / `resumeAutoHealth()` toggle `paused` correctly
+- Manual health-dot click triggers `pauseAutoHealth()`
+- `renderAutoHealthBar()` shows "MANUAL OVERRIDE" when paused
+
+---
+
+## Verification Steps
+
+1. `npm test` — all existing + new tests pass
+2. `node _serve.js` → open `http://localhost:8090`
+3. Load a runbook — sentinel strip appears below stat cards, pulsing green
+4. Add 3+ blocking tasks → strip turns red within 2 min (or reduce interval for testing)
+5. Click ⏸ → strip dims, label shows "MANUAL OVERRIDE"
+6. Click a health dot manually → auto-health pauses automatically
+7. Click ▶ → auto-health resumes
+8. Toggle to light theme → all colors adjust automatically via CSS vars
+
+---
+
+## Status
+
+| Phase | Status |
+|-------|--------|
+| Phase 1 — Sentinel Strip + Assessment Engine | **Planned** |
+| Phase 2 — Configurable rules via `config.json` | Backlog |
+| Phase 3 — Notification / toast on auto-change | Backlog |

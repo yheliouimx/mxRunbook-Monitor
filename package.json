@@ -2,7 +2,7 @@
   "name": "mxrunbook-monitor",
   "version": "1.0.0",
   "description": "A lightweight, zero-infrastructure monitoring tool for production go-live events. Track task progress, export status snapshots, and share updates — all from a single HTML file opened in a browser.",
-  "main": "_serve.js",
+  "main": "electron-main.js",
   "scripts": {
     "test": "vitest run",
     "test:watch": "vitest",
@@ -10,12 +10,64 @@
     "build:full": "node _bundle.js --runbook runbook.json",
     "build:exe": "nexe _launcher.js --output dist/RunbookDashboard.exe --target windows-x64-14.15.3 --name RunbookDashboard",
     "build:package": "node _package.js",
-    "build:package:zip": "node _package.js --skip-exe"
+    "build:package:zip": "node _package.js --skip-exe",
+    "electron": "electron electron-main.js",
+    "dist": "node _electron-dist.js",
+    "dist:zip": "node _electron-dist.js && powershell Compress-Archive -Force -Path dist-electron/win-x64/* -DestinationPath dist-electron/MXRunbookMonitor-win-x64.zip && echo Zip created: dist-electron/MXRunbookMonitor-win-x64.zip"
   },
   "keywords": [],
   "author": "",
   "license": "ISC",
+  "build": {
+    "appId": "com.murex.mxrunbook",
+    "productName": "MX Runbook Monitor",
+    "copyright": "Murex",
+    "directories": {
+      "output": "dist-electron"
+    },
+    "files": [
+      "electron-main.js",
+      "runbookDashboard.html",
+      "config.json",
+      "mapping.yml",
+      "dashboard/**",
+      "assets/**",
+      "*.json",
+      "!node_modules/**",
+      "!dist/**",
+      "!dist-electron/**",
+      "!runbooks/**",
+      "!adapter/**",
+      "!tests/**",
+      "!graphify-out/**",
+      "!Tasks/**",
+      "!vitest.config.js",
+      "!_*.js"
+    ],
+    "extraResources": [
+      {
+        "from": "assets",
+        "to": "assets"
+      }
+    ],
+    "win": {
+      "target": [
+        {
+          "target": "dir",
+          "arch": [
+            "x64"
+          ]
+        }
+      ],
+      "signingHashAlgorithms": [],
+      "sign": null
+    }
+  },
   "devDependencies": {
+    "@electron/packager": "^19.1.0",
+    "electron": "^34.0.0",
+    "electron-builder": "^25.1.8",
+    "electron-packager": "^17.1.2",
     "esbuild": "^0.28.0",
     "happy-dom": "^20.8.9",
     "nexe": "^5.0.0-beta.4",

@@ -172,7 +172,8 @@ def format_yaml(mapping: dict) -> str:
 
     lines.append("")
     cat = mapping.get("category_column")
-    lines.append(f'category_column: {f\'"{cat}"\' if cat else "null  # not detected"}')
+    cat_val = f'"{cat}"' if cat else "null  # not detected"
+    lines.append(f"category_column: {cat_val}")
     lines.append(f'default_category: "{mapping.get("default_category", "Tasks")}"')
 
     lines.append("")

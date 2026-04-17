@@ -20,11 +20,12 @@ Technical reference for AI models and developers extending this codebase.
 dashboard/
 ├── app.js          ← Entry point: init(), render(), event wiring
 ├── state.js        ← Global state (runbookData, filterState, issues, etc.)
-├── constants.js    ← Status labels, class mappings, cycle order
+├── constants.js    ← Status labels, class mappings, cycle order, PARTY_OPTIONS
 ├── dom.js          ← DOM element references (cached selectors)
 ├── selectors.js    ← Derived state queries (getGlobalStats, computeCategoryStatus)
 ├── persistence.js  ← localStorage save/load, JSON export, file upload
 ├── validation.js   ← Status normalization, input sanitization
+├── history.js      ← Snapshot history (burndown + health timeline for Final Report)
 ├── actions/
 │   ├── health.js   ← Health indicator (Go/At Risk/Stop) toggle + render
 │   ├── issues.js   ← Issues CRUD (add, edit, delete, toggle status)
@@ -34,26 +35,44 @@ dashboard/
 │   ├── issues.js     ← Issues panel rendering
 │   ├── stats.js      ← Stat cards + progress bar (value-diffing updates)
 │   ├── summary.js    ← Text summary generation
-│   └── timeline.js   ← Horizontal phase timeline
+│   └── timeline.js   ← Horizontal phase stepper timeline
 └── export/
     ├── canvas.js     ← Shared canvas utilities
     ├── phone.js      ← Phone export (1080×1920 portrait, WhatsApp-optimized)
     ├── email.js      ← Email export (1920×1080 landscape, corporate)
     ├── gantt.js      ← Gantt chart export (1920×dynamic, NOW line)
+    ├── finalReport.js ← Post-event summary report (self-contained HTML)
+    ├── finalReport/  ← Sub-modules assembled by finalReport.js
+    │   ├── helpers.js    ← HTML escape, date formatting, per-assignee stats
+    │   ├── htmlReport.js ← Full HTML assembly from SVG/data sections
+    │   ├── svgBurndown.js ← Completion burndown SVG chart
+    │   ├── svgGantt.js   ← Task timeline SVG (planned vs actual)
+    │   └── svgHealth.js  ← Health status timeline SVG
     ├── shared.js     ← Shared export helpers (blob download, share API)
     └── theme.js      ← Theme toggle (dark/light)
 ```
 
 ### CSS Theming
 
-All colors use CSS custom properties defined in `:root` (dark theme, default) with overrides in `[data-theme="light"]`.
+All colors use CSS custom properties defined across four cascade layers:
+1. `:root` — dark corporate theme (default)
+2. `[data-palette="neon"]` — override with neon accent palette
+3. `[data-theme="light"]` — override with light corporate theme
+4. `[data-theme="light"][data-palette="neon"]` — light + neon combination
 
-Key variable groups:
-- `--bg`, `--surface`, `--text`, `--text-dim` — Base surfaces
+The palette toggle (Corporate ↔ Neon) is exposed in the header and persisted to localStorage under `runbook_palette`.
+
+Key semantic variable groups (80+ custom properties):
+- `--color-primary` — driven by `config.json` `accentColor`; applied via `applyConfig()`
+- `--color-success`, `--color-warning`, `--color-danger` — semantic status tokens
+- `--color-surface`, `--color-surface-elevated`, `--color-border` — layout surfaces
+- `--color-text-primary`, `--color-text-secondary` — text hierarchy
+- `--bg`, `--surface`, `--text`, `--text-dim` — lower-level aliases (legacy names still present)
 - `--stat-*` — Stat card accent colors (done, inprog, notstarted, pct, issues, blocking)
 - `--dot-*` — Status dot colors
 - `--btn-*-bg`, `--btn-*-border`, `--btn-*-color` — Status button styles
 - `--blocked-*`, `--unneeded-*` — Blocking/Unneeded specific colors
+- `--text-xs` through `--text-3xl` — type scale; body font is Outfit, monospace is JetBrains Mono
 
 When adding a new visual element, always use CSS variables. Never hardcode hex colors in CSS rules.
 
@@ -61,7 +80,7 @@ When adding a new visual element, always use CSS variables. Never hardcode hex c
 
 ```
 runbookData      — Object: category → task array. Reserved keys prefixed with _.
-projectConfig    — Object: loaded from config.json. Fields: projectName, subtitle, changeRef, client, environment, release, accentColor.
+projectConfig    — Object: loaded from config.json. Fields: projectName, subtitle, changeRef, client, environment, release, accentColor, runbookFile, logoFile, backgroundFile.
 filterState      — String: "all" | "done" | "inprogress" | "notstarted" | "blocked" | "unneeded"
 searchQuery      — String: free-text search filter (matches task, item, taskId, system, comment)
 teamFilter       — String: "all" | <assignee value>
@@ -70,8 +89,8 @@ sortMode         — String: "timeline" | "completion" | "alpha"
 openCategories   — Set: which category sections are currently expanded
 issues           — Array: issue objects with {id, description, category, severity, issueStatus}
 healthStatus     — String: "Green" | "Amber" | "Red"
-clientLogoImg    — Image | null: loaded from assets/clientLogo-*
-clientBgImg      — Image | null: loaded from assets/background-*
+clientLogoImg    — Image | null: loaded from assets/ (path from logoFile or auto-detected)
+clientBgImg      — Image | null: loaded from assets/ (path from backgroundFile or auto-detected)
 ```
 
 ### JS Module Map
@@ -80,14 +99,24 @@ clientBgImg      — Image | null: loaded from assets/background-*
 | Function | Purpose |
 |----------|---------|
 | `init()` | Fetches `config.json`, merges into `projectConfig`, calls `applyConfig()`, wires events |
-| `applyConfig()` | Updates page title, h1, subtitle from `projectConfig` |
-| `loadRunbook()` | Loads from localStorage (if saved) or fetches `runbook.json` |
+| `applyConfig()` | Updates page title, h1, subtitle from `projectConfig`; applies `--color-primary` from `accentColor` |
+| `loadRunbook()` | Loads from localStorage (if saved) or fetches `runbook.json` (or `projectConfig.runbookFile`) |
 | `render()` | Main loop: renders stats, issues, timeline, all categories + tasks |
-| `detectAssets()` | Auto-discovers `clientLogo-*` and `background-*` in `assets/` |
+| `detectAssets()` | Loads logo/background: checks `config.json` `logoFile`/`backgroundFile` first; falls back to `assets/` directory scan, then prefix-guessing |
+| `initTheme()` | Restores saved dark/light preference from localStorage |
+| `initPalette()` | Restores saved corporate/neon palette preference from localStorage |
+| `toggleTheme()` | Flips dark ⟺ light; persists to localStorage |
+| `togglePalette()` | Flips corporate ⟺ neon palette; persists to localStorage; triggers full re-render |
+| `showConfirm(title, msg, opts)` | Returns `Promise<boolean>`; renders a styled themed modal (replaces native `confirm()`) |
+| `bindEvents()` | Wires all static event listeners (filters, sort, search, action buttons, keyboard shortcuts) |
+| `populateTeamFilter()` | Rebuilds team filter `<select>` from current runbook data |
+| `populateSystemFilter()` | Rebuilds system filter `<select>`; hides it when no tasks have a `system` value |
 
-Init sequence (in `runbookDashboard.html`):
+Boot sequence (bottom of `runbookDashboard.html`):
 ```
-detectAssets() → updateClock() → setInterval(clock) → init()
+initTheme() → initPalette() → updateClock() → setInterval(clock, 1s)
+→ bindEvents() → loadConfig() → detectAssets() → loadRunbook()
+→ startAutoSnapshot(15 min)
 ```
 
 #### Rendering (`dashboard/render/`)
@@ -96,7 +125,7 @@ detectAssets() → updateClock() → setInterval(clock) → init()
 | `stats.js` | `renderGlobalStats()` | 7 stat cards: Total, Completed, In Progress, Not Started, %, Open Issues, Blocking |
 | `stats.js` | `updateStatsValues()` | Targeted value-diffing update (skips unchanged DOM nodes) |
 | `stats.js` | `renderHealthIndicator()` | Updates health dot + text |
-| `timeline.js` | `renderTimeline()` | Horizontal phase timeline at top |
+| `timeline.js` | `renderTimeline()` | Horizontal stepper pipeline at top — clicking a node opens its category |
 | `timeline.js` | `patchTimelineStep()` | Patches a single timeline dot without full re-render |
 | `issues.js` | `renderIssues()` | Issues panel with CRUD operations |
 | `categories.js` | `renderCategories()` | All collapsible category cards with task rows |
@@ -151,19 +180,36 @@ Time fields (`startTime`, `endTime`, `estimatedEnd`) use **local ISO** format `Y
 - `Unneeded` tasks count as `Completed` in all stats, progress bars, and exports
 - The `Blocking` stat card = blocking tasks + blocking issues (unified count)
 
+#### Snapshot History (`dashboard/history.js`)
+| Function | Purpose |
+|----------|---------|
+| `recordSnapshot()` | Saves a timestamped `{ts, pct, done, total, inProg, notStarted, blocking, health}` entry to localStorage (`runbook_snapshots`). Deduplicates back-to-back identical pct+health entries. |
+| `getSnapshots()` | Returns all recorded snapshots oldest-first. |
+| `clearSnapshots()` | Clears localStorage snapshot history. |
+| `startAutoSnapshot(intervalMs)` | Starts a timer that calls `recordSnapshot()` automatically (default: every 15 minutes). |
+
+Snapshots are recorded: on every health change, and on a 15-minute auto-timer. Capped at 200 entries.
+
 #### Canvas Image Exports (`dashboard/export/`)
 | Module | Dimensions | Style |
 |--------|------------|-------|
 | `phone.js` | 1080×1920 portrait | Dark bg, neon colors. For phone/WhatsApp. |
 | `email.js` | 1920×1080 landscape | White bg, corporate colors. For email. |
 | `gantt.js` | 1920×dynamic | Timeline bars with NOW line. |
+| `finalReport.js` | N/A (HTML output) | Self-contained HTML report: burndown SVG, health SVG, Gantt SVG, per-assignee table, issue log, stats. |
 
-All three renderers:
+All canvas renderers:
 - Use `projectConfig` for titles, subtitle, changeRef, accentColor
 - Draw client logo if `clientLogoImg` is loaded
 - Use Canvas 2D API directly (no libraries)
 - Export as PNG via `canvas.toBlob()`
 - Phone export offers `navigator.share()` on mobile, falls back to download
+
+The **Final Report** (`finalReport.js` + `finalReport/`) is a post-event HTML report downloaded as a self-contained file. It:
+- Takes a final snapshot immediately before rendering
+- Builds SVG charts from the `history.js` snapshot array
+- Generates per-assignee completion stats via `finalReport/helpers.js`
+- Assembles a printable HTML page via `finalReport/htmlReport.js`
 
 #### Data Persistence (`dashboard/persistence.js`)
 | Function | Purpose |
@@ -333,6 +379,7 @@ Test files mirror the module structure:
 | `selectors.test.js` | `getGlobalStats`, `computeCategoryStatus` |
 | `validation.test.js` | `normalizeStatus`, input sanitization |
 | `persistence.test.js` | localStorage save/load |
+| `history.test.js` | Snapshot recording, deduplication, auto-snapshot |
 | `actions.test.js` | Task status cycling, issue CRUD |
 | `modules.test.js` | Module import/export integrity |
 

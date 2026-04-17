@@ -27,7 +27,9 @@ DEFAULT_MAPPING = {
     "default_category": "Tasks",
     "status_mapping": {},
     "sheet": None,       # None = first sheet
-    "runbook_date": None # ISO date string "YYYY-MM-DD" to anchor time-only cells
+    "runbook_date": None, # ISO date string "YYYY-MM-DD" to anchor time-only cells
+    "category_date_format": None,  # e.g. "DD Month YYYY" — see _format_category
+    "category_date_source": None,  # source format: "YYYY-MM-DD" or "YYYY-DD-MM" (default: auto)
 }
 
 
@@ -48,6 +50,8 @@ def parse(source_path: str, mapping: dict | None = None) -> OrderedDict:
     default_cat = m.get("default_category", "Tasks")
     status_map = m.get("status_mapping", {})
     sheet_name = m.get("sheet")
+    cat_date_fmt = m.get("category_date_format")    # e.g. "DD Month YYYY"
+    cat_date_src = m.get("category_date_source")    # e.g. "YYYY-MM-DD" or "YYYY-DD-MM"
 
     # Anchor date for resolving time-only cells (e.g. "09:00:00" → full ISO datetime)
     raw_anchor = m.get("runbook_date")
@@ -106,8 +110,8 @@ def parse(source_path: str, mapping: dict | None = None) -> OrderedDict:
 
         # Category
         if cat_col and cat_col in header_idx:
-            category = (str(row[header_idx[cat_col]]).strip()
-                        if row[header_idx[cat_col]] else default_cat)
+            raw_cat = row[header_idx[cat_col]]
+            category = _format_category(raw_cat, default_cat, cat_date_fmt, cat_date_src)
         else:
             category = default_cat
         if not category:
@@ -139,7 +143,125 @@ def parse(source_path: str, mapping: dict | None = None) -> OrderedDict:
         result.setdefault(category, []).append(task)
 
     wb.close()
+    return _sort_categories(result, default_cat)
+
+
+def _sort_categories(result: OrderedDict, default_cat: str) -> OrderedDict:
+    """Sort categories chronologically (date categories first), non-dates and
+    default/Uncategorized always last — preserving task order within each category."""
+    date_keys = []
+    other_keys = []
+    tail_keys = []  # default_cat and "Uncategorized" always go last
+
+    for key in result:
+        low = key.strip().lower()
+        if low in (default_cat.lower(), "uncategorized"):
+            tail_keys.append(key)
+        elif _try_parse_date_string(key, None) is not None:
+            date_keys.append(key)
+        else:
+            other_keys.append(key)
+
+    def date_sort_key(k):
+        d = _try_parse_date_string(k, None)
+        return d if d else date.min
+
+    date_keys.sort(key=date_sort_key)
+
+    sorted_result = OrderedDict()
+    for k in date_keys + other_keys + tail_keys:
+        sorted_result[k] = result[k]
+    return sorted_result
+
+
+# ---- Date format tokens → Python strftime ----
+_DATE_FORMAT_MAP = {
+    "DD":    "%d",
+    "Month": "%B",      # full month name: April
+    "Mon":   "%b",      # abbreviated: Apr
+    "MM":    "%m",
+    "YYYY":  "%Y",
+    "YY":    "%y",
+}
+
+
+def _token_to_strftime(fmt: str) -> str:
+    """Convert a simple date format string like 'DD Month YYYY' to strftime."""
+    result = fmt
+    # Replace longest tokens first to avoid partial matches
+    for token, code in sorted(_DATE_FORMAT_MAP.items(), key=lambda t: -len(t[0])):
+        result = result.replace(token, code)
     return result
+
+
+# Source format patterns for parsing category date strings
+_SOURCE_FORMATS = {
+    "YYYY-MM-DD": "%Y-%m-%d",
+    "YYYY-DD-MM": "%Y-%d-%m",
+    "DD-MM-YYYY": "%d-%m-%Y",
+    "MM-DD-YYYY": "%m-%d-%Y",
+    "DD/MM/YYYY": "%d/%m/%Y",
+    "MM/DD/YYYY": "%m/%d/%Y",
+}
+
+
+def _format_category(raw_val, default_cat: str, date_fmt: str | None,
+                     date_src: str | None) -> str:
+    """Format a raw category cell value, converting dates to human-readable form.
+
+    If ``date_fmt`` is set (e.g. "DD Month YYYY") and the cell contains a date,
+    the category name becomes "10 April 2026" instead of "2026-04-10 00:00:00".
+    """
+    if raw_val is None:
+        return default_cat
+
+    # openpyxl returns date columns as datetime objects
+    if isinstance(raw_val, datetime):
+        if date_fmt:
+            return raw_val.strftime(_token_to_strftime(date_fmt))
+        # No format specified — still clean up the "00:00:00" noise
+        if raw_val.hour == 0 and raw_val.minute == 0 and raw_val.second == 0:
+            return raw_val.strftime("%d %B %Y")  # sensible default
+        return raw_val.strftime("%d %B %Y %H:%M")
+
+    if isinstance(raw_val, date) and not isinstance(raw_val, datetime):
+        if date_fmt:
+            return raw_val.strftime(_token_to_strftime(date_fmt))
+        return raw_val.strftime("%d %B %Y")
+
+    # String value — try to parse as a date if date_fmt is requested
+    text = str(raw_val).strip()
+    if not text:
+        return default_cat
+
+    if date_fmt:
+        parsed_date = _try_parse_date_string(text, date_src)
+        if parsed_date:
+            return parsed_date.strftime(_token_to_strftime(date_fmt))
+
+    return text
+
+
+def _try_parse_date_string(text: str, date_src: str | None) -> date | None:
+    """Try to parse a date string using the source format or common patterns."""
+    # If source format is specified, try it first
+    if date_src and date_src in _SOURCE_FORMATS:
+        try:
+            # Strip time component if present (e.g. "2026-04-10 00:00:00")
+            date_part = text.split(" ")[0] if " " in text else text
+            return datetime.strptime(date_part, _SOURCE_FORMATS[date_src]).date()
+        except ValueError:
+            pass
+
+    # Auto-detect: try common formats including human-readable outputs
+    for fmt in ("%Y-%m-%d %H:%M:%S", "%Y-%m-%d", "%d/%m/%Y", "%m/%d/%Y",
+                "%d-%m-%Y", "%Y-%m-%dT%H:%M:%S",
+                "%d %B %Y", "%d %b %Y"):  # e.g. "10 April 2026", "10 Apr 2026"
+        try:
+            return datetime.strptime(text, fmt).date()
+        except ValueError:
+            continue
+    return None
 
 
 def _resolve_time(val, anchor: date | None) -> str | None:
@@ -165,9 +287,24 @@ def _resolve_time(val, anchor: date | None) -> str | None:
     # Already a string (e.g. "09:00:00" or "2026-04-15T09:00:00")
     if isinstance(val, str):
         v = val.strip()
-        if not v or v.lower() in ("nan", "nat", "none", "null", "n/a"):
+        if not v or v.lower() in ("nan", "nat", "none", "null", "n/a", "?", "tbd",
+                                    "tbc", "hh:mm", "hh:mm:ss", "-", "--", "n.a."):
             return None
-        return v
+        # Try to parse as a real datetime / time before accepting the string
+        for fmt in ("%Y-%m-%dT%H:%M:%S", "%Y-%m-%dT%H:%M", "%Y-%m-%d %H:%M:%S",
+                    "%Y-%m-%d %H:%M", "%H:%M:%S", "%H:%M"):
+            try:
+                parsed = datetime.strptime(v, fmt)
+                if "%Y" not in fmt:
+                    # time-only string — attach anchor if available
+                    if anchor:
+                        return datetime.combine(anchor, parsed.time()).strftime("%Y-%m-%dT%H:%M:%S")
+                    return parsed.strftime("%H:%M:%S")
+                return parsed.strftime("%Y-%m-%dT%H:%M:%S")
+            except ValueError:
+                continue
+        # Unparseable non-empty string — discard rather than pass garbage downstream
+        return None
 
     # datetime.time — time-only Excel cell (e.g. 09:00)
     if isinstance(val, time):

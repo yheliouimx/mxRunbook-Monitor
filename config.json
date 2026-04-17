@@ -1,12 +1,12 @@
 {
-  "projectName": "DZ Bank MK",
+  "projectName": "MKS IMPLEMNTATION",
   "subtitle": "Dress Rehearsal",
   "changeRef": "DR2",
-  "client": "DZ Bank",
+  "client": "MKS PAMP",
   "environment": "PROD",
   "release": "",
   "accentColor": "#003a2d",
-  "logoFile": "clientLogo-dzBank.png",
+  "logoFile": "clientLogo-mks.png",
   "backgroundFile": "Murex_background6.jpg",
-  "runbookFile": "runbook.json"
+  "runbookFile": "mks_runbook.json"
 }

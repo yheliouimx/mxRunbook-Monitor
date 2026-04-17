@@ -6,9 +6,14 @@ node_modules/
 
 # Build outputs — regenerate with npm run build:*
 dist/
+dist-electron/
 
 # Python bytecode — never commit
 __pycache__/
 *.py[cod]
 *.pyo
 .pytest_cache/
+
+*_runbook.json
+*_config.json
+*_mapping.yml

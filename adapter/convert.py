@@ -25,7 +25,6 @@ sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from schema import validate
 from quality import check as quality_check, format_report
 from parsers import generic_csv, excel_parser
-from autodetect import autodetect_mapping, format_yaml
 from template_generator import generate_template
 
 
@@ -208,6 +207,7 @@ def main():
             print("ERROR: No headers found in source file.", file=sys.stderr)
             sys.exit(1)
 
+        from autodetect import autodetect_mapping, format_yaml
         mapping = autodetect_mapping(headers)
         print("# Auto-detected mapping — review and adjust before use")
         print(format_yaml(mapping))

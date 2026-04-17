@@ -14,13 +14,15 @@ Built for short-lived, high-pressure events (releases, migrations, cutovers) whe
 - **Category progress**: Collapsible task groups with progress bars
 - **Health indicator**: Green / Amber / Red go-live health with one-click toggle
 - **Issues log**: Full CRUD panel for tracking issues (blocking / non-blocking, ongoing / closed)
-- **3 image exports**:
+- **4 export types**:
   - Phone (1080×1920 portrait) — optimized for WhatsApp sharing
   - Email (1920×1080 landscape) — corporate style for email updates
   - Gantt chart (1920×dynamic) — timeline visualization with NOW line, planned-end marker
+  - **Post-Event Summary Report** — self-contained HTML report with burndown chart, health timeline SVG, Gantt, per-assignee breakdown, and issue log
 - **Text summary**: Copy-paste-ready status summary with operator comments
 - **Dark/Light mode**: Toggle between dark (default) and light themes
-- **Client branding**: Auto-detects logo and background from `assets/` folder
+- **Corporate/Neon palette**: Toggle between a corporate palette (accent-color-driven) and a neon palette; preference persisted per-browser
+- **Client branding**: Logo and background configurable via `config.json` (`logoFile`, `backgroundFile`), with automatic prefix-detection fallback from `assets/`
 - **Offline**: Everything runs locally, no network required after initial load
 - **State persistence**: Progress saved to browser localStorage
 
@@ -94,12 +96,15 @@ assets/           (create empty)
   "environment": "PROD",
   "release": "v1.0",
   "accentColor": "#003a2d",
-  "runbookFile": "runbook.json"
+  "runbookFile": "runbook.json",
+  "logoFile": "clientLogo-acme.png",
+  "backgroundFile": "Murex_background6.jpg"
 }
 ```
 
-`accentColor` is used in canvas exports (top bar, footer). Use the client's brand color.
+`accentColor` drives the `--color-primary` CSS variable used across the dashboard and in canvas exports. Use the client's brand color.
 `runbookFile` sets the JSON file the dashboard loads. Defaults to `runbook.json` if omitted — useful when managing multiple projects in the same folder.
+`logoFile` / `backgroundFile` load a specific file from `assets/` directly, bypassing the prefix-based auto-detection. Omit to keep auto-detection.
 
 ### 3. Map your data columns — `mapping.yml`
 
@@ -136,9 +141,11 @@ category_mapping:                  # Fix typos or encoding issues
 
 Drop files into `assets/`:
 - Logo: `clientLogo-<anything>.png` (e.g., `clientLogo-acme.png`)
-- Background: `background-<anything>.jpg` (e.g., `background-dark.jpg`)
+- Background: `background-<anything>.jpg` or `Murex_background*.jpg`
 
-The dashboard auto-detects files by prefix — no config needed.
+**Option A** — set filenames explicitly in `config.json` (`logoFile`, `backgroundFile`). This is the recommended approach when you know the filename.
+
+**Option B** — leave those fields out; the dashboard auto-detects by scanning `assets/` for files matching the `clientLogo-*` and `background-*` prefixes.
 
 ### 5. Convert your runbook
 
@@ -257,14 +264,16 @@ runbook-dashboard/
 ├── _launcher.js             ← Portable server (bundled into exe)
 ├── _bundle.js               ← Build script → single portable HTML
 ├── _package.js              ← Build script → portable zip release
+├── electron-main.js         ← Electron app entry (native window)
 ├── config.json              ← Project-specific metadata
 ├── mapping.yml              ← Column mapping for source runbook
 ├── runbook.json             ← Task data (generated, never hand-edit)
 ├── dashboard/               ← Modular JS (ES modules)
 │   ├── app.js               ← Entry point, render loop, event wiring
 │   ├── state.js             ← Global state
-│   ├── constants.js         ← Status labels, class mappings
+│   ├── constants.js         ← Status labels, class mappings, PARTY_OPTIONS
 │   ├── selectors.js         ← Derived queries (stats, filters, system list)
+│   ├── history.js           ← Snapshot history for burndown / final report
 │   ├── persistence.js       ← localStorage, JSON export/import
 │   ├── validation.js        ← Status normalization, v2 field defaults
 │   ├── actions/             ← User interaction handlers
@@ -277,9 +286,15 @@ runbook-dashboard/
 │   │   ├── stats.js
 │   │   ├── summary.js       ← Includes comment rows in HTML export
 │   │   └── timeline.js
-│   └── export/              ← Canvas image exports + theme
-│       ├── gantt.js         ← Gantt with planned-end (P) marker
-│       └── ...
+│   └── export/              ← Image exports + reports
+│       ├── gantt.js         ← Gantt canvas with planned-end (P) marker
+│       ├── finalReport.js   ← Post-event HTML summary report
+│       └── finalReport/     ← Sub-modules for final report
+│           ├── helpers.js
+│           ├── htmlReport.js
+│           ├── svgBurndown.js
+│           ├── svgGantt.js
+│           └── svgHealth.js
 ├── assets/
 │   ├── clientLogo-*.png     ← Client logo (auto-detected)
 │   └── background-*.jpg     ← Background image (auto-detected)
@@ -374,6 +389,9 @@ node _serve.js
 | `npm run build:exe` | `dist/RunbookDashboard.exe` | Portable Windows server (~54 MB) |
 | `npm run build:package` | `dist/RunbookDashboard-v*-portable.zip` | Rebuilds exe + zips release folder |
 | `npm run build:package:zip` | `dist/RunbookDashboard-v*-portable.zip` | Zip only, reuses existing exe |
+| `npm run electron` | Opens native Electron window | Requires `npm install` with electron |  
+| `npm run dist` | `dist-electron/win-x64/` | Electron distributable (Windows x64) |
+| `npm run dist:zip` | `dist-electron/MXRunbookMonitor-win-x64.zip` | Electron distributable zipped |
 
 ---
 

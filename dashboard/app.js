@@ -15,7 +15,7 @@
 import { state } from "./state.js";
 import { getCategoryNames, getUniqueTeams, getUniqueSystems, sortCategories, escapeHtml } from "./selectors.js";
 import { loadInitialRunbook, loadFromServer, loadFromFile, saveDraft, exportRunbookJson, resetRunbook as doReset, loadTimerState } from "./persistence.js";
-import { renderGlobalStats, renderHealthIndicator, updateStatsValues, updateTimerDisplay } from "./render/stats.js";
+import { renderGlobalStats, renderHealthIndicator, updateStatsValues, updateSentinelBar } from "./render/stats.js";
 import { renderTimeline } from "./render/timeline.js";
 import { renderCategories } from "./render/categories.js";
 import { renderIssues, toggleIssueForm, saveIssue as doSaveIssue, closeIssue as doCloseIssue, reopenIssue as doReopenIssue, editIssue as doEditIssue, deleteIssue as doDeleteIssue } from "./render/issues.js";
@@ -529,25 +529,27 @@ function bindEvents() {
     // Reset
     document.querySelector('[data-action="reset"]').addEventListener("click", resetRunbook);
 
-    // Run timer controls (delegated — buttons live inside dynamically rendered #globalStats)
-    document.getElementById("globalStats").addEventListener("click", (e) => {
+    // Sentinel strip — run timer controls + advisory accept (static DOM, direct delegation)
+    document.getElementById("sentinelBar").addEventListener("click", (e) => {
         const btn = e.target.closest("[data-action]");
         if (!btn) return;
         const action = btn.dataset.action;
         if (action === "timer-start") {
-            if (state.timerState === "paused") {
-                resumeTimer();
-            } else {
-                startTimer();
-            }
-            updateTimerDisplay();
+            if (state.timerState === "paused") resumeTimer(); else startTimer();
+            updateSentinelBar();
         } else if (action === "timer-pause") {
             pauseTimer();
-            updateTimerDisplay();
+            updateSentinelBar();
         } else if (action === "timer-stop") {
-            showConfirm("Stop Run Timer", "Stop the run timer and reset the elapsed time?",
+            showConfirm("Stop Run Timer", "Stop the run timer and reset elapsed time?",
                 { confirmLabel: "Stop Timer", confirmClass: "danger" }
-            ).then(ok => { if (ok) { stopTimer(); updateTimerDisplay(); } });
+            ).then(ok => { if (ok) { stopTimer(); updateSentinelBar(); } });
+        } else if (action === "advisory-accept") {
+            const advisory = document.getElementById("sentinelAdvisoryLabel")?.textContent?.replace("⚠ Auto: ", "");
+            if (advisory === "Green" || advisory === "Amber" || advisory === "Red") {
+                setHealth(advisory);
+                render();
+            }
         }
     });
 
@@ -576,7 +578,7 @@ initTheme();
 initPalette();
 updateClock();
 setInterval(updateClock, 1000);
-setInterval(updateTimerDisplay, 1000);
+setInterval(updateSentinelBar, 1000);
 loadTimerState();
 bindEvents();
 loadConfig().then(() => { detectAssets(); loadRunbook(); });

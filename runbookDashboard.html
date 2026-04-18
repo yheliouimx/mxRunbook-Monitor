@@ -547,60 +547,128 @@
     .stat-card.blocked .stat-value { color: var(--stat-blocked); }
     .stat-card.unneeded .stat-value { color: var(--stat-unneeded); }
 
-    /* RUN TIMER card */
-    .stat-card.timer {
-        min-width: 160px;
-        padding-bottom: 10px;
-    }
-    .stat-card.timer .timer-elapsed {
-        font-family: var(--font-mono, 'JetBrains Mono', monospace);
-        font-size: var(--text-xl);
-        color: var(--color-info);
-        letter-spacing: 2px;
-    }
-    .stat-card.timer .timer-status {
-        font-size: var(--text-xs);
-        color: var(--text-muted);
-        text-transform: uppercase;
-        letter-spacing: 1px;
-        margin-top: 2px;
-        margin-bottom: 8px;
-    }
-    .timer-controls {
+    /* ── SENTINEL STRIP (run timer + progress + advisory) ── */
+    .sentinel-strip {
         display: flex;
-        gap: 5px;
-        justify-content: center;
+        align-items: center;
+        gap: 16px;
+        padding: 10px 16px;
+        margin-bottom: 16px;
+        border-radius: 8px;
+        background: var(--glass-bg, var(--card-bg));
+        border: 1px solid var(--glass-border, var(--card-border));
+        border-left: 4px solid var(--sentinel-color, var(--text-muted));
+        backdrop-filter: blur(var(--glass-blur, 0px));
+        box-shadow: var(--glass-shadow, none);
+        transition: border-color 0.4s ease, opacity 0.3s ease;
         flex-wrap: wrap;
     }
-    .timer-btn {
-        font-size: 0.7em;
-        font-weight: 600;
-        border-radius: 6px;
-        border: 1px solid;
-        padding: 3px 8px;
-        cursor: pointer;
-        transition: opacity 0.15s, transform 0.1s;
-        line-height: 1.4;
-        white-space: nowrap;
+    .sentinel-strip.sentinel-stopped { --sentinel-color: var(--text-muted); }
+    .sentinel-strip.sentinel-running { --sentinel-color: var(--color-success); }
+    .sentinel-strip.sentinel-paused  { --sentinel-color: var(--color-warning); opacity: 0.82; }
+    .sentinel-timer-block { display: flex; align-items: center; gap: 8px; flex-shrink: 0; }
+    .sentinel-dot {
+        width: 10px; height: 10px; border-radius: 50%;
+        background: var(--sentinel-color, var(--text-muted));
+        flex-shrink: 0;
+        transition: background 0.4s;
     }
-    .timer-btn:hover { opacity: 0.85; transform: scale(1.04); }
-    .timer-btn:active { transform: scale(0.97); }
-    .timer-btn.hidden { display: none; }
-    .timer-btn.timer-start {
-        background: var(--color-success-bg);
-        border-color: var(--color-success);
-        color: var(--color-success);
+    .sentinel-strip.sentinel-running .sentinel-dot {
+        animation: sentinel-pulse 2.4s ease-in-out infinite;
     }
-    .timer-btn.timer-pause {
-        background: var(--color-warning-bg);
-        border-color: var(--color-warning);
-        color: var(--color-warning-text);
+    @keyframes sentinel-pulse {
+        0%, 100% { box-shadow: 0 0 0 0 var(--sentinel-color); }
+        50%       { box-shadow: 0 0 0 5px transparent; }
     }
-    .timer-btn.timer-stop {
-        background: var(--color-danger-bg);
-        border-color: var(--color-danger);
-        color: var(--color-danger);
+    .sentinel-timer-info { display: flex; flex-direction: column; gap: 1px; }
+    .sentinel-elapsed {
+        font-family: var(--font-mono, 'JetBrains Mono', monospace);
+        font-size: var(--text-xl);
+        font-weight: 700;
+        letter-spacing: 2px;
+        color: var(--text-primary);
+        font-variant-numeric: tabular-nums;
     }
+    .sentinel-timer-status {
+        font-size: var(--text-xs);
+        text-transform: uppercase;
+        letter-spacing: 0.8px;
+        color: var(--text-muted);
+    }
+    /* Phase 2 — progress bars */
+    .sentinel-progress-block {
+        display: flex; flex-direction: column; gap: 4px; flex: 1; min-width: 120px;
+    }
+    .sentinel-progress-block.hidden { display: none; }
+    .sentinel-bar-row { display: flex; align-items: center; gap: 6px; }
+    .sentinel-bar-label {
+        font-size: var(--text-xs); color: var(--text-muted);
+        width: 32px; flex-shrink: 0; text-align: right;
+        text-transform: uppercase; letter-spacing: 0.5px;
+    }
+    .sentinel-track {
+        flex: 1; height: 6px; border-radius: 3px;
+        background: var(--glass-border, var(--card-border));
+        overflow: hidden;
+    }
+    .sentinel-fill {
+        height: 100%; border-radius: 3px; width: 0%;
+        transition: width 0.6s ease;
+    }
+    .sentinel-fill.done { background: var(--color-success); }
+    .sentinel-fill.time { background: var(--color-info); }
+    .sentinel-bar-pct {
+        font-size: var(--text-xs); font-variant-numeric: tabular-nums;
+        color: var(--text-secondary); width: 30px; flex-shrink: 0;
+    }
+    /* Phase 2 — delta badge */
+    .sentinel-delta {
+        font-size: var(--text-sm); font-weight: 600; flex-shrink: 0;
+        padding: 2px 10px; border-radius: 12px; white-space: nowrap;
+    }
+    .sentinel-delta.hidden { display: none; }
+    .sentinel-delta.ahead, .sentinel-delta.ontrack {
+        background: var(--color-success-bg); color: var(--color-success);
+    }
+    .sentinel-delta.atrisk {
+        background: var(--color-warning-bg); color: var(--color-warning-text);
+    }
+    .sentinel-delta.delayed {
+        background: var(--color-danger-bg); color: var(--color-danger);
+    }
+    /* Phase 3 — advisory */
+    .sentinel-advisory-block { display: flex; align-items: center; gap: 6px; flex-shrink: 0; }
+    .sentinel-advisory-block.hidden { display: none; }
+    .sentinel-advisory-label {
+        font-size: var(--text-xs); font-weight: 600;
+        padding: 2px 8px; border-radius: 12px;
+    }
+    .sentinel-advisory-label.green { background: var(--color-success-bg); color: var(--color-success); }
+    .sentinel-advisory-label.amber { background: var(--color-warning-bg); color: var(--color-warning-text); }
+    .sentinel-advisory-label.red   { background: var(--color-danger-bg);  color: var(--color-danger); }
+    .sentinel-accept-btn {
+        font-size: var(--text-xs); padding: 2px 10px; border-radius: 12px;
+        border: 1px solid var(--glass-border, var(--card-border));
+        background: transparent; color: var(--text-primary); cursor: pointer;
+        transition: background 0.15s;
+    }
+    .sentinel-accept-btn:hover { background: var(--glass-bg-elevated, var(--card-bg)); }
+    .sentinel-accept-btn.hidden { display: none; }
+    /* Controls */
+    .sentinel-controls { display: flex; gap: 6px; flex-shrink: 0; margin-left: auto; }
+    .sentinel-btn {
+        font-size: var(--text-xs); font-weight: 600;
+        padding: 4px 14px; border-radius: 20px;
+        border: 1px solid var(--glass-border, var(--card-border));
+        background: transparent; color: var(--text-primary);
+        cursor: pointer; white-space: nowrap;
+        transition: background 0.15s, border-color 0.15s;
+    }
+    .sentinel-btn:hover { background: var(--glass-bg-elevated, var(--card-bg)); }
+    .sentinel-btn.hidden { display: none; }
+    .sentinel-btn.start { border-color: var(--color-success); color: var(--color-success); }
+    .sentinel-btn.pause { border-color: var(--color-warning); color: var(--color-warning); }
+    .sentinel-btn.stop  { border-color: var(--color-danger);  color: var(--color-danger); }
 
     /* GLOBAL PROGRESS */
     .global-progress {
@@ -1914,6 +1982,38 @@
         <div class="skeleton skeleton-stat-card"></div>
         <div class="skeleton skeleton-stat-card"></div>
         <div class="skeleton skeleton-stat-card"></div>
+    </div>
+</div>
+
+<div id="sentinelBar" class="sentinel-strip sentinel-stopped">
+    <div class="sentinel-timer-block">
+        <span class="sentinel-dot" id="sentinelDot"></span>
+        <div class="sentinel-timer-info">
+            <span class="sentinel-elapsed" id="sentinelElapsed">—</span>
+            <span class="sentinel-timer-status" id="sentinelTimerStatus">Run Timer</span>
+        </div>
+    </div>
+    <div class="sentinel-progress-block hidden" id="sentinelProgressBlock">
+        <div class="sentinel-bar-row">
+            <span class="sentinel-bar-label">Done</span>
+            <div class="sentinel-track"><div class="sentinel-fill done" id="sentinelDoneFill"></div></div>
+            <span class="sentinel-bar-pct" id="sentinelDonePct">0%</span>
+        </div>
+        <div class="sentinel-bar-row">
+            <span class="sentinel-bar-label">Time</span>
+            <div class="sentinel-track"><div class="sentinel-fill time" id="sentinelTimeFill"></div></div>
+            <span class="sentinel-bar-pct" id="sentinelTimePct">0%</span>
+        </div>
+    </div>
+    <span class="sentinel-delta hidden" id="sentinelDelta"></span>
+    <div class="sentinel-advisory-block hidden" id="sentinelAdvisoryBlock">
+        <span class="sentinel-advisory-label" id="sentinelAdvisoryLabel"></span>
+        <button class="sentinel-accept-btn hidden" id="sentinelAcceptBtn" data-action="advisory-accept">Accept</button>
+    </div>
+    <div class="sentinel-controls">
+        <button class="sentinel-btn start" id="sentinelStartBtn" data-action="timer-start">▶ Start Run</button>
+        <button class="sentinel-btn pause hidden" id="sentinelPauseBtn" data-action="timer-pause">⏸</button>
+        <button class="sentinel-btn stop hidden" id="sentinelStopBtn" data-action="timer-stop">⏹</button>
     </div>
 </div>
 

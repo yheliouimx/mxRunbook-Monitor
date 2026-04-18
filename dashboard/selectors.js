@@ -1,5 +1,6 @@
 import { state } from "./state.js";
 import { STATUS, ISSUE_STATUS, ISSUE_SEVERITY } from "./constants.js";
+import { getElapsedMs } from "./actions/timer.js";
 
 // ── Status normalization & classification ──
 
@@ -166,4 +167,58 @@ export function getBlockingIssues() {
 export function getCompletionPct() {
     const { total, done } = getGlobalStats();
     return total > 0 ? Math.round((done / total) * 100) : 0;
+}
+
+// ── Run timer analytics (Phase 2 + 3) ──────────────────────
+
+export function getTotalEstimatedMs() {
+    if (!state.runStart) return null;
+    let latest = null;
+    for (const [key, tasks] of Object.entries(state.runbookData)) {
+        if (key.startsWith('_') || !Array.isArray(tasks)) continue;
+        for (const t of tasks) {
+            if (!t.estimatedEnd) continue;
+            const d = new Date(t.estimatedEnd);
+            if (!isNaN(d) && (!latest || d > latest)) latest = d;
+        }
+    }
+    if (!latest) return null;
+    const ms = latest.getTime() - state.runStart;
+    return ms > 0 ? ms : null;
+}
+
+export function getEstimationCoverage() {
+    let total = 0, covered = 0;
+    for (const [key, tasks] of Object.entries(state.runbookData)) {
+        if (key.startsWith('_') || !Array.isArray(tasks)) continue;
+        for (const t of tasks) {
+            if (normalizeStatus(t.status) === STATUS.UNNEEDED) continue;
+            total++;
+            if (t.estimatedEnd) covered++;
+        }
+    }
+    return total > 0 ? covered / total : 0;
+}
+
+export function getTimeDelta() {
+    if (state.timerState === 'stopped' || !state.runStart) return null;
+    const totalMs = getTotalEstimatedMs();
+    if (!totalMs) return null;
+    if (getEstimationCoverage() < 0.6) return null;
+    const completionPct = getCompletionPct();
+    const timeProgressPct = Math.min(100, Math.round((getElapsedMs() / totalMs) * 100));
+    const deltaPct = completionPct - timeProgressPct;
+    return { timeProgressPct, completionPct, deltaPct };
+}
+
+export function getHealthAdvisory() {
+    if (state.timerState === 'stopped' || !state.runStart) return null;
+    const delta = getTimeDelta();
+    if (!delta) return null;
+    const t = (state.projectConfig.healthThresholds) || { ahead: 5, onTrack: -10, atRisk: -25 };
+    const d = delta.deltaPct;
+    if (d > t.ahead)   return null;      // ahead of schedule — no advisory needed
+    if (d >= t.onTrack) return 'Green';
+    if (d >= t.atRisk)  return 'Amber';
+    return 'Red';
 }

@@ -8,5 +8,10 @@
   "accentColor": "#003a2d",
   "logoFile": "clientLogo-mks.png",
   "backgroundFile": "Murex_background6.jpg",
-  "runbookFile": "mks_runbook.json"
+  "runbookFile": "mks_runbook.json",
+  "healthThresholds": {
+    "ahead": 5,
+    "onTrack": -10,
+    "atRisk": -25
+  }
 }

@@ -140,7 +140,7 @@ category_mapping:                  # Fix typos or encoding issues
 ### 4. Add branding (optional)
 
 Drop files into `assets/`:
-- **Logo**: name it `logo.png` (or `logo.jpg`, `logo.svg`, `logo.webp`) — the dashboard finds it automatically.
+- **Logo**: any filename containing `logo` is detected automatically (e.g. `logo.png`, `acme-logo.svg`, `mylogo.jpg`).
 - **Background**: name it `background.jpg` (or any `background*.jpg/png`) — or keep the default `Murex_background6.jpg`.
 
 **Option A — auto-detection** (recommended): use the standard filenames above and omit `logoFile` / `backgroundFile` from `config.json`. The dashboard scans `assets/` and loads the first match.
@@ -235,8 +235,8 @@ dist-electron/win-x64/
 1. Copy `dist-electron/win-x64/` to the target machine (or distribute the zip)
 2. Edit `resources/app/config.json` with project details (see [Configure](#2-configure-your-project--configjson))
 3. Copy the runbook JSON to `resources/app/` (filename must match `runbookFile` in config)
-4. **Add logo** — copy client logo to `resources/app/assets/` named `logo.png` (or `logo.jpg`, `logo.svg`)
-   - The dashboard auto-detects any `logo.*` file in `assets/` — no config change needed
+4. **Add logo** — copy client logo to `resources/app/assets/` with any filename containing `logo` (e.g. `logo.png`, `acme-logo.svg`, `mylogo.jpg`)
+   - The dashboard auto-detects any file matching `*logo*` in `assets/` — no config change needed
    - Alternatively: name the file anything and set `"logoFile": "yourfile.png"` in `config.json`
 5. Double-click `MX Runbook Monitor.exe`
 

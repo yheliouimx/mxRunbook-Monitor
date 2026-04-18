@@ -389,11 +389,10 @@ function detectAssets() {
                 if (!html) return;
 
                 if (!logoLoaded) {
-                    // Preferred: exactly logo.<ext>, then any logo*.* file.
+                    // Match any filename containing "logo" (e.g. logo.png, acme-logo.svg, mylogo.jpg).
                     // clientLogo-* files are client-specific and not in the distribution.
                     const logoName = pickFirstMatch(html, [
-                        /href="([^"]*\blogo\.(png|jpg|jpeg|svg|webp))"/i,
-                        /href="([^"]*\blogo[^"]*\.(png|jpg|jpeg|svg|webp))"/i,
+                        /href="([^"]*logo[^"]*\.(png|jpg|jpeg|svg|webp))"/i,
                     ]);
                     if (logoName) loadLogo('assets/' + logoName);
                 }
@@ -408,7 +407,9 @@ function detectAssets() {
             .catch(() => {
                 // Last-resort filename guesses when directory listing fails
                 if (!logoLoaded) {
-                    exts.forEach(ext => loadLogo('assets/logo.' + ext));
+                    ['logo', 'client-logo', 'clientlogo'].forEach(base => {
+                        exts.forEach(ext => loadLogo('assets/' + base + '.' + ext));
+                    });
                 }
                 if (!bgLoaded) {
                     exts.forEach(ext => loadBg('assets/background.' + ext));

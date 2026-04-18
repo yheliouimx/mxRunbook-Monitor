@@ -70,6 +70,32 @@ function removeRecent(folderPath) {
     saveRecentClients(loadRecentClients().filter(r => r.path !== folderPath));
 }
 
+// ── Config / runbook file discovery ──────────────────────
+// Clients name their files like "mks_config.json" / "mks_runbook.json"
+// rather than the canonical names.  These helpers find whichever variant
+// is present, trying the canonical name first then *_config.json / *_runbook.json.
+function findConfigFile(folderPath) {
+    const canonical = path.join(folderPath, 'config.json');
+    if (fs.existsSync(canonical)) return canonical;
+    try {
+        const files = fs.readdirSync(folderPath);
+        const match = files.filter(f => /^.+_config\.json$/i.test(f)).sort()[0];
+        if (match) return path.join(folderPath, match);
+    } catch (_) { /* unreadable dir */ }
+    return null;
+}
+
+function findRunbookFile(folderPath) {
+    const canonical = path.join(folderPath, 'runbook.json');
+    if (fs.existsSync(canonical)) return canonical;
+    try {
+        const files = fs.readdirSync(folderPath);
+        const match = files.filter(f => /^.+_runbook\.json$/i.test(f)).sort()[0];
+        if (match) return path.join(folderPath, match);
+    } catch (_) { /* unreadable dir */ }
+    return null;
+}
+
 // ── HTTP server (same logic as _serve.js / _launcher.js) ─────
 const server = http.createServer((req, res) => {
     let urlPath = decodeURIComponent(req.url.split('?')[0]);
@@ -77,11 +103,24 @@ const server = http.createServer((req, res) => {
     // ── Client proxy routes (must precede general file-serve) ──
     if (urlPath === '/client-config') {
         if (!currentClientDir) { res.writeHead(404); res.end('No client selected'); return; }
-        const cfgPath = path.join(currentClientDir, 'config.json');
+        const cfgPath = findConfigFile(currentClientDir);
+        if (!cfgPath) { res.writeHead(404); res.end('No config file found in client folder'); return; }
         fs.readFile(cfgPath, (err, data) => {
-            if (err) { res.writeHead(404); res.end('config.json not found'); return; }
-            res.writeHead(200, { 'Content-Type': 'application/json' });
-            res.end(data);
+            if (err) { res.writeHead(404); res.end('Config file unreadable'); return; }
+            try {
+                const cfg = JSON.parse(data);
+                // Auto-inject runbookFile if not set — discover *_runbook.json in the folder
+                if (!cfg.runbookFile) {
+                    const rbPath = findRunbookFile(currentClientDir);
+                    if (rbPath) cfg.runbookFile = path.basename(rbPath);
+                }
+                res.writeHead(200, { 'Content-Type': 'application/json' });
+                res.end(JSON.stringify(cfg));
+            } catch (_) {
+                // Unparseable JSON — serve raw so the client gets a useful error
+                res.writeHead(200, { 'Content-Type': 'application/json' });
+                res.end(data);
+            }
         });
         return;
     }
@@ -192,13 +231,13 @@ function registerIpcHandlers() {
         return canceled ? null : filePaths[0];
     });
 
-    // Read config.json from an arbitrary folder path
+    // Read the config file from an arbitrary folder path.
+    // Accepts canonical "config.json" or client-named "*_config.json" variants.
     ipcMain.handle('folder:readConfig', (_, folderPath) => {
         if (typeof folderPath !== 'string') return null;
         try {
-            const cfgPath = path.resolve(folderPath, 'config.json');
-            // Prevent path traversal beyond the chosen folder
-            if (!cfgPath.startsWith(path.resolve(folderPath))) return null;
+            const cfgPath = findConfigFile(path.resolve(folderPath));
+            if (!cfgPath) return null;
             return JSON.parse(fs.readFileSync(cfgPath, 'utf8'));
         } catch (_) { return null; }
     });

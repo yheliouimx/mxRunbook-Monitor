@@ -80,7 +80,9 @@ function updateClock() {
 
 async function loadConfig() {
     try {
-        const res = await fetch("config.json");
+        const hasClientDir = new URLSearchParams(window.location.search).has('clientKey');
+        const configUrl = hasClientDir ? '/client-config' : 'config.json';
+        const res = await fetch(configUrl);
         const cfg = await res.json();
         Object.assign(state.projectConfig, cfg);
     } catch(e) { /* config.json optional — use defaults */ }
@@ -340,6 +342,11 @@ function detectAssets() {
     let bgLoaded = false;
     let autoDetectAttempted = false;
 
+    // When navigated from the welcome page with a client folder selected, assets are
+    // served via the /client-asset/ proxy route; otherwise fall back to local assets/.
+    const isClientMode = new URLSearchParams(window.location.search).has('clientKey');
+    const clientPrefix = isClientMode ? '/client-asset/' : 'assets/';
+
     function loadLogo(src) {
         const img = new Image();
         img.onload = () => {
@@ -417,13 +424,22 @@ function detectAssets() {
             });
     }
 
-    if (state.projectConfig.logoFile) loadLogo('assets/' + state.projectConfig.logoFile);
-    if (state.projectConfig.backgroundFile) loadBg('assets/' + state.projectConfig.backgroundFile);
+    if (state.projectConfig.logoFile) loadLogo(clientPrefix + state.projectConfig.logoFile);
+    if (state.projectConfig.backgroundFile) loadBg(clientPrefix + state.projectConfig.backgroundFile);
+
+    // In non-client mode with no backgroundFile configured, always try the Murex default
+    // so the dashboard is never plain black. CSS already sets it as a fallback (Phase 6),
+    // but this ensures the loaded-state flag is consistent.
+    if (!state.projectConfig.backgroundFile && !isClientMode) {
+        loadBg('assets/Murex_background6.jpg');
+    }
 
     // Always run a delayed auto-detect pass. If explicit files loaded, it no-ops;
     // if they failed/missing, it recovers by probing assets listing/guesses.
+    // Skip auto-detect in client mode — assets are only accessible via /client-asset/ and
+    // filenames must come from config.json.
     setTimeout(() => {
-        if (!logoLoaded || !bgLoaded) tryAutoDetect();
+        if (!isClientMode && (!logoLoaded || !bgLoaded)) tryAutoDetect();
     }, 150);
 }
 
@@ -559,6 +575,15 @@ function bindEvents() {
             saveToLocalStorage();
         }
     });
+
+    // Back-to-welcome button (Electron only — hidden by default, shown when electronAPI present)
+    if (window.electronAPI && window.electronAPI.isElectron) {
+        const backBtn = document.getElementById('backToWelcomeBtn');
+        if (backBtn) {
+            backBtn.style.display = 'inline-flex';
+            backBtn.addEventListener('click', () => window.electronAPI.openWelcome());
+        }
+    }
 }
 
 // ── Expose to window for dynamic onclick in renderers ──────

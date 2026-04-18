@@ -287,6 +287,9 @@
         position: fixed;
         top: 0; left: 0; right: 0; bottom: 0;
         z-index: -1;
+        /* CSS fallback — always visible even before JS runs or when no config is set.
+           JS (detectAssets) overwrites this with the client-specific background. */
+        background-image: url('assets/Murex_background6.jpg');
         background-size: cover;
         background-position: center center;
         background-repeat: no-repeat;
@@ -1967,6 +1970,7 @@
         </div>
     </div>
     <div class="header-right">
+        <button id="backToWelcomeBtn" class="action-btn" title="Back to Welcome" style="display:none;align-items:center;gap:6px;font-size:var(--text-xs);padding:4px 10px;opacity:0.75" aria-label="Back to client selector">&#8592; Home</button>
         <div class="clock" id="clock"></div>
         <button class="palette-btn" id="paletteToggle2" title="Switch color palette">Corporate</button>
         <div class="theme-toggle" id="themeToggle2" title="Toggle light/dark mode">

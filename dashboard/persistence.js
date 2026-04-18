@@ -32,11 +32,15 @@ function readReservedKeys() {
 // ── Public API ──
 
 /**
- * Return the runbook filename to fetch.
- * Uses state.projectConfig.runbookFile if set, otherwise "runbook.json".
+ * Return the URL to fetch the runbook from.
+ * In client mode (?clientKey present) assets are proxied via /client-asset/,
+ * so the filename from config must be prefixed accordingly.
+ * Falls back to the bare filename (served from app root) otherwise.
  */
 function runbookFile() {
-    return (state.projectConfig && state.projectConfig.runbookFile) || "runbook.json";
+    const filename = (state.projectConfig && state.projectConfig.runbookFile) || "runbook.json";
+    const isClientMode = new URLSearchParams(window.location.search).has('clientKey');
+    return isClientMode ? '/client-asset/' + filename : filename;
 }
 
 /**

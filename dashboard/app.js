@@ -389,10 +389,10 @@ function detectAssets() {
                 if (!html) return;
 
                 if (!logoLoaded) {
-                    // Preferred: exactly logo.<ext>. Backward-compatible fallback: clientLogo*.
+                    // Preferred: exactly logo.<ext>, then any logo*.* file.
+                    // clientLogo-* files are client-specific and not in the distribution.
                     const logoName = pickFirstMatch(html, [
-                        /href="([^"]*\blog\.(png|jpg|jpeg|svg|webp))"/i,
-                        /href="([^"]*\bclientLogo[^"]*\.(png|jpg|jpeg|svg|webp))"/i,
+                        /href="([^"]*\blogo\.(png|jpg|jpeg|svg|webp))"/i,
                         /href="([^"]*\blogo[^"]*\.(png|jpg|jpeg|svg|webp))"/i,
                     ]);
                     if (logoName) loadLogo('assets/' + logoName);
@@ -406,11 +406,9 @@ function detectAssets() {
                 }
             })
             .catch(() => {
-                // Last-resort filename guesses when listing fails
+                // Last-resort filename guesses when directory listing fails
                 if (!logoLoaded) {
-                    ['logo', 'clientLogo'].forEach(base => {
-                        exts.forEach(ext => loadLogo('assets/' + base + '.' + ext));
-                    });
+                    exts.forEach(ext => loadLogo('assets/logo.' + ext));
                 }
                 if (!bgLoaded) {
                     exts.forEach(ext => loadBg('assets/background.' + ext));

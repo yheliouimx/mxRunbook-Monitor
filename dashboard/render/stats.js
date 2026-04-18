@@ -1,6 +1,7 @@
 import { state } from "../state.js";
 import { HEALTH_META, statusLabel, STATUS } from "../constants.js";
-import { getGlobalStats, getCompletionPct, getOpenIssues, getBlockingIssues } from "../selectors.js";
+import { getGlobalStats, getCompletionPct, getOpenIssues, getBlockingIssues,
+         getTimeDelta, getHealthAdvisory } from "../selectors.js";
 import { getElapsedMs, formatElapsed } from "../actions/timer.js";
 
 export function renderHealthIndicator() {
@@ -28,7 +29,6 @@ export function renderGlobalStats() {
     const blockIss = getBlockingIssues().length;
     const totalBlocking = blocking + blockIss;
     const healthClass = 'health-' + (state.healthStatus || 'Green').toLowerCase();
-    const timerHtml = _buildTimerHtml();
     document.getElementById("globalStats").innerHTML = `
         <div class="stats-master ${healthClass}">
             <div class="progress-fill" style="width:${pct}%"></div>
@@ -57,10 +57,6 @@ export function renderGlobalStats() {
                     <div class="stat-card blocking"><div class="stat-value">${totalBlocking}</div><div class="stat-label">${statusLabel(STATUS.BLOCKING)}</div></div>
                 </div>
             </div>
-            <div style="flex:0 0 auto">
-                <div class="stats-group-label">Run Timer</div>
-                ${timerHtml}
-            </div>
         </div>
     `;
     renderHealthIndicator();
@@ -68,8 +64,6 @@ export function renderGlobalStats() {
 
 /**
  * Patch stat values in-place without rebuilding the entire #globalStats DOM.
- * Only updates text content of .stat-value cells that actually changed,
- * plus the master progress bar.
  */
 export function updateStatsValues() {
     const { total, done, inProg, notStarted, blocking } = getGlobalStats();
@@ -91,56 +85,102 @@ export function updateStatsValues() {
     if (masterDetail) { const t = done + ' / ' + total + ' tasks completed'; if (masterDetail.textContent !== t) masterDetail.textContent = t; }
 }
 
-// ── Timer helpers ─────────────────────────────────────────
+// ── Sentinel Strip (replaces old timer stat card) ──────────
 
 /**
- * Build the inner HTML for the run-timer group.
- * Called by renderGlobalStats() on full re-renders.
+ * Tick update for the Sentinel Strip — patches timer, progress bars, delta,
+ * and health advisory every second. Called via setInterval in app.js.
  */
-function _buildTimerHtml() {
+export function updateSentinelBar() {
+    const strip = document.getElementById('sentinelBar');
+    if (!strip) return;
+
     const ts = state.timerState;
-    const elapsed = formatElapsed(getElapsedMs());
-    const statusLabel = ts === "running" ? "Running…" : ts === "paused" ? "Paused" : "Not Started";
-    const startLabel  = ts === "paused"  ? "▶ Resume" : "▶ Start";
-    const showStart   = ts !== "running";
-    const showPause   = ts === "running";
-    const showStop    = ts === "running" || ts === "paused";
-    return `
-        <div class="stat-card timer">
-            <div class="stat-value timer-elapsed" id="timerElapsed">${elapsed}</div>
-            <div class="stat-label timer-status" id="timerStatus">${statusLabel}</div>
-            <div class="timer-controls">
-                <button class="timer-btn timer-start${showStart ? '' : ' hidden'}" id="timerStartBtn" data-action="timer-start">${startLabel}</button>
-                <button class="timer-btn timer-pause${showPause ? '' : ' hidden'}" id="timerPauseBtn" data-action="timer-pause">⏸ Pause</button>
-                <button class="timer-btn timer-stop${showStop  ? '' : ' hidden'}" id="timerStopBtn"  data-action="timer-stop">⏹ Stop</button>
-            </div>
-        </div>`;
+
+    // Timer state class drives left-border color via CSS
+    strip.classList.remove('sentinel-stopped', 'sentinel-running', 'sentinel-paused');
+    strip.classList.add('sentinel-' + ts);
+
+    // ── Elapsed + status label ──
+    const elapsedEl = document.getElementById('sentinelElapsed');
+    const statusEl  = document.getElementById('sentinelTimerStatus');
+    if (elapsedEl) {
+        const txt = ts === 'stopped' ? '—' : formatElapsed(getElapsedMs());
+        if (elapsedEl.textContent !== txt) elapsedEl.textContent = txt;
+    }
+    if (statusEl) {
+        const txt = ts === 'running' ? 'Running…' : ts === 'paused' ? 'Paused' : 'Run Timer';
+        if (statusEl.textContent !== txt) statusEl.textContent = txt;
+    }
+
+    // ── Control buttons ──
+    const startBtn = document.getElementById('sentinelStartBtn');
+    const pauseBtn = document.getElementById('sentinelPauseBtn');
+    const stopBtn  = document.getElementById('sentinelStopBtn');
+    if (startBtn) {
+        const label = ts === 'paused' ? '▶ Resume' : '▶ Start Run';
+        if (startBtn.textContent !== label) startBtn.textContent = label;
+        startBtn.classList.toggle('hidden', ts === 'running');
+    }
+    if (pauseBtn) pauseBtn.classList.toggle('hidden', ts !== 'running');
+    if (stopBtn)  stopBtn.classList.toggle('hidden',  ts === 'stopped');
+
+    // ── Phase 2: Progress bars + delta ──
+    const delta = ts !== 'stopped' ? getTimeDelta() : null;
+    const progressBlock = document.getElementById('sentinelProgressBlock');
+    const deltaEl       = document.getElementById('sentinelDelta');
+
+    if (progressBlock) progressBlock.classList.toggle('hidden', !delta);
+
+    if (delta) {
+        _setIfChanged('sentinelDoneFill', null, delta.completionPct  + '%');
+        _setIfChanged('sentinelTimeFill', null, delta.timeProgressPct + '%');
+        _setIfChanged('sentinelDonePct', delta.completionPct  + '%');
+        _setIfChanged('sentinelTimePct', delta.timeProgressPct + '%');
+    }
+
+    if (deltaEl) {
+        if (delta) {
+            const d = delta.deltaPct;
+            let cls, text;
+            if (d > 5)        { cls = 'ahead';   text = '+' + d + '% ahead'; }
+            else if (d >= -10) { cls = 'ontrack'; text = (d >= 0 ? '+' : '') + d + '% on track'; }
+            else if (d >= -25) { cls = 'atrisk';  text = d + '% at risk'; }
+            else               { cls = 'delayed'; text = d + '% delayed'; }
+            deltaEl.className = 'sentinel-delta ' + cls;
+            if (deltaEl.textContent !== text) deltaEl.textContent = text;
+        } else {
+            deltaEl.className = 'sentinel-delta hidden';
+        }
+    }
+
+    // ── Phase 3: Health advisory ──
+    const advisory = ts !== 'stopped' ? getHealthAdvisory() : null;
+
+    // Override strip accent color with advisory color when active
+    if (advisory) {
+        strip.style.setProperty('--sentinel-color', `var(--health-${advisory.toLowerCase()})`);
+    } else {
+        strip.style.removeProperty('--sentinel-color');
+    }
+
+    const advisoryBlock = document.getElementById('sentinelAdvisoryBlock');
+    const advisoryLabel = document.getElementById('sentinelAdvisoryLabel');
+    const acceptBtn     = document.getElementById('sentinelAcceptBtn');
+    const showAdvisory  = advisory !== null && advisory !== state.healthStatus;
+
+    if (advisoryBlock) advisoryBlock.classList.toggle('hidden', !showAdvisory);
+    if (showAdvisory && advisoryLabel) {
+        const txt = '⚠ Auto: ' + advisory;
+        if (advisoryLabel.textContent !== txt) advisoryLabel.textContent = txt;
+        advisoryLabel.className = 'sentinel-advisory-label ' + advisory.toLowerCase();
+    }
+    if (acceptBtn) acceptBtn.classList.toggle('hidden', !showAdvisory);
 }
 
-/**
- * Tick update — patches only the timer elements (no full re-render).
- * Called every second by a setInterval in app.js when the timer is running.
- */
-export function updateTimerDisplay() {
-    const elapsed = document.getElementById("timerElapsed");
-    const status  = document.getElementById("timerStatus");
-    const startBtn = document.getElementById("timerStartBtn");
-    const pauseBtn = document.getElementById("timerPauseBtn");
-    const stopBtn  = document.getElementById("timerStopBtn");
-    if (!elapsed) return; // stats not yet rendered
-
-    const ts = state.timerState;
-    const elapsedText = formatElapsed(getElapsedMs());
-    if (elapsed.textContent !== elapsedText) elapsed.textContent = elapsedText;
-
-    const statusText = ts === "running" ? "Running…" : ts === "paused" ? "Paused" : "Not Started";
-    if (status && status.textContent !== statusText) status.textContent = statusText;
-
-    if (startBtn) {
-        const label = ts === "paused" ? "▶ Resume" : "▶ Start";
-        if (startBtn.textContent !== label) startBtn.textContent = label;
-        startBtn.classList.toggle("hidden", ts === "running");
-    }
-    if (pauseBtn) pauseBtn.classList.toggle("hidden", ts !== "running");
-    if (stopBtn)  stopBtn.classList.toggle("hidden",  ts === "stopped");
+function _setIfChanged(id, text, width) {
+    const el = document.getElementById(id);
+    if (!el) return;
+    if (width !== undefined && el.style.width !== width) el.style.width = width;
+    if (text  !== null     && el.textContent !== text)   el.textContent = text;
 }

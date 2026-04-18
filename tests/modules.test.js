@@ -132,7 +132,7 @@ describe('app.js', () => {
     // that app.js expects.
     const ids = [
       'themeToggle', 'clock', 'toast', 'bgOverlay', 'clientLogo',
-      'healthText', 'globalStats', 'timeline', 'container',
+      'healthText', 'globalStats', 'sentinelBar', 'timeline', 'container',
       'searchBox', 'teamFilter', 'sortSelect', 'issuesPanel',
       'summaryBox', 'runbookFileInput', 'favicon',
     ];

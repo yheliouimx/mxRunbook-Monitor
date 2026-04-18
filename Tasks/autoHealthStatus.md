@@ -1,110 +1,214 @@
-# Auto Health Status — Design Analysis & Implementation Plan
+# Auto-Health Status — Feature Specification
 
-## Context & Intent
+## What It Is
 
-The current dashboard displays running time based on real-time progression, which makes it difficult to assess whether the client process is actually progressing according to plan. The intent is to introduce a mechanism that allows time tracking to start only when the client process effectively begins, rather than relying on absolute clock time.
-
----
-
-## 1. Is this a good idea operationally?
-
-**Yes, with caveats.** Go-live events are time-critical and the current dashboard only answers *"what has been done"* — not *"are we going to finish on time"*. The gap between completion % and time % is genuinely the most useful early-warning signal during a run.
-
-The main risk already identified: **the health auto-update is only as good as the estimation data.** If `estimatedEnd` fields are sparse or optimistic, the indicator will create noise rather than signal. A misleading "Red" health during a go-live is arguably worse than no indicator at all.
-
-A second operational risk: **scheduled pauses and wait states are not captured**. If the runbook has a "Wait for system restart (30 min)" step, the timer shouldn't count that as delay. Without pause/resume this degrades quickly in practice.
+A run-timer and health-advisory system that tracks elapsed time, compares it against
+task completion, and advises (never silently overrides) the health status. All three
+phases are surfaced through a single **Sentinel Strip** — a slim monitoring bar sitting
+between the stat cards and the category stepper.
 
 ---
 
-## 2. Where to Integrate
+## Sentinel Strip — Design Rationale
 
-The existing architecture has natural anchor points:
+### Why NOT a round button
 
-| Location | What fits |
-|---|---|
-| **Header / stat cards area** | A `RUN TIMER` card showing elapsed time and a `[▶ Start Run]` / `[⏸ Pause]` button — keeps it global and visible at a glance |
-| **Completion % stat card** | A secondary "time %" row under the completion %, showing `Elapsed 1h 20m / Est. 3h 00m (44%)` — this is where the delta makes most sense |
-| **Timeline stepper** | Per-phase estimated duration badge on each node — ties naturally into the existing category structure |
-| **Health indicator** | Keep manual override as primary; add auto-advisory as a **suggestion** with a small badge `⚠ auto` so the operator can accept or dismiss it — never override manual without confirmation |
+| Problem | Detail |
+|---------|--------|
+| Ambiguous state | A button conveys "press me" but not whether the timer is running, paused, or what it monitors |
+| No glanceable data | Operators need to see elapsed time and delta at a glance during a stressful go-live |
+| Stressful context | Controls should be self-labelling — no icon guessing under pressure |
+| Orphaned visually | A circle floating between panels breaks the horizontal card rhythm without adding meaning |
 
-The **least invasive high-value starting point** is a global timer in the stats area + a second progress bar under the completion bar.
+### Why NOT a stat card (old Phase 1 design)
 
----
+The original Phase 1 implementation placed the timer inside a `.stat-card.timer` alongside
+Total / Done / In Prog / Not Started cards. This creates visual noise: the card looks like a
+statistic but contains interactive buttons, and its rectangular shape makes it indistinguishable
+from the data cards at a glance.
 
-## 3. Minimum Data and Rules to Avoid Misleading Indicators
+### The Sentinel Strip
 
-### Minimum viable data requirement
-
-The timer needs a total estimated duration. The cleanest derivation:
-- Use the **latest `estimatedEnd`** value across all tasks minus the `runStart` timestamp
-- This only works if at least one task has `estimatedEnd` and that task is logically the last
-
-If using per-task `estimatedEnd`, surface coverage: if fewer than ~60% of tasks have this field, suppress the time-progress indicator entirely and show an "Insufficient estimation data" warning instead.
-
-### Rules
+A slim full-width monitoring bar. Not a card, not a button — closer to a vital-signs monitor
+line, which is appropriate for a go-live context.
 
 ```
-runStart          — stored in state + localStorage when ▶ Start pressed
-pausedDuration    — accumulated pause time (supports pause/resume)
-elapsedMs         — (now - runStart) - pausedDuration
-
-timeProgress %    — elapsedMs / totalEstimatedMs × 100
-completionPct     — existing (done + unneeded) / total × 100
-
-delta             — completionPct - timeProgress
-
-Health advisory:
-  delta > +5%     → "Ahead"    (suppress auto; manual can still be Amber/Red)
-  delta ≥ -10%    → "On track" → advisory Green
-  delta ≥ -25%    → "At risk"  → advisory Amber
-  delta < -25%    → "Delayed"  → advisory Red
+▐ ● 01:23:45  Done ████████░░ 52%  Time ██████░░░░ 40%  +12% ahead  ⚠ Auto: Amber [Accept]  ⏸  ⏹
 ```
 
-> Threshold values should be configurable in `config.json` — different clients have different risk tolerances.
+#### Visual anatomy
 
-### Edge cases to handle
+| Element | Purpose |
+|---------|---------|
+| 4 px left accent border | Current advisory health color — changes automatically |
+| Pulsing dot (●) | Heartbeat animation while running; static when paused/stopped |
+| Elapsed `HH:MM:SS` | Timer value — monospace, always visible |
+| Done / Time bars | Phase 2 — dual mini progress bars (completion % vs time %) |
+| Delta badge | Phase 2 — `+12% ahead` / `-8% at risk` etc. |
+| `⚠ Auto: Amber [Accept]` | Phase 3 — advisory block, only shown when advisory ≠ current health |
+| ▶ / ⏸ / ⏹ buttons | Timer controls |
 
-| Case | Behaviour |
-|---|---|
-| Run not started yet | Show `[▶ Start Run]`; all time-progress indicators hidden |
-| Run paused | Elapsed counter frozen; delta frozen; no health change |
-| All tasks Completed | Show final elapsed time; freeze timer |
-| `estimatedEnd` < `runStart` (bad data) | Suppress indicator; show data warning |
-| Page refresh / localStorage restore | Restore `runStart`, `pausedDuration` from persisted state |
+#### States
 
----
-
-## Recommended Implementation Path
-
-### Phase 1 — Timer + Elapsed Display (low risk, high value)
-- Add `runStart`, `pausedDuration`, `timerState` to `dashboard/state.js`
-- Add `[▶ Start Run]` / `[⏸ Pause]` / `[⏹ Stop]` controls to the header
-- Add a **RUN TIMER** stat card showing elapsed time
-- Persist timer state to localStorage
-- **No health auto-update yet** — lets the team validate UX and data quality first
-
-### Phase 2 — Time Progress Bar + Delta
-- Add a time progress bar alongside the existing completion bar
-- Show explicit delta: `(+12% ahead)` / `(-8% behind)`
-- Suppress bar entirely when estimation coverage < 60%
-
-### Phase 3 — Health Advisory
-- Add auto-advisory health suggestion with a visible `⚠ auto` badge
-- Manual override always preserved and always takes precedence
-- Operator can accept or dismiss the advisory — automation informs, never overrides
-- Thresholds exposed in `config.json`
+| State | Appearance |
+|-------|-----------|
+| **Stopped** | Grey left border, `—` elapsed, only `▶ Start Run` visible |
+| **Running** | Health-colored pulsing border and dot; countdown live |
+| **Paused** | Amber border; opacity 0.82; `▶ Resume` + `⏹` visible |
 
 ---
 
-## Files to Modify
+## Phase 1 — Run Timer ✅
+
+### What it does
+Tracks elapsed wall-clock time from when `▶ Start Run` is pressed, subtracting any
+paused periods. Persists across page refreshes via localStorage.
+
+### State (`dashboard/state.js`)
+```js
+runStart:       null,      // Date.now() ms when run was started
+pausedDuration: 0,         // accumulated pause time in ms
+pauseStart:     null,      // Date.now() when current pause began
+timerState:     "stopped", // "stopped" | "running" | "paused"
+```
+
+### Key functions (`dashboard/actions/timer.js`)
+```js
+export function startTimer()       // sets runStart, timerState = "running"
+export function pauseTimer()       // records pauseStart, timerState = "paused"
+export function resumeTimer()      // accumulates pausedDuration, clears pauseStart
+export function stopTimer()        // resets all timer state
+export function getElapsedMs()     // (now - runStart) - pausedDuration
+export function formatElapsed(ms)  // → "HH:MM:SS"
+```
+
+### Storage
+`dashboard/persistence.js` — `saveTimerState()` / `loadTimerState()` using key
+`${prefix}runbook_timer` in localStorage.
+
+---
+
+## Phase 2 — Time Progress Bar + Delta ✅
+
+### What it does
+Compares elapsed time % against completion % to show whether the run is ahead of or
+behind schedule. Suppressed when `estimatedEnd` data coverage is below 60%.
+
+### Key functions (`dashboard/selectors.js`)
+
+```js
+export function getTotalEstimatedMs()
+// Finds the latest estimatedEnd across all tasks.
+// Returns (latestEstimatedEnd - runStart) ms, or null if data unavailable.
+
+export function getEstimationCoverage()
+// Returns fraction (0–1) of non-Unneeded tasks that have estimatedEnd.
+
+export function getTimeDelta()
+// Returns { timeProgressPct, completionPct, deltaPct } or null when suppressed.
+// Suppressed when: timer stopped, no runStart, coverage < 60%, no totalEstimatedMs.
+```
+
+### Delta → badge text
+
+| deltaPct | Badge class | Text |
+|----------|-------------|------|
+| `> +5`   | `ahead`     | `+N% ahead` |
+| `≥ -10`  | `ontrack`   | `±N% on track` |
+| `≥ -25`  | `atrisk`    | `−N% at risk` |
+| `< -25`  | `delayed`   | `−N% delayed` |
+
+---
+
+## Phase 3 — Health Advisory ✅
+
+### What it does
+Translates the delta into a health advisory (Green / Amber / Red). Displayed as a
+`⚠ Auto: Amber` badge in the sentinel strip with an **Accept** button. The operator
+always has final say — the advisory is never auto-applied without a click.
+
+### Logic (`dashboard/selectors.js`)
+
+```js
+export function getHealthAdvisory()
+// Returns 'Green' | 'Amber' | 'Red' | null
+// null when: timer stopped, no time delta data, or delta > ahead threshold
+```
+
+### Thresholds (`config.json`)
+
+```json
+"healthThresholds": {
+  "ahead":   5,    // delta >  5% → no advisory (suppress — doing great)
+  "onTrack": -10,  // delta ≥ -10% → Green
+  "atRisk":  -25   // delta ≥ -25% → Amber; below → Red
+}
+```
+
+### Advisory interaction
+1. `updateSentinelBar()` runs every second via `setInterval`
+2. If advisory ≠ `state.healthStatus` → show `⚠ Auto: <status>` badge + **Accept** button
+3. Operator clicks **Accept** → `setHealth(advisory)` called, page re-renders
+4. Advisory = current health → badge hidden (no noise when consistent)
+5. Strip left border color = advisory health color while running, overriding the
+   timer-state default color so the health signal has primary visual prominence
+
+---
+
+## Theme Integration
+
+All colors use existing CSS custom properties — zero new color tokens required:
+
+```css
+.sentinel-strip {
+    border-left: 4px solid var(--sentinel-color, var(--text-muted));
+    /* --sentinel-color set inline by JS to var(--health-green/amber/red) */
+}
+.sentinel-strip.sentinel-running { --sentinel-color: var(--color-success); }
+.sentinel-strip.sentinel-paused  { --sentinel-color: var(--color-warning); }
+.sentinel-strip.sentinel-stopped { --sentinel-color: var(--text-muted); }
+```
+
+`--health-green` / `--health-amber` / `--health-red` already have light-mode overrides
+so dark ↔ light theme switching is automatic.
+
+---
+
+## Files Modified / Created
 
 | File | Change |
-|---|---|
-| `dashboard/state.js` | Add `runStart`, `pausedDuration`, `timerState`, `timerInterval` |
-| `dashboard/persistence.js` | Persist/restore timer fields in localStorage |
-| `dashboard/actions/` | New `timer.js` — start, pause, resume, stop logic |
-| `dashboard/render/stats.js` | Add RUN TIMER card; add time progress bar |
-| `dashboard/selectors.js` | Add `getTotalEstimatedMs()`, `getTimeDelta()`, `getEstimationCoverage()` |
-| `dashboard/app.js` | Wire timer button events; integrate advisory into health render |
-| `runbookDashboard.html` | Add timer control buttons; add CSS for time bar and delta badge |
-| `config.json` | Add `healthThresholds: { ahead, onTrack, atRisk }` |
+|------|--------|
+| `dashboard/actions/timer.js` | Phase 1 — timer logic (unchanged from original) |
+| `dashboard/state.js` | Phase 1 — timer state fields (unchanged) |
+| `dashboard/persistence.js` | Phase 1 — timer persistence (unchanged) |
+| `dashboard/selectors.js` | Phase 2+3 — added `getTotalEstimatedMs`, `getEstimationCoverage`, `getTimeDelta`, `getHealthAdvisory` |
+| `dashboard/render/stats.js` | Replaced `.stat-card.timer` + `updateTimerDisplay` with `updateSentinelBar` |
+| `runbookDashboard.html` | Replaced old timer CSS with sentinel CSS; added `#sentinelBar` static HTML |
+| `dashboard/app.js` | Rewired sentinel button listener; updated setInterval target |
+| `config.json` | Added `healthThresholds` block |
+
+---
+
+## Verification Steps
+
+1. `npm test` — all tests pass
+2. `node _serve.js` → open `http://localhost:8090`
+3. Load a runbook — sentinel strip appears below stat cards, grey left border, `—` elapsed
+4. Click `▶ Start Run` → border turns green, dot pulses, timer ticks
+5. With ≥ 60% `estimatedEnd` coverage: dual progress bars and delta badge appear
+6. Let time progress past completion % → delta badge turns amber/red; advisory badge shows
+7. Click **Accept** → health dot updates, advisory badge clears
+8. Click ⏸ → strip dims, border goes amber, timer freezes; ▶ Resume restores it
+9. Toggle light theme → all colors adjust automatically
+
+---
+
+## Status
+
+| Phase | Status |
+|-------|--------|
+| Phase 1 — Run Timer + Sentinel Strip redesign | ✅ Complete |
+| Phase 2 — Time Progress Bar + Delta | ✅ Complete |
+| Phase 3 — Health Advisory | ✅ Complete |
+| Phase 4 — Configurable thresholds via `config.json` | ✅ Complete |
+| Phase 5 — Toast notification on advisory change | Backlog |

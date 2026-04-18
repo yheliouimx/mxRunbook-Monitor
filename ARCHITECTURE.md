@@ -29,7 +29,8 @@ dashboard/
 ├── actions/
 │   ├── health.js   ← Health indicator (Go/At Risk/Stop) toggle + render
 │   ├── issues.js   ← Issues CRUD (add, edit, delete, toggle status)
-│   └── tasks.js    ← Task status cycling, assignee editing
+│   ├── tasks.js    ← Task status cycling, assignee editing
+│   └── timer.js    ← Run timer: start/pause/stop, elapsed ms, state saved to localStorage
 ├── render/
 │   ├── categories.js ← Category cards + task rows (targeted DOM patches)
 │   ├── issues.js     ← Issues panel rendering
@@ -73,6 +74,7 @@ Key semantic variable groups (80+ custom properties):
 - `--btn-*-bg`, `--btn-*-border`, `--btn-*-color` — Status button styles
 - `--blocked-*`, `--unneeded-*` — Blocking/Unneeded specific colors
 - `--text-xs` through `--text-3xl` — type scale; body font is Outfit, monospace is JetBrains Mono
+- `--sentinel-color` — set inline by JS to `var(--health-green/amber/red)` on `#sentinelBar`; drives the Sentinel Strip left border, pulsing dot, and progress fill. No new color tokens — reuses existing health color vars so dark/light themes work automatically.
 
 When adding a new visual element, always use CSS variables. Never hardcode hex colors in CSS rules.
 
@@ -80,7 +82,9 @@ When adding a new visual element, always use CSS variables. Never hardcode hex c
 
 ```
 runbookData      — Object: category → task array. Reserved keys prefixed with _.
-projectConfig    — Object: loaded from config.json. Fields: projectName, subtitle, changeRef, client, environment, release, accentColor, runbookFile, logoFile, backgroundFile.
+projectConfig    — Object: loaded from config.json. Fields: projectName, subtitle, changeRef,
+                   client, environment, release, accentColor, runbookFile, logoFile,
+                   backgroundFile, healthThresholds { ahead, onTrack, atRisk }.
 filterState      — String: "all" | "done" | "inprogress" | "notstarted" | "blocked" | "unneeded"
 searchQuery      — String: free-text search filter (matches task, item, taskId, system, comment)
 teamFilter       — String: "all" | <assignee value>
@@ -92,6 +96,16 @@ healthStatus     — String: "Green" | "Amber" | "Red"
 clientLogoImg    — Image | null: loaded from assets/ (path from logoFile or auto-detected)
 clientBgImg      — Image | null: loaded from assets/ (path from backgroundFile or auto-detected)
 ```
+
+Timer state is managed inside `dashboard/actions/timer.js` (not in `state.js` — ephemeral,
+persisted separately):
+```
+runStart         — Number | null: Date.now() ms when the run started (null = not started)
+pausedDuration   — Number: total accumulated ms during all pauses
+pauseStart       — Number | null: Date.now() ms when the current pause began (null = not paused)
+timerState       — String: "stopped" | "running" | "paused"
+```
+Timer state is saved to localStorage key `runbook_timer` by `saveTimerState()` in `persistence.js`.
 
 ### JS Module Map
 
@@ -116,7 +130,8 @@ Boot sequence (bottom of `runbookDashboard.html`):
 ```
 initTheme() → initPalette() → updateClock() → setInterval(clock, 1s)
 → bindEvents() → loadConfig() → detectAssets() → loadRunbook()
-→ startAutoSnapshot(15 min)
+→ loadTimerState() → startAutoSnapshot(15 min)
+→ setInterval(updateSentinelBar, 1s)   ← Sentinel Strip live countdown
 ```
 
 #### Rendering (`dashboard/render/`)
@@ -125,6 +140,7 @@ initTheme() → initPalette() → updateClock() → setInterval(clock, 1s)
 | `stats.js` | `renderGlobalStats()` | 7 stat cards: Total, Completed, In Progress, Not Started, %, Open Issues, Blocking |
 | `stats.js` | `updateStatsValues()` | Targeted value-diffing update (skips unchanged DOM nodes) |
 | `stats.js` | `renderHealthIndicator()` | Updates health dot + text |
+| `stats.js` | `updateSentinelBar()` | Updates the Sentinel Strip: elapsed time, timer controls, dual progress bars (Phase 2), health advisory (Phase 3), and inline `--sentinel-color` CSS var |
 | `timeline.js` | `renderTimeline()` | Horizontal stepper pipeline at top — clicking a node opens its category |
 | `timeline.js` | `patchTimelineStep()` | Patches a single timeline dot without full re-render |
 | `issues.js` | `renderIssues()` | Issues panel with CRUD operations |
@@ -148,6 +164,21 @@ initTheme() → initPalette() → updateClock() → setInterval(clock, 1s)
 | `getUniqueSystems()` | Returns sorted array of distinct `system` values across all tasks |
 | `getUniqueTeams()` | Returns sorted array of distinct `assignee` values |
 | `escapeHtml(text)` | XSS-safe HTML encoding; null/undefined → empty string |
+| `getTotalEstimatedMs()` | Returns total planned duration ms (latestEstimatedEnd − runStart), or null if unavailable |
+| `getEstimationCoverage()` | Returns fraction 0–1 of non-Unneeded tasks that have `estimatedEnd` |
+| `getTimeDelta()` | Returns `{ timeProgressPct, completionPct, deltaPct }` or null (suppressed when timer stopped, no runStart, coverage < 60%, or no estimated duration) |
+| `getHealthAdvisory()` | Returns `'Green'|'Amber'|'Red'|null` based on `deltaPct` vs `projectConfig.healthThresholds`; null when delta is above `ahead` threshold or no delta available |
+
+#### Timer Actions (`dashboard/actions/timer.js`)
+| Function | Purpose |
+|----------|---------|
+| `startTimer()` | Sets `runStart = Date.now()`, `timerState = 'running'`, saves state |
+| `pauseTimer()` | Records pause start; `timerState = 'paused'` |
+| `resumeTimer()` | Accumulates `pausedDuration`; `timerState = 'running'` |
+| `stopTimer()` | Resets all timer fields to initial values; clears localStorage |
+| `getElapsedMs()` | Returns elapsed ms excluding paused time; 0 if not started |
+
+The Sentinel Strip (`#sentinelBar`) is updated once per second via `setInterval(updateSentinelBar, 1000)` in `app.js`. Timer actions call `saveTimerState()` after each mutation.
 
 #### Task Actions (`dashboard/actions/tasks.js`)
 | Function | Purpose |
@@ -217,8 +248,10 @@ The **Final Report** (`finalReport.js` + `finalReport/`) is a post-event HTML re
 | `saveToLocalStorage()` | Saves entire `runbookData` (including `_issues`, `_health`) to localStorage key `runbook_progress` |
 | `exportJSON()` | Downloads current state as `.json` file |
 | `loadFromFile()` | Reads uploaded `.json` file and restores state |
+| `saveTimerState()` | Saves `{ runStart, pausedDuration, pauseStart, timerState }` to localStorage key `runbook_timer` |
+| `loadTimerState()` | Restores timer state from localStorage; called during boot before first render |
 
-localStorage is auto-saved on every status change, issue change, and health change.
+localStorage is auto-saved on every status change, issue change, health change, and timer state change.
 
 ---
 
@@ -229,6 +262,8 @@ localStorage is auto-saved on every status change, issue change, and health chan
 ```bash
 python adapter/convert.py --source FILE --mapping MAPPING --output runbook.json
 python adapter/convert.py --validate runbook.json
+python adapter/convert.py --generate-template --mapping mapping.yml
+python adapter/convert.py --auto-detect --source your_runbook.xlsx
 ```
 
 Arguments:
@@ -238,11 +273,14 @@ Arguments:
 - `--output` / `-o`: Output path (default: `runbook.json`)
 - `--validate` / `-v`: Validate an existing JSON file and exit
 - `--no-merge`: Don't preserve `_issues`/`_health` from existing output file
+- `--generate-template`: Generate a ready-to-fill `.xlsx` template from `mapping.yml` (uses `adapter/template_generator.py`)
+- `--auto-detect`: Fuzzy-match spreadsheet headers to suggest a `mapping.yml` (uses `adapter/autodetect.py`); prints suggested YAML to stdout
 
 Key behaviors:
 - Preserves `_issues` and `_health` from existing `runbook.json` by default (safe to re-run during live events)
 - Validates output against schema before writing
 - Auto-detects format from file extension
+- `autodetect.py` is lazily imported only when `--auto-detect` is passed
 
 ### `schema.py` — Validation
 

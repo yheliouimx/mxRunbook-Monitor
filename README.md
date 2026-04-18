@@ -14,15 +14,22 @@ Built for short-lived, high-pressure events (releases, migrations, cutovers) whe
 - **Category progress**: Collapsible task groups with progress bars
 - **Health indicator**: Green / Amber / Red go-live health with one-click toggle
 - **Issues log**: Full CRUD panel for tracking issues (blocking / non-blocking, ongoing / closed)
-- **4 export types**:
+- **Run Timer + Health Advisory** (Sentinel Strip between stat cards and task list):
+  - `▶ Start Run` / `⏸` / `⏹` timer tracking elapsed time since the run began, surviving page refreshes
+  - Dual progress bars (Completion % vs Time %) with a delta badge (`+12% ahead` / `−8% at risk`) once ≥ 60% of tasks have `estimatedEnd` data
+  - Auto health advisory (`⚠ Auto: Amber [Accept]`) derived from the completion-vs-time delta; thresholds configurable in `config.json`; never applied without operator confirmation
+- **5 export types**:
   - Phone (1080×1920 portrait) — optimized for WhatsApp sharing
   - Email (1920×1080 landscape) — corporate style for email updates
   - Gantt chart (1920×dynamic) — timeline visualization with NOW line, planned-end marker
-  - **Post-Event Summary Report** — self-contained HTML report with burndown chart, health timeline SVG, Gantt, per-assignee breakdown, and issue log
-- **Text summary**: Copy-paste-ready status summary with operator comments
+  - Text summary — copy-paste-ready status block with operator comments
+  - **Post-Event Summary Report** — self-contained HTML file with burndown chart, health timeline SVG, Gantt, per-assignee breakdown, and issue log
+- **Snapshot history**: Completion % and health recorded every 15 min to localStorage; powers the burndown curve in the Final Report
+- **Excel Template Generator**: generate a ready-to-fill `.xlsx` template from your `mapping.yml` (`--generate-template`)
+- **Column auto-detection**: fuzzy-match your spreadsheet headers to suggest a `mapping.yml` automatically (`--auto-detect`)
 - **Dark/Light mode**: Toggle between dark (default) and light themes
 - **Corporate/Neon palette**: Toggle between a corporate palette (accent-color-driven) and a neon palette; preference persisted per-browser
-- **Client branding**: Logo and background configurable via `config.json` (`logoFile`, `backgroundFile`), with automatic prefix-detection fallback from `assets/`
+- **Client branding**: Logo and background configurable via `config.json` (`logoFile`, `backgroundFile`); auto-detected from `assets/` by scanning for any filename containing `logo` or `background`
 - **Offline**: Everything runs locally, no network required after initial load
 - **State persistence**: Progress saved to browser localStorage
 
@@ -98,13 +105,15 @@ assets/           (create empty)
   "accentColor": "#003a2d",
   "runbookFile": "runbook.json",
   "logoFile": "clientLogo-acme.png",
-  "backgroundFile": "Murex_background6.jpg"
+  "backgroundFile": "Murex_background6.jpg",
+  "healthThresholds": { "ahead": 5, "onTrack": -10, "atRisk": -25 }
 }
 ```
 
 `accentColor` drives the `--color-primary` CSS variable used across the dashboard and in canvas exports. Use the client's brand color.
 `runbookFile` sets the JSON file the dashboard loads. Defaults to `runbook.json` if omitted — useful when managing multiple projects in the same folder.
 `logoFile` / `backgroundFile` load a specific file from `assets/` directly, bypassing the prefix-based auto-detection. Omit to keep auto-detection.
+`healthThresholds` tunes the Sentinel Strip health advisory: `ahead` (%) = delta above which the advisory is Green; `onTrack` (%) = above which Amber; `atRisk` (%) = above which Red (below = delayed). Negative = behind schedule.
 
 ### 3. Map your data columns — `mapping.yml`
 
@@ -169,6 +178,12 @@ python adapter/convert.py --source your_runbook.csv --mapping mapping.yml --outp
 
 # Validate an existing file
 python adapter/convert.py --validate runbook.json
+
+# Generate a ready-to-fill Excel template from your mapping
+python adapter/convert.py --generate-template --mapping mapping.yml
+
+# Auto-detect column mapping by scanning your spreadsheet headers
+python adapter/convert.py --auto-detect --source your_runbook.xlsx
 ```
 
 > The converter preserves `_issues` and `_health` from any existing `runbook.json`, so re-running it during a live event won't wipe saved progress.
@@ -251,8 +266,8 @@ dist-electron/win-x64/
 - **A runbook authoring tool** — it does not create runbooks from scratch. It consumes a pre-existing runbook (CSV or Excel) and converts it into a displayable format.
 - **A real-time collaboration tool** — there is no server, no database, and no sync between users. Each operator works on their own local copy. Progress is stored in the browser's `localStorage` and is lost if the cache is cleared or a different browser/machine is used.
 - **A zero-setup tool** — it requires Python 3.10+ on the machine to convert source files, and a local HTTP server to serve the dashboard correctly. Opening the HTML file directly in a browser without a server will fail to load `runbook.json` and `config.json`.
-- **An automated tracker** — statuses must be updated manually by the operator. The tool has no awareness of actual system state, CI/CD pipelines, or deployment logs.
-- **An alerting or notification system** — there are no push alerts, emails, or escalation triggers. The health indicator (Green / Amber / Red) is set manually.
+- **An automated tracker** — task statuses must be updated manually by the operator. The tool has no awareness of actual system state, CI/CD pipelines, or deployment logs. The Sentinel Strip provides a *health advisory* (completion-vs-time delta) but the operator must press [Accept] to apply it — nothing changes automatically.
+- **An alerting or notification system** — there are no push alerts, emails, or escalation triggers. The health indicator (Green / Amber / Red) is operator-controlled; the Sentinel Strip suggests a health level but never applies it without confirmation.
 - **Persistent across sessions by default** — if `Save Progress` is not clicked (or `Ctrl+S`), unsaved changes are lost on page refresh. Saved state is browser-local only.
 - **A Gantt chart generator without time data** — the Gantt export requires `startTime` and `endTime` fields populated in `runbook.json`. Tasks without time data will not appear on the chart.
 - **Guaranteed to paste correctly into all email clients** — the email summary copy function works best with Outlook on Windows. Other clients may strip formatting.
@@ -276,18 +291,19 @@ runbook-dashboard/
 │   ├── app.js               ← Entry point, render loop, event wiring
 │   ├── state.js             ← Global state
 │   ├── constants.js         ← Status labels, class mappings, PARTY_OPTIONS
-│   ├── selectors.js         ← Derived queries (stats, filters, system list)
+│   ├── selectors.js         ← Derived queries (stats, filters, delta, health advisory)
 │   ├── history.js           ← Snapshot history for burndown / final report
-│   ├── persistence.js       ← localStorage, JSON export/import
+│   ├── persistence.js       ← localStorage, JSON export/import, timer state
 │   ├── validation.js        ← Status normalization, v2 field defaults
 │   ├── actions/             ← User interaction handlers
 │   │   ├── health.js
 │   │   ├── issues.js
-│   │   └── tasks.js         ← setTaskStatus, setAssignee, setEndTime, setComment
+│   │   ├── tasks.js         ← setTaskStatus, setAssignee, setEndTime, setComment
+│   │   └── timer.js         ← Run timer (start/pause/stop, elapsed, state persistence)
 │   ├── render/              ← DOM rendering (targeted patches)
 │   │   ├── categories.js    ← Task rows with v2 badges, inline editing
 │   │   ├── issues.js
-│   │   ├── stats.js
+│   │   ├── stats.js         ← Stat cards + Sentinel Strip (updateSentinelBar)
 │   │   ├── summary.js       ← Includes comment rows in HTML export
 │   │   └── timeline.js
 │   └── export/              ← Image exports + reports
@@ -300,8 +316,8 @@ runbook-dashboard/
 │           ├── svgGantt.js
 │           └── svgHealth.js
 ├── assets/
-│   ├── clientLogo-*.png     ← Client logo (auto-detected)
-│   └── background-*.jpg     ← Background image (auto-detected)
+│   ├── logo.png             ← Client logo — any filename containing "logo" is auto-detected
+│   └── background.jpg       ← Background — any filename containing "background" is auto-detected
 ├── adapter/
 │   ├── convert.py           ← CLI: source file → runbook.json
 │   ├── schema.py            ← JSON validation (incl. v2 fields)

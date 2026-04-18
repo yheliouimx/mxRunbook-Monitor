@@ -16,7 +16,7 @@
 // errors that occur when running from an OneDrive-synced folder.
 const os   = require('os');
 const path = require('path');
-const { app, BrowserWindow, shell } = require('electron');
+const { app, BrowserWindow, shell, ipcMain, dialog } = require('electron');
 app.setPath('userData', path.join(os.tmpdir(), 'mxrunbook-electron'));
 const http = require('http');
 const fs   = require('fs');
@@ -39,10 +39,71 @@ const PREFERRED_PORT = 8090;
 const FALLBACK_PORTS = [8091, 8092, 8093, 9000, 9090, 3000, 4000];
 const ROOT           = __dirname;
 
+// ── Client dir state ─────────────────────────────────────────
+let currentClientDir = null;  // set when user selects a client folder
+let serverPort       = null;  // set after HTTP server starts
+
+// ── Recent clients store ─────────────────────────────────────
+// Persisted at ~/.mxrunbook/recent-clients.json so the list
+// survives app reinstalls and temp-dir cleanups.
+const RECENT_FILE = path.join(os.homedir(), '.mxrunbook', 'recent-clients.json');
+const RECENT_MAX  = 10;
+
+function loadRecentClients() {
+    try { return JSON.parse(fs.readFileSync(RECENT_FILE, 'utf8')); }
+    catch (_) { return []; }
+}
+function saveRecentClients(arr) {
+    try {
+        fs.mkdirSync(path.dirname(RECENT_FILE), { recursive: true });
+        fs.writeFileSync(RECENT_FILE, JSON.stringify(arr, null, 2), 'utf8');
+    } catch (_) { /* ignore write errors */ }
+}
+function addOrUpdateRecent(entry) {
+    const list = loadRecentClients();
+    const idx  = list.findIndex(r => r.path === entry.path);
+    if (idx >= 0) list.splice(idx, 1);
+    list.unshift(entry);
+    saveRecentClients(list.slice(0, RECENT_MAX));
+}
+function removeRecent(folderPath) {
+    saveRecentClients(loadRecentClients().filter(r => r.path !== folderPath));
+}
+
 // ── HTTP server (same logic as _serve.js / _launcher.js) ─────
 const server = http.createServer((req, res) => {
     let urlPath = decodeURIComponent(req.url.split('?')[0]);
-    if (urlPath === '/') urlPath = '/runbookDashboard.html';
+
+    // ── Client proxy routes (must precede general file-serve) ──
+    if (urlPath === '/client-config') {
+        if (!currentClientDir) { res.writeHead(404); res.end('No client selected'); return; }
+        const cfgPath = path.join(currentClientDir, 'config.json');
+        fs.readFile(cfgPath, (err, data) => {
+            if (err) { res.writeHead(404); res.end('config.json not found'); return; }
+            res.writeHead(200, { 'Content-Type': 'application/json' });
+            res.end(data);
+        });
+        return;
+    }
+
+    if (urlPath.startsWith('/client-asset/')) {
+        if (!currentClientDir) { res.writeHead(404); res.end('No client selected'); return; }
+        const assetName = urlPath.slice('/client-asset/'.length);
+        // Path traversal guard — bare filename only, no separators or dots
+        if (!assetName || /[\/\\]/.test(assetName) || assetName.includes('..')) {
+            res.writeHead(400); res.end('Bad Request'); return;
+        }
+        const assetPath = path.join(currentClientDir, assetName);
+        fs.readFile(assetPath, (err, data) => {
+            if (err) { res.writeHead(404); res.end('Asset not found'); return; }
+            const ext = path.extname(assetPath).toLowerCase();
+            res.writeHead(200, { 'Content-Type': MIMES[ext] || 'application/octet-stream' });
+            res.end(data);
+        });
+        return;
+    }
+
+    if (urlPath === '/') urlPath = '/welcome.html';
 
     // Prevent path traversal attacks
     const filePath = path.normalize(path.join(ROOT, urlPath));
@@ -103,6 +164,7 @@ function createWindow(port) {
         webPreferences: {
             nodeIntegration: false,   // keep renderer sandboxed
             contextIsolation: true,
+            preload: path.join(ROOT, 'preload.js'),
         },
     });
 
@@ -118,9 +180,80 @@ function createWindow(port) {
     win.on('closed', () => { win = null; });
 }
 
+// ── IPC Handlers ─────────────────────────────────────────────
+function registerIpcHandlers() {
+
+    // Open native folder picker
+    ipcMain.handle('dialog:openFolder', async () => {
+        const { canceled, filePaths } = await dialog.showOpenDialog(win, {
+            properties: ['openDirectory'],
+            title: 'Select Client Runbook Folder',
+        });
+        return canceled ? null : filePaths[0];
+    });
+
+    // Read config.json from an arbitrary folder path
+    ipcMain.handle('folder:readConfig', (_, folderPath) => {
+        if (typeof folderPath !== 'string') return null;
+        try {
+            const cfgPath = path.resolve(folderPath, 'config.json');
+            // Prevent path traversal beyond the chosen folder
+            if (!cfgPath.startsWith(path.resolve(folderPath))) return null;
+            return JSON.parse(fs.readFileSync(cfgPath, 'utf8'));
+        } catch (_) { return null; }
+    });
+
+    // Read an image file from within folderPath; return as base64 data URL (max 256 KB)
+    ipcMain.handle('folder:readFileAsDataUrl', (_, folderPath, filename) => {
+        if (typeof folderPath !== 'string' || typeof filename !== 'string') return null;
+        if (/[\/\\]/.test(filename) || filename.includes('..')) return null;
+        try {
+            const filePath = path.join(folderPath, filename);
+            if (!path.resolve(filePath).startsWith(path.resolve(folderPath))) return null;
+            const data = fs.readFileSync(filePath);
+            if (data.length > 256 * 1024) return null; // 256 KB cap for stored data URLs
+            const mime = MIMES[path.extname(filename).toLowerCase()] || 'application/octet-stream';
+            return `data:${mime};base64,${data.toString('base64')}`;
+        } catch (_) { return null; }
+    });
+
+    // Recent client persistence
+    ipcMain.handle('store:getRecent',    ()        => loadRecentClients());
+    ipcMain.handle('store:addRecent',    (_, entry) => {
+        if (!entry || typeof entry.path !== 'string') return;
+        // Cap logoDataUrl to prevent bloated JSON storage
+        if (typeof entry.logoDataUrl === 'string' && entry.logoDataUrl.length > 350_000) {
+            entry = { ...entry, logoDataUrl: '' };
+        }
+        addOrUpdateRecent(entry);
+    });
+    ipcMain.handle('store:removeRecent', (_, p) => {
+        if (typeof p === 'string') removeRecent(p);
+    });
+
+    // Navigate the window to the dashboard for a given client folder
+    ipcMain.handle('nav:openDashboard', (_, folderPath) => {
+        if (!win || typeof folderPath !== 'string') return;
+        currentClientDir = folderPath;
+        const slug = path.basename(folderPath)
+            .toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '');
+        win.loadURL(
+            `http://127.0.0.1:${serverPort}/runbookDashboard.html?clientKey=${encodeURIComponent(slug)}`
+        );
+    });
+
+    // Navigate back to the welcome page
+    ipcMain.handle('nav:openWelcome', () => {
+        if (!win) return;
+        win.loadURL(`http://127.0.0.1:${serverPort}/welcome.html`);
+    });
+}
+
 // ── App lifecycle ─────────────────────────────────────────────
 app.whenReady().then(async () => {
+    registerIpcHandlers();
     const port = await startServer();
+    serverPort = port;
     createWindow(port);
 
     // macOS: re-create window when dock icon is clicked and no windows exist

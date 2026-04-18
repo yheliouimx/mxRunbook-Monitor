@@ -22,7 +22,9 @@ const APP_DIR  = path.join(OUT_DIR, 'resources', 'app');
 // so client-specific files are excluded from the generic dist.
 const APP_INCLUDES = [
   'electron-main.js',
+  'preload.js',
   'runbookDashboard.html',
+  'welcome.html',
   'package.json',    // need {"main":"electron-main.js"} at runtime
   'dashboard',
   'mapping.yml',
@@ -72,24 +74,47 @@ function findRceditBin() {
 function stampExeIcon(exePath) {
   const iconPath = findIconPath();
   if (!iconPath) {
-    throw new Error('Icon stamping failed: no assets/icon.ico or assets/mxRunbook-Monitor.ico found.');
+    console.warn('  ⚠  Icon stamping skipped: no assets/icon.ico or assets/mxRunbook-Monitor.ico found.');
+    return;
   }
 
   const rceditBin = findRceditBin();
   if (!rceditBin) {
-    throw new Error('Icon stamping failed: rcedit not found. Run npm install to install dependencies.');
+    console.warn('  ⚠  Icon stamping skipped: rcedit not found. Run npm install to install dependencies.');
+    return;
   }
 
-  const result = spawnSync(rceditBin, [exePath, '--set-icon', iconPath], {
-    stdio: 'inherit',
-    shell: false,
-  });
+  // Stamp in a temp dir first to avoid OneDrive / AV locking the EXE in-place.
+  // Strategy: copy → stamp in temp → copy back.
+  const tmpDir  = path.join(require('os').tmpdir(), 'mxrunbook-icon-stamp-' + Date.now());
+  const tmpExe  = path.join(tmpDir, path.basename(exePath));
+  let usedTemp  = false;
 
-  if (result.status !== 0) {
-    throw new Error('Icon stamping failed: rcedit returned non-zero exit code.');
+  try {
+    fs.mkdirSync(tmpDir, { recursive: true });
+    fs.copyFileSync(exePath, tmpExe);
+    usedTemp = true;
+
+    const result = spawnSync(rceditBin, [tmpExe, '--set-icon', iconPath], {
+      stdio: 'inherit',
+      shell: false,
+    });
+
+    if (result.status !== 0) {
+      throw new Error('rcedit returned non-zero exit code.');
+    }
+
+    // Copy stamped EXE back, replacing the original
+    fs.copyFileSync(tmpExe, exePath);
+    console.log(`  Stamped EXE icon from ${path.basename(iconPath)}`);
+  } catch (err) {
+    // Non-fatal: warn and continue — the app works fine without icon stamping.
+    console.warn(`  ⚠  Icon stamping skipped (${err.message}). EXE will use default Electron icon.`);
+  } finally {
+    if (usedTemp) {
+      try { fs.rmSync(tmpDir, { recursive: true, force: true }); } catch (_) {}
+    }
   }
-
-  console.log(`  Stamped EXE icon from ${path.basename(iconPath)}`);
 }
 
 // ── 1. Clean output ───────────────────────────────────────────

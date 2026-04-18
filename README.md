@@ -140,12 +140,18 @@ category_mapping:                  # Fix typos or encoding issues
 ### 4. Add branding (optional)
 
 Drop files into `assets/`:
-- Logo: `clientLogo-<anything>.png` (e.g., `clientLogo-acme.png`)
-- Background: `background-<anything>.jpg` or `Murex_background*.jpg`
+- **Logo**: any filename containing `logo` is detected automatically (e.g. `logo.png`, `acme-logo.svg`, `mylogo.jpg`).
+- **Background**: name it `background.jpg` (or any `background*.jpg/png`) — or keep the default `Murex_background6.jpg`.
 
-**Option A** — set filenames explicitly in `config.json` (`logoFile`, `backgroundFile`). This is the recommended approach when you know the filename.
+**Option A — auto-detection** (recommended): use the standard filenames above and omit `logoFile` / `backgroundFile` from `config.json`. The dashboard scans `assets/` and loads the first match.
 
-**Option B** — leave those fields out; the dashboard auto-detects by scanning `assets/` for files matching the `clientLogo-*` and `background-*` prefixes.
+**Option B — explicit path**: set `logoFile` and `backgroundFile` in `config.json` to load a specific file regardless of its name:
+```json
+"logoFile": "acme-brand.png",
+"backgroundFile": "Murex_background6.jpg"
+```
+
+> **Note:** Files named `clientLogo-*` are a development convention used in the source repository and are intentionally excluded from the portable distribution. Use `logo.*` naming for deployment assets.
 
 ### 5. Convert your runbook
 
@@ -202,41 +208,39 @@ Output: `dist/runbookDashboard-portable.html`
 
 > Image exports (Phone / Email / Gantt) require an internet connection for html2canvas CDN. Google Fonts also requires internet; the dashboard falls back to system fonts if offline.
 
-### Option B — Portable Windows executable
+### Option B — Standalone Electron app (Windows x64)
 
-A standalone `RunbookDashboard.exe` that bundles the Node.js runtime + HTTP server. Users copy the folder, double-click the exe, and the dashboard opens in their browser automatically.
+A native desktop app (`MX Runbook Monitor.exe`) that embeds Chromium + a local HTTP server. No browser, no Node.js install, and no Python required on the end-user machine.
 
-**Build the exe:**
+**Build:**
 ```bash
-npm run build:exe
+npm run dist        # → dist-electron/win-x64/
+npm run dist:zip    # → dist-electron/MXRunbookMonitor-win-x64.zip
 ```
 
-**Build the exe and zip a ready-to-share release package:**
-```bash
-npm run build:package          # rebuilds exe, then zips
-npm run build:package:zip      # zip only (reuses existing exe)
+**Folder layout after build:**
+```
+dist-electron/win-x64/
+├── MX Runbook Monitor.exe
+└── resources/app/
+    ├── config.json        ← blank placeholder — replace with your own
+    ├── runbook.json       ← empty placeholder — replace with your data
+    ├── dashboard/
+    ├── mapping.yml
+    └── assets/
+        └── Murex_background6.jpg   ← default background (included)
 ```
 
-Output: `dist/RunbookDashboard-v<version>-portable.zip`
+**To deploy a client runbook:**
+1. Copy `dist-electron/win-x64/` to the target machine (or distribute the zip)
+2. Edit `resources/app/config.json` with project details (see [Configure](#2-configure-your-project--configjson))
+3. Copy the runbook JSON to `resources/app/` (filename must match `runbookFile` in config)
+4. **Add logo** — copy client logo to `resources/app/assets/` with any filename containing `logo` (e.g. `logo.png`, `acme-logo.svg`, `mylogo.jpg`)
+   - The dashboard auto-detects any file matching `*logo*` in `assets/` — no config change needed
+   - Alternatively: name the file anything and set `"logoFile": "yourfile.png"` in `config.json`
+5. Double-click `MX Runbook Monitor.exe`
 
-**Contents of the zip:**
-```
-RunbookDashboard.exe      ← double-click to start (auto-opens browser)
-runbookDashboard.html
-config.json               ← edit this for your project
-runbook.json              ← your task data
-dashboard/                ← JS source modules
-assets/assets/
-  Murex_background6.jpg
-```
-
-**To deploy to end users** (no Node/Python needed on their machine):
-1. Extract the zip to any local folder
-2. Edit `config.json` with your project details
-3. Replace `runbook.json` with your task data
-4. Double-click `RunbookDashboard.exe`
-
-> The exe auto-detects a free port (starts at 8090, tries 8091, 8092…) and opens the browser automatically. Progress is saved to the browser's localStorage.
+> **Why `logo.*` and not `clientLogo-*`?** Files named `clientLogo-*` are a source-repo convention and are deliberately excluded from the distribution (they are project-specific). The deployment convention is `logo.png` — one file per deployment, placed alongside the runbook data.
 
 ---
 

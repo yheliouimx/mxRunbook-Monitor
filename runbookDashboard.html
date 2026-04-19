@@ -1249,6 +1249,7 @@
         margin-top: 20px;
         flex-wrap: wrap;
         align-items: center;
+        justify-content: center;
     }
     .action-group {
         display: flex;
@@ -1970,7 +1971,6 @@
         </div>
     </div>
     <div class="header-right">
-        <button id="backToWelcomeBtn" class="action-btn" title="Back to Welcome" style="display:none;align-items:center;gap:6px;font-size:var(--text-xs);padding:4px 10px;opacity:0.75" aria-label="Back to client selector">&#8592; Home</button>
         <div class="clock" id="clock"></div>
         <button class="palette-btn" id="paletteToggle2" title="Switch color palette">Corporate</button>
         <div class="theme-toggle" id="themeToggle2" title="Toggle light/dark mode">
@@ -2061,6 +2061,10 @@
 </div>
 
 <div class="actions">
+    <div class="action-group" id="homeActionGroup" style="display:none">
+        <button id="backToWelcomeBtn" class="action-btn" title="Back to client selector" aria-label="Back to client selector">&#8592; Home</button>
+    </div>
+    <div class="action-divider" id="homeActionDivider" style="display:none"></div>
     <div class="action-group">
         <button class="action-btn primary" data-action="save">Save Progress</button>
     </div>

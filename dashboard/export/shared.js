@@ -5,7 +5,8 @@
 
 import { state } from "../state.js";
 import { STATUS, ISSUE_STATUS, ISSUE_SEVERITY } from "../constants.js";
-import { normalizeStatus, computeCategoryStatus, getGlobalStats, sortCategories } from "../selectors.js";
+import { normalizeStatus, computeCategoryStatus, getGlobalStats, sortCategories, getTimeDelta, getHealthAdvisory } from "../selectors.js";
+import { getElapsedMs, formatElapsed } from "../actions/timer.js";
 
 /**
  * Get sorted category names for exports.
@@ -49,9 +50,10 @@ export function getCategoryExportStats(cat) {
         return st === STATUS.COMPLETED || st === STATUS.UNNEEDED;
     }).length;
     const inProg = tasks.filter(t => normalizeStatus(t.status) === STATUS.IN_PROGRESS).length;
+    const inProgTasks = tasks.filter(t => normalizeStatus(t.status) === STATUS.IN_PROGRESS);
     const catPct = Math.round((done / tasks.length) * 100);
     const status = computeCategoryStatus(tasks);
-    return { tasks, done, inProg, catPct, status };
+    return { tasks, done, inProg, inProgTasks, catPct, status };
 }
 
 /**
@@ -142,4 +144,24 @@ export function getExportAssets() {
  */
 export function getIssueFilter(surface) {
     return surface === "phone" ? state.phoneExportIssueFilter : state.emailExportIssueFilter;
+}
+
+/**
+ * Get timer display info for exports.
+ * @returns {{ elapsed: string, timerState: string } | null} — null if timer is stopped
+ */
+export function getTimerInfo() {
+    const { runStart, timerState } = state;
+    if (!runStart || timerState === "stopped") return null;
+    return { elapsed: formatElapsed(getElapsedMs()), timerState };
+}
+
+/**
+ * Get time delta and computed health advisory for exports.
+ * @returns {{ timeProgressPct: number, completionPct: number, deltaPct: number, advisory: string|null } | null}
+ */
+export function getDeltaInfo() {
+    const delta = getTimeDelta();
+    if (!delta) return null;
+    return { ...delta, advisory: getHealthAdvisory() };
 }

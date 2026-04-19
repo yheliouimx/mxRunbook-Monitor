@@ -581,8 +581,11 @@ function bindEvents() {
     // Back-to-welcome button (Electron only — hidden by default, shown when electronAPI present)
     if (window.electronAPI && window.electronAPI.isElectron) {
         const backBtn = document.getElementById('backToWelcomeBtn');
+        const backGroup = document.getElementById('homeActionGroup');
+        const backDivider = document.getElementById('homeActionDivider');
         if (backBtn) {
-            backBtn.style.display = 'inline-flex';
+            if (backGroup)   backGroup.style.display   = 'flex';
+            if (backDivider) backDivider.style.display = 'block';
             backBtn.addEventListener('click', () => window.electronAPI.openWelcome());
         }
     }

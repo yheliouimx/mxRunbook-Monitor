@@ -64,6 +64,9 @@
       "sign": null
     }
   },
+  "dependencies": {
+    "sharp": "^0.34.5"
+  },
   "devDependencies": {
     "@electron/packager": "^19.1.0",
     "electron": "^34.0.0",
@@ -73,7 +76,6 @@
     "happy-dom": "^20.8.9",
     "nexe": "^5.0.0-beta.4",
     "rcedit": "^4.0.1",
-    "sharp": "^0.34.5",
     "vitest": "^2.1.9"
   }
 }

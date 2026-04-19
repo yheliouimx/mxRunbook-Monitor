@@ -761,9 +761,15 @@ async function openRecentFolder(entry) {
             return;
         }
 
-        // Update lastOpened timestamp
+        // Re-read the logo so the card reflects any changes since the folder was first opened
+        let logoDataUrl = entry.logoDataUrl || '';
+        if (cfg.logoFile) {
+            logoDataUrl = await window.electronAPI.readFileAsDataUrl(entry.path, cfg.logoFile) || logoDataUrl;
+        }
+
         await window.electronAPI.addRecentClient({
             ...entry,
+            logoDataUrl,
             lastOpened: new Date().toISOString(),
         });
 

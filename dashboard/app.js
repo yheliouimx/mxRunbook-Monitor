@@ -358,8 +358,10 @@ function detectAssets() {
             setFavicon(src);
         };
         img.onerror = () => {
-            // Fallback to auto-detect when explicit config path fails
-            tryAutoDetect();
+            // Auto-detect is only meaningful in non-client mode; in client mode all
+            // assets must come from config.json via /client-asset/ and the directory
+            // is not listable, so attempting it would silently no-op.
+            if (!isClientMode) tryAutoDetect();
         };
         img.src = src;
     }
@@ -372,8 +374,7 @@ function detectAssets() {
             document.getElementById('bgOverlay').style.backgroundImage = 'url(' + src + ')';
         };
         bgImg.onerror = () => {
-            // Fallback to auto-detect when explicit config path fails
-            tryAutoDetect();
+            if (!isClientMode) tryAutoDetect();
         };
         bgImg.src = src;
     }
@@ -390,7 +391,8 @@ function detectAssets() {
         if (autoDetectAttempted) return;
         autoDetectAttempted = true;
 
-        fetch('assets/')
+        // Use clientPrefix so this works correctly regardless of mode
+        fetch(clientPrefix)
             .then(r => r.ok ? r.text() : '')
             .then(html => {
                 if (!html) return;
@@ -401,25 +403,25 @@ function detectAssets() {
                     const logoName = pickFirstMatch(html, [
                         /href="([^"]*logo[^"]*\.(png|jpg|jpeg|svg|webp))"/i,
                     ]);
-                    if (logoName) loadLogo('assets/' + logoName);
+                    if (logoName) loadLogo(clientPrefix + logoName);
                 }
 
                 if (!bgLoaded) {
                     const bgName = pickFirstMatch(html, [
                         /href="([^"]*\bbackground[^"]*\.(png|jpg|jpeg|svg|webp))"/i,
                     ]);
-                    if (bgName) loadBg('assets/' + bgName);
+                    if (bgName) loadBg(clientPrefix + bgName);
                 }
             })
             .catch(() => {
                 // Last-resort filename guesses when directory listing fails
                 if (!logoLoaded) {
                     ['logo', 'client-logo', 'clientlogo'].forEach(base => {
-                        exts.forEach(ext => loadLogo('assets/' + base + '.' + ext));
+                        exts.forEach(ext => loadLogo(clientPrefix + base + '.' + ext));
                     });
                 }
                 if (!bgLoaded) {
-                    exts.forEach(ext => loadBg('assets/background.' + ext));
+                    exts.forEach(ext => loadBg(clientPrefix + 'background.' + ext));
                 }
             });
     }

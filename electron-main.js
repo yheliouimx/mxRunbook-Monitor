@@ -242,17 +242,50 @@ function registerIpcHandlers() {
         } catch (_) { return null; }
     });
 
-    // Read an image file from within folderPath; return as base64 data URL (max 256 KB)
-    ipcMain.handle('folder:readFileAsDataUrl', (_, folderPath, filename) => {
+    // Read an image file from within folderPath; return as base64 data URL.
+    // Files already under 250 KB are returned as-is. Larger files are automatically
+    // resized down using sharp (PNG → JPEG progressive fallback) so they always fit
+    // under the 350 K base64 character cap enforced by store:addRecent.
+    ipcMain.handle('folder:readFileAsDataUrl', async (_, folderPath, filename) => {
         if (typeof folderPath !== 'string' || typeof filename !== 'string') return null;
         if (/[\/\\]/.test(filename) || filename.includes('..')) return null;
         try {
             const filePath = path.join(folderPath, filename);
             if (!path.resolve(filePath).startsWith(path.resolve(folderPath))) return null;
             const data = fs.readFileSync(filePath);
-            if (data.length > 256 * 1024) return null; // 256 KB cap for stored data URLs
-            const mime = MIMES[path.extname(filename).toLowerCase()] || 'application/octet-stream';
-            return `data:${mime};base64,${data.toString('base64')}`;
+            const TARGET = 250 * 1024; // 250 KB → ~333 K base64 chars, safely under 350 K cap
+            const ext = path.extname(filename).toLowerCase();
+
+            if (data.length <= TARGET) {
+                const mime = MIMES[ext] || 'application/octet-stream';
+                return `data:${mime};base64,${data.toString('base64')}`;
+            }
+
+            // File exceeds target — resize with sharp rather than silently dropping it
+            const sharp = require('sharp');
+
+            // Pass 1: preserve transparency via PNG, resize to 512×512 max
+            let out = await sharp(data)
+                .resize(512, 512, { fit: 'inside', withoutEnlargement: true })
+                .png({ compressionLevel: 9 })
+                .toBuffer();
+            if (out.length <= TARGET)
+                return `data:image/png;base64,${out.toString('base64')}`;
+
+            // Pass 2: JPEG at 85% quality, 256×256 max (drops transparency)
+            out = await sharp(data)
+                .resize(256, 256, { fit: 'inside', withoutEnlargement: true })
+                .jpeg({ quality: 85 })
+                .toBuffer();
+            if (out.length <= TARGET)
+                return `data:image/jpeg;base64,${out.toString('base64')}`;
+
+            // Pass 3: JPEG at 60% quality, 128×128 (last resort)
+            out = await sharp(data)
+                .resize(128, 128, { fit: 'inside', withoutEnlargement: true })
+                .jpeg({ quality: 60 })
+                .toBuffer();
+            return `data:image/jpeg;base64,${out.toString('base64')}`;
         } catch (_) { return null; }
     });
 

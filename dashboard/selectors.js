@@ -273,18 +273,43 @@ export function getCompletionPct() {
 
 export function getTotalEstimatedMs() {
     if (!state.runStart) return null;
-    let latest = null;
+
+    // Primary: use explicit estimatedEnd fields — duration is (latest estimatedEnd − runStart)
+    let latestEstimated = null;
     for (const [key, tasks] of Object.entries(state.runbookData)) {
         if (key.startsWith('_') || !Array.isArray(tasks)) continue;
         for (const t of tasks) {
             if (!t.estimatedEnd) continue;
             const d = new Date(t.estimatedEnd);
-            if (!isNaN(d) && (!latest || d > latest)) latest = d;
+            if (!isNaN(d) && (!latestEstimated || d > latestEstimated)) latestEstimated = d;
         }
     }
-    if (!latest) return null;
-    const ms = latest.getTime() - state.runStart;
-    return ms > 0 ? ms : null;
+    if (latestEstimated) {
+        const ms = latestEstimated.getTime() - state.runStart;
+        if (ms > 0) return ms;
+    }
+
+    // Fallback: use the span of endTime values as the total planned schedule window.
+    // startTime is intentionally excluded here — it can contain data-entry outliers
+    // (e.g. wrong year) that corrupt the range, while endTime values are more consistent.
+    let earliest = null, latest = null;
+    for (const [key, tasks] of Object.entries(state.runbookData)) {
+        if (key.startsWith('_') || !Array.isArray(tasks)) continue;
+        for (const t of tasks) {
+            if (normalizeStatus(t.status) === STATUS.UNNEEDED) continue;
+            if (!t.endTime) continue;
+            const d = new Date(t.endTime);
+            if (isNaN(d)) continue;
+            if (!earliest || d < earliest) earliest = d;
+            if (!latest   || d > latest)   latest   = d;
+        }
+    }
+    if (earliest && latest) {
+        const ms = latest.getTime() - earliest.getTime();
+        if (ms > 0) return ms;
+    }
+
+    return null;
 }
 
 export function getEstimationCoverage() {
@@ -294,7 +319,8 @@ export function getEstimationCoverage() {
         for (const t of tasks) {
             if (normalizeStatus(t.status) === STATUS.UNNEEDED) continue;
             total++;
-            if (t.estimatedEnd) covered++;
+            // estimatedEnd is the explicit field; endTime is the scheduled completion fallback
+            if (t.estimatedEnd || t.endTime) covered++;
         }
     }
     return total > 0 ? covered / total : 0;

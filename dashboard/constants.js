@@ -60,7 +60,8 @@ export const HEALTH_META = {
 // RESERVED_KEYS — never iterated as categories
 export const RESERVED_KEYS = {
   issues: "_issues",
-  health: "_health",
+  health:  "_health",
+  timer:   "_timer",
 };
 
 // DEFAULT_PROJECT_CONFIG — matches current inline default in projectConfig

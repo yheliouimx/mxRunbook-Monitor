@@ -30,9 +30,10 @@ export const state = {
   clientLogoImg: null,
   clientBgImg:   null,
 
-  // Run timer (Phase 1 — elapsed time tracking)
+  // Run timer
   runStart:       null,   // ms timestamp (Date.now()) when run was started
   pausedDuration: 0,      // accumulated pause time in ms
   pauseStart:     null,   // ms timestamp when current pause began
+  stoppedAt:      null,   // ms timestamp when Stop was clicked — freezes final elapsed time
   timerState:     "stopped", // "stopped" | "running" | "paused"
 };

@@ -15,18 +15,32 @@ function _clientPrefix() {
 const _PREFIX       = _clientPrefix();
 const PROGRESS_KEY  = _PREFIX + 'runbook_progress';
 const SNAPSHOTS_KEY = _PREFIX + 'runbook_snapshots';
-const TIMER_KEY     = _PREFIX + 'runbook_timer';
 
 // ── Internal helpers ──
 
 function syncReservedKeys() {
     state.runbookData[RESERVED_KEYS.issues] = state.issues;
     state.runbookData[RESERVED_KEYS.health] = state.healthStatus;
+    state.runbookData[RESERVED_KEYS.timer]  = {
+        runStart:       state.runStart,
+        pausedDuration: state.pausedDuration,
+        pauseStart:     state.pauseStart,
+        stoppedAt:      state.stoppedAt,
+        timerState:     state.timerState,
+    };
 }
 
 function readReservedKeys() {
     state.issues = state.runbookData[RESERVED_KEYS.issues] || [];
     state.healthStatus = state.runbookData[RESERVED_KEYS.health] || "Green";
+    const t = state.runbookData[RESERVED_KEYS.timer];
+    if (t) {
+        state.runStart       = t.runStart       || null;
+        state.pausedDuration = t.pausedDuration || 0;
+        state.pauseStart     = t.pauseStart     || null;
+        state.stoppedAt      = t.stoppedAt      || null;
+        state.timerState     = t.timerState     || "stopped";
+    }
 }
 
 // ── Public API ──
@@ -135,6 +149,13 @@ export function exportRunbookJson() {
     const exportData = Object.assign({}, state.runbookData, {
         [RESERVED_KEYS.issues]: state.issues,
         [RESERVED_KEYS.health]: state.healthStatus,
+        [RESERVED_KEYS.timer]:  {
+            runStart:       state.runStart,
+            pausedDuration: state.pausedDuration,
+            pauseStart:     state.pauseStart,
+            stoppedAt:      state.stoppedAt,
+            timerState:     state.timerState,
+        },
     });
     const blob = new Blob([JSON.stringify(exportData, null, 2)], { type: "application/json" });
     const url = URL.createObjectURL(blob);
@@ -158,37 +179,50 @@ export function resetRunbook() {
     state.runbookData[RESERVED_KEYS.issues] = [];
     state.healthStatus = "Green";
     state.runbookData[RESERVED_KEYS.health] = "Green";
-    // Reset timer
+    // Reset timer completely
     state.runStart       = null;
     state.pausedDuration = 0;
     state.pauseStart     = null;
+    state.stoppedAt      = null;
     state.timerState     = "stopped";
+    state.runbookData[RESERVED_KEYS.timer] = null;
     localStorage.removeItem(PROGRESS_KEY);
     localStorage.removeItem(SNAPSHOTS_KEY);
-    localStorage.removeItem(TIMER_KEY);
     return true;
 }
 
 /**
- * Persist run timer state to localStorage.
+ * Persist run timer state. Writes into runbookData._timer AND saves the
+ * localStorage draft so the state survives page refreshes.
+ * Called by timer.js after every timer state mutation.
  */
 export function saveTimerState() {
-    const { runStart, pausedDuration, pauseStart, timerState } = state;
-    localStorage.setItem(TIMER_KEY, JSON.stringify({ runStart, pausedDuration, pauseStart, timerState }));
+    state.runbookData[RESERVED_KEYS.timer] = {
+        runStart:       state.runStart,
+        pausedDuration: state.pausedDuration,
+        pauseStart:     state.pauseStart,
+        stoppedAt:      state.stoppedAt,
+        timerState:     state.timerState,
+    };
+    localStorage.setItem(PROGRESS_KEY, JSON.stringify(state.runbookData));
 }
 
 /**
- * Restore run timer state from localStorage.
+ * Restore run timer state from localStorage draft (via runbookData._timer).
  * Called during app boot so the timer survives page refreshes.
+ * No-op if there is no saved draft — timer stays at initial stopped state.
  */
 export function loadTimerState() {
-    const saved = localStorage.getItem(TIMER_KEY);
+    const saved = localStorage.getItem(PROGRESS_KEY);
     if (!saved) return;
     try {
-        const { runStart, pausedDuration, pauseStart, timerState } = JSON.parse(saved);
-        state.runStart       = runStart       || null;
-        state.pausedDuration = pausedDuration || 0;
-        state.pauseStart     = pauseStart     || null;
-        state.timerState     = timerState     || "stopped";
+        const parsed = JSON.parse(saved);
+        const t = parsed[RESERVED_KEYS.timer];
+        if (!t) return;
+        state.runStart       = t.runStart       || null;
+        state.pausedDuration = t.pausedDuration || 0;
+        state.pauseStart     = t.pauseStart     || null;
+        state.stoppedAt      = t.stoppedAt      || null;
+        state.timerState     = t.timerState     || "stopped";
     } catch (_) { /* corrupt data — ignore */ }
 }

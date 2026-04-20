@@ -12,6 +12,7 @@ export function startTimer() {
     state.runStart       = Date.now();
     state.pausedDuration = 0;
     state.pauseStart     = null;
+    state.stoppedAt      = null;
     state.timerState     = "running";
     saveTimerState();
 }
@@ -38,24 +39,38 @@ export function resumeTimer() {
 }
 
 /**
- * Stop the timer entirely and clear all run state.
+ * Stop the timer. Freezes the final elapsed time via stoppedAt.
+ * The timer is now permanently ended — only a full runbook reset clears it.
  */
 export function stopTimer() {
-    state.runStart       = null;
-    state.pausedDuration = 0;
-    state.pauseStart     = null;
-    state.timerState     = "stopped";
+    if (state.timerState === "paused") {
+        // Accumulate the current pause before stopping
+        state.pausedDuration += Date.now() - state.pauseStart;
+        state.pauseStart = null;
+    }
+    state.stoppedAt  = Date.now();
+    state.timerState = "stopped";
     saveTimerState();
 }
 
 /**
  * Calculate elapsed milliseconds, accounting for pauses.
- * Returns 0 if the timer has never been started.
+ * - stopped with stoppedAt: returns frozen final value
+ * - stopped without stoppedAt: never started, returns 0
+ * - paused: returns frozen value at pause point
+ * - running: returns live value
  */
 export function getElapsedMs() {
-    if (!state.runStart || state.timerState === "stopped") return 0;
-    const now = state.timerState === "paused" ? state.pauseStart : Date.now();
-    return now - state.runStart - state.pausedDuration;
+    if (!state.runStart) return 0;
+    if (state.timerState === "stopped") {
+        // Frozen final time (go-live ended)
+        return state.stoppedAt - state.runStart - state.pausedDuration;
+    }
+    if (state.timerState === "paused") {
+        return state.pauseStart - state.runStart - state.pausedDuration;
+    }
+    // running
+    return Date.now() - state.runStart - state.pausedDuration;
 }
 
 /**

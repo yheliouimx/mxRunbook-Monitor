@@ -135,7 +135,20 @@ export function sortCategories(categories) {
         // Keep categories in their original JSON insertion order
         return [...categories];
     }
-    // timeline: sort by earliest task start time
+    if (state.sortMode === "day") {
+        // Sort categories by the calendar date (date portion only) of their earliest task startTime
+        return [...categories].sort((a, b) => {
+            const tA = getEarliestTime(state.runbookData[a]);
+            const tB = getEarliestTime(state.runbookData[b]);
+            if (!tA && !tB) return 0;
+            if (!tA) return 1;
+            if (!tB) return -1;
+            const dA = new Date(tA.getFullYear(), tA.getMonth(), tA.getDate());
+            const dB = new Date(tB.getFullYear(), tB.getMonth(), tB.getDate());
+            return dA - dB;
+        });
+    }
+    // timeline: sort by earliest task start time (full datetime)
     return [...categories].sort((a, b) => {
         const tA = getEarliestTime(state.runbookData[a]);
         const tB = getEarliestTime(state.runbookData[b]);
@@ -148,10 +161,22 @@ export function sortCategories(categories) {
 
 /**
  * Sort tasks within a category for display. Does not mutate the original array.
- * - "taskid": alphabetical by taskId (tasks with no taskId go to end)
+ * - "day"    : sort by full startTime datetime (chronological within each category)
+ * - "taskid" : alphabetical/numeric by taskId (tasks with no taskId go to end)
  * - all other modes: original array order
  */
 export function sortTasks(tasks) {
+    if (state.sortMode === "day") {
+        return [...tasks].sort((a, b) => {
+            const _toDate = iso => { if (!iso) return null; const d = new Date(iso); return isNaN(d) ? null : d; };
+            const tA = _toDate(a.startTime);
+            const tB = _toDate(b.startTime);
+            if (!tA && !tB) return 0;
+            if (!tA) return 1;
+            if (!tB) return -1;
+            return tA - tB;
+        });
+    }
     if (state.sortMode === "taskid") {
         return [...tasks].sort((a, b) => {
             const idA = a.taskId || null;
@@ -163,6 +188,58 @@ export function sortTasks(tasks) {
         });
     }
     return tasks;
+}
+
+/**
+ * Group all tasks across all categories by calendar date (from startTime).
+ * Returns an ordered array of { label, dateKey, tasks } where each task has
+ * _origCat and _origIdx set so the original data can always be addressed.
+ *
+ * Tasks with no parseable date go into a trailing "No Date" bucket.
+ * Within each bucket tasks are sorted chronologically by startTime.
+ */
+export function getTasksGroupedByDay() {
+    const buckets = new Map();  // dateKey (YYYY-MM-DD | "nodate") → task list
+    const NO_DATE = "nodate";
+
+    Object.entries(state.runbookData).forEach(([cat, tasks]) => {
+        if (cat.startsWith("_") || !Array.isArray(tasks)) return;
+        tasks.forEach((t, idx) => {
+            const enriched = { ...t, _origCat: cat, _origIdx: idx };
+            let key = NO_DATE;
+            if (t.startTime) {
+                const d = new Date(t.startTime);
+                if (!isNaN(d)) {
+                    key = d.toISOString().slice(0, 10); // YYYY-MM-DD
+                }
+            }
+            if (!buckets.has(key)) buckets.set(key, []);
+            buckets.get(key).push(enriched);
+        });
+    });
+
+    // Sort bucket keys chronologically, keep "nodate" last
+    const sortedKeys = [...buckets.keys()].filter(k => k !== NO_DATE).sort();
+    if (buckets.has(NO_DATE)) sortedKeys.push(NO_DATE);
+
+    return sortedKeys.map(key => {
+        const tasks = buckets.get(key).sort((a, b) => {
+            const tA = a.startTime ? new Date(a.startTime) : null;
+            const tB = b.startTime ? new Date(b.startTime) : null;
+            if (!tA && !tB) return 0;
+            if (!tA) return 1;
+            if (!tB) return -1;
+            return tA - tB;
+        });
+        let label;
+        if (key === NO_DATE) {
+            label = "No Date";
+        } else {
+            const d = new Date(key + "T00:00:00");
+            label = d.toLocaleDateString("en-GB", { weekday: "long", day: "2-digit", month: "long", year: "numeric" });
+        }
+        return { label, dateKey: key, tasks };
+    });
 }
 
 // ── Utility ──
@@ -224,7 +301,9 @@ export function getEstimationCoverage() {
 }
 
 export function getTimeDelta() {
-    if (state.timerState === 'stopped' || !state.runStart) return null;
+    if (!state.runStart) return null;
+    // Allow stopped state only when stoppedAt is recorded (shows frozen final values)
+    if (state.timerState === 'stopped' && !state.stoppedAt) return null;
     const totalMs = getTotalEstimatedMs();
     if (!totalMs) return null;
     if (getEstimationCoverage() < 0.6) return null;

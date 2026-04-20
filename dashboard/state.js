@@ -22,6 +22,9 @@ export const state = {
   issuesPanelOpen: true,
   editingIssueId:  null,
 
+  // View mode
+  groupByDay: false,   // true = group all tasks by date, false = group by original category
+
   // Export options
   phoneExportIssueFilter: EXPORT_FILTERS.OPEN,
   emailExportIssueFilter: EXPORT_FILTERS.OPEN,

@@ -18,6 +18,11 @@ DEFAULT_MAPPING = {
         "endTime":      "endTime",
         "item":         "item",
         "assignee":     "assignee",
+        # Date columns (optional — use when date and time are in separate Excel columns)
+        # e.g. startDate: "Start Date", startTime: "Start Time" → merged into "2026-04-15T09:00:00"
+        # Per-task dates take priority over the global runbook_date anchor.
+        "startDate":    None,  # e.g. "Start Date"
+        "endDate":      None,  # e.g. "End Date"
         # v2 fields (optional — set to None to skip, or map to Excel column name)
         "taskId":       None,  # e.g. "Task ID"
         "system":       None,  # e.g. "Impacted System"
@@ -124,12 +129,16 @@ def parse(source_path: str, mapping: dict | None = None) -> OrderedDict:
         if not task_text:
             continue
 
-        end_time = _resolve_time(get_raw("endTime"), anchor)
+        # Resolve per-task date anchors (override global runbook_date if date columns are mapped)
+        task_start_anchor = _resolve_date(get_raw("startDate")) or anchor
+        task_end_anchor   = _resolve_date(get_raw("endDate"))   or anchor
+
+        end_time = _resolve_time(get_raw("endTime"), task_end_anchor)
         task = {
             "item":         (get_val("item") or "").replace("\n", " ").strip() or None,
             "task":         task_text,
             "status":       status,
-            "startTime":    _resolve_time(get_raw("startTime"), anchor),
+            "startTime":    _resolve_time(get_raw("startTime"), task_start_anchor),
             "endTime":      end_time,
             # estimatedEnd is frozen at import time (original planned end — never edited by dashboard)
             "estimatedEnd": end_time,
@@ -261,6 +270,21 @@ def _try_parse_date_string(text: str, date_src: str | None) -> date | None:
             return datetime.strptime(text, fmt).date()
         except ValueError:
             continue
+    return None
+
+
+def _resolve_date(val) -> "date | None":
+    """Extract a date object from an Excel cell value (date, datetime, or string).
+    Used to get the per-task date anchor from a dedicated 'Start Date'/'End Date' column.
+    """
+    if val is None:
+        return None
+    if isinstance(val, datetime):
+        return val.date()
+    if isinstance(val, date):
+        return val
+    if isinstance(val, str):
+        return _try_parse_date_string(val.strip(), None)
     return None
 
 

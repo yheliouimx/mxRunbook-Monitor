@@ -126,7 +126,7 @@ export function updateSentinelBar() {
     if (stopBtn)  stopBtn.classList.toggle('hidden',  ts === 'stopped');
 
     // ── Phase 2: Progress bars + delta ──
-    const delta = ts !== 'stopped' ? getTimeDelta() : null;
+    const delta = getTimeDelta();
     const progressBlock = document.getElementById('sentinelProgressBlock');
     const deltaEl       = document.getElementById('sentinelDelta');
 

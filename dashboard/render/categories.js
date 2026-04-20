@@ -4,7 +4,7 @@ import {
     normalizeStatus, statusClass, computeCategoryStatus,
     formatTime, formatTimeShort, getEarliestTime,
     matchesSearch, matchesTeam, matchesSystem, escapeHtml, getUniqueTeams,
-    sortTasks,
+    sortTasks, getTasksGroupedByDay,
 } from "../selectors.js";
 import { setTaskStatus, completeAllInCategory, setAssignee, setEndTime, setComment, toggleCategory } from "../actions/tasks.js";
 import { updateStatsValues } from "./stats.js";
@@ -460,5 +460,196 @@ export function renderCategories(categories, renderAll, showToast) {
 
     if (!anyVisible) {
         container.innerHTML = '<div class="no-results">No categories match the current filter / search.</div>';
+    }
+}
+
+/**
+ * Render all tasks grouped by calendar day (Group by Day view).
+ * Each day becomes a collapsible card. task.data-cat / data-idx always reference
+ * the original runbookData so all editing operations continue to work.
+ * @param {function} renderAll — top-level re-render callback
+ * @param {function} showToast — toast helper
+ */
+export function renderCategoriesGroupedByDay(renderAll, showToast) {
+    const container = document.getElementById("container");
+    container.innerHTML = "";
+
+    let dayGroups = getTasksGroupedByDay();
+
+    // Apply sortMode to day buckets (same semantics as category sort where applicable)
+    const noDate = dayGroups.find(g => g.dateKey === "nodate");
+    let dated = dayGroups.filter(g => g.dateKey !== "nodate");
+
+    if (state.sortMode === "completion") {
+        dated.sort((a, b) => {
+            const pA = a.tasks.filter(t => { const s = normalizeStatus(t.status); return s === STATUS.COMPLETED || s === STATUS.UNNEEDED; }).length / (a.tasks.length || 1);
+            const pB = b.tasks.filter(t => { const s = normalizeStatus(t.status); return s === STATUS.COMPLETED || s === STATUS.UNNEEDED; }).length / (b.tasks.length || 1);
+            return pB - pA;
+        });
+    } else if (state.sortMode === "alpha") {
+        dated.sort((a, b) => a.label.localeCompare(b.label));
+    }
+    // "day", "timeline", "original", "taskid" → keep chronological date order (default)
+
+    dayGroups = noDate ? [...dated, noDate] : dated;
+
+    // Apply task-level sort within each bucket (handles "taskid" via sortTasks)
+    dayGroups = dayGroups.map(g => ({ ...g, tasks: sortTasks(g.tasks) }));
+
+    // Apply search/team/system filters across all tasks
+    const isFiltered = !!(state.searchQuery || state.teamFilter !== "all" || state.systemFilter !== "all");
+
+    let anyVisible = false;
+
+    dayGroups.forEach(({ label, dateKey, tasks: allTasks }) => {
+        const displayTasks = isFiltered
+            ? allTasks.filter(t => matchesSearch(t) && matchesTeam(t) && matchesSystem(t))
+            : allTasks;
+        if (isFiltered && displayTasks.length === 0) return;
+
+        // Apply status filter at task level (not bucket level — avoid hiding whole days)
+        const statusFiltered = state.filterState === "all" ? displayTasks
+            : displayTasks.filter(t => {
+                const s = normalizeStatus(t.status);
+                if (state.filterState === "done")        return s === STATUS.COMPLETED || s === STATUS.UNNEEDED;
+                if (state.filterState === "inprogress")  return s === STATUS.IN_PROGRESS;
+                if (state.filterState === "notstarted")  return s === STATUS.NOT_STARTED;
+                if (state.filterState === "blocked")     return s === STATUS.BLOCKING;
+                if (state.filterState === "unneeded")    return s === STATUS.UNNEEDED;
+                return true;
+            });
+        if (statusFiltered.length === 0) return;
+
+        anyVisible = true;
+
+        const done  = statusFiltered.filter(t => { const s = normalizeStatus(t.status); return s === STATUS.COMPLETED || s === STATUS.UNNEEDED; }).length;
+        const total = statusFiltered.length;
+        const pct   = Math.round((done / total) * 100);
+        const catStatus = (() => {
+            const inProg   = statusFiltered.filter(t => normalizeStatus(t.status) === STATUS.IN_PROGRESS).length;
+            const blocking = statusFiltered.filter(t => normalizeStatus(t.status) === STATUS.BLOCKING).length;
+            if (done === total) return "done";
+            if (blocking > 0)  return "blocked";
+            if (done > 0 || inProg > 0) return "inprogress";
+            return "notstarted";
+        })();
+        const fillColor = pct === 100 ? "var(--color-success)" : pct > 0 ? "var(--color-warning-text)" : "var(--color-danger-text)";
+
+        const divId = "day-" + dateKey.replace(/[^a-zA-Z0-9]/g, "_");
+        const isOpen = state.openCategories.has(divId);
+
+        const div = document.createElement("div");
+        div.className = "category";
+        div.id = divId;
+
+        div.innerHTML = `
+            <div class="category-header" data-cat="${escapeHtml(divId)}">
+                <div class="cat-left">
+                    <span class="cat-chevron ${isOpen ? 'open' : ''}">&#9654;</span>
+                    <span class="cat-name">&#128197; ${escapeHtml(label)}</span>
+                </div>
+                <div class="cat-right">
+                    <span class="status-tag tag-${catStatus}">${done}/${total}</span>
+                </div>
+            </div>
+            <div class="cat-progress"><div class="cat-progress-fill" style="width:${pct}%; background:${fillColor}"></div></div>
+            <div class="tasks-wrapper ${isOpen ? 'open' : ''}">
+            <div class="tasks">
+                ${statusFiltered.map(t => {
+                    const cat    = t._origCat;
+                    const idx    = t._origIdx;
+                    const ns     = normalizeStatus(t.status);
+                    const sc     = statusClass(ns);
+                    const startTStr = t.startTime ? `<span class="task-time">${formatTimeShort(t.startTime)}</span> — ` : "";
+                    const endTStr   = `<span class="task-time-end" data-cat="${escapeHtml(cat)}" data-idx="${idx}" title="Click to edit actual end time">${t.endTime ? formatTimeShort(t.endTime) : "<span style='opacity:0.35'>+end</span>"}</span>`;
+                    const timePart  = (t.startTime || t.endTime) ? (startTStr + endTStr + endDelta(t)) : "";
+                    // Category breadcrumb badge
+                    const catBadge  = `<span class="task-system-tag" style="opacity:0.7">${escapeHtml(cat)}</span>`;
+                    return `
+                    <div class="task-row ${ns === STATUS.COMPLETED ? 'completed' : ns === STATUS.BLOCKING ? 'blocked' : ns === STATUS.UNNEEDED ? 'unneeded' : ''}">
+                        <div class="task-status-btn s-${sc}" title="Click to cycle status" data-cat="${escapeHtml(cat)}" data-idx="${idx}">
+                            ${STATUS_ICONS[ns] || ""}
+                        </div>
+                        <div class="task-content">
+                            ${t.taskId ? '<span class="task-id-badge">#' + escapeHtml(t.taskId) + '</span>' : ''}
+                            ${(t.item && t.item !== t.task) ? '<span class="task-item-label">' + escapeHtml(t.item) + '</span>' : ''}
+                            <span class="task-text">${escapeHtml(t.task || t.item || '')}</span>
+                            ${catBadge}
+                            ${t.system ? '<span class="task-system-tag">' + escapeHtml(t.system) + '</span>' : ''}
+                            ${t.assignee ? '<span class="task-assignee" title="Click to edit assignee" data-cat="' + escapeHtml(cat) + '" data-idx="' + idx + '">' + escapeHtml(t.assignee) + '</span>' : '<span class="task-assignee" title="Click to assign" data-cat="' + escapeHtml(cat) + '" data-idx="' + idx + '" style="opacity:0.4;border:1px dashed var(--input-border)">+ assign</span>'}
+                            ${partyBadge(t.party)}
+                            <span class="task-comment-btn" data-cat="${escapeHtml(cat)}" data-idx="${idx}" title="${t.comment ? 'Edit note' : 'Add note'}">&#128172; ${t.comment ? 'edit' : 'note'}</span>
+                            ${t.comment ? '<div class="task-comment">' + escapeHtml(t.comment) + '</div>' : ''}
+                        </div>
+                        <div class="task-meta">${timePart}<span class="task-status-dot dot-${sc}"></span></div>
+                    </div>`;
+                }).join("")}
+            </div>
+            </div>
+        `;
+        container.appendChild(div);
+
+        // Header: collapse/expand using divId as the key
+        div.querySelector(".category-header").addEventListener("click", () => {
+            if (state.openCategories.has(divId)) state.openCategories.delete(divId);
+            else state.openCategories.add(divId);
+            const wrapper = div.querySelector(".tasks-wrapper");
+            const chevron = div.querySelector(".cat-chevron");
+            if (wrapper) wrapper.classList.toggle("open", state.openCategories.has(divId));
+            if (chevron) chevron.classList.toggle("open", state.openCategories.has(divId));
+        });
+
+        // Status buttons — full re-render after change (virtual grouping must be recomputed)
+        div.querySelectorAll(".task-status-btn").forEach(btn => {
+            btn.addEventListener("click", (e) => {
+                e.stopPropagation();
+                document.querySelectorAll(".status-popup").forEach(p => p.remove());
+                const c   = e.currentTarget.dataset.cat;
+                const idx = parseInt(e.currentTarget.dataset.idx);
+                const popup = document.createElement("div");
+                popup.className = "status-popup";
+                const statuses = [
+                    { key: STATUS.NOT_STARTED, label: statusLabel(STATUS.NOT_STARTED), cls: "sp-notstarted", icon: "" },
+                    { key: STATUS.IN_PROGRESS, label: statusLabel(STATUS.IN_PROGRESS), cls: "sp-inprogress", icon: "▶" },
+                    { key: STATUS.COMPLETED,   label: statusLabel(STATUS.COMPLETED),   cls: "sp-done",       icon: "✓" },
+                    { key: STATUS.BLOCKING,    label: statusLabel(STATUS.BLOCKING),    cls: "sp-blocked",    icon: "✕" },
+                    { key: STATUS.UNNEEDED,    label: statusLabel(STATUS.UNNEEDED),    cls: "sp-unneeded",   icon: "—" },
+                ];
+                statuses.forEach(s => {
+                    const opt = document.createElement("div");
+                    opt.className = "sp-opt " + s.cls;
+                    opt.textContent = s.icon;
+                    opt.title = s.label;
+                    opt.addEventListener("click", (ev) => {
+                        ev.stopPropagation();
+                        setTaskStatus(c, idx, s.key);
+                        popup.remove();
+                        renderAll(); // full re-render — virtual day buckets change
+                    });
+                    popup.appendChild(opt);
+                });
+                e.currentTarget.appendChild(popup);
+                const closePopup = (ev) => { if (!popup.contains(ev.target)) { popup.remove(); document.removeEventListener("click", closePopup); } };
+                setTimeout(() => document.addEventListener("click", closePopup), 0);
+            });
+        });
+
+        // Assignee / end-time / comment editors — same helpers, same data refs
+        div.querySelectorAll(".task-assignee").forEach(badge => {
+            const c = badge.dataset.cat; const idx = parseInt(badge.dataset.idx);
+            attachAssigneeEdit(badge, c, idx);
+        });
+        div.querySelectorAll(".task-time-end").forEach(span => {
+            const c = span.dataset.cat; const idx = parseInt(span.dataset.idx);
+            if (c && !isNaN(idx)) attachEndTimeEdit(span, c, idx);
+        });
+        div.querySelectorAll(".task-comment-btn").forEach(btn => {
+            const c = btn.dataset.cat; const idx = parseInt(btn.dataset.idx);
+            if (c && !isNaN(idx)) attachCommentEdit(btn, c, idx);
+        });
+    });
+
+    if (!anyVisible) {
+        container.innerHTML = '<div class="no-results">No tasks match the current filter / search.</div>';
     }
 }

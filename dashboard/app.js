@@ -17,7 +17,7 @@ import { getCategoryNames, getUniqueTeams, getUniqueSystems, sortCategories, esc
 import { loadInitialRunbook, loadFromServer, loadFromFile, saveDraft, exportRunbookJson, resetRunbook as doReset, loadTimerState } from "./persistence.js";
 import { renderGlobalStats, renderHealthIndicator, updateStatsValues, updateSentinelBar } from "./render/stats.js";
 import { renderTimeline } from "./render/timeline.js";
-import { renderCategories } from "./render/categories.js";
+import { renderCategories, renderCategoriesGroupedByDay } from "./render/categories.js";
 import { renderIssues, toggleIssueForm, saveIssue as doSaveIssue, closeIssue as doCloseIssue, reopenIssue as doReopenIssue, editIssue as doEditIssue, deleteIssue as doDeleteIssue } from "./render/issues.js";
 import { generateSummary as doGenerateSummary, copySummaryToClipboard as doCopySummaryToClipboard } from "./render/summary.js";
 import { setHealth as doSetHealth } from "./actions/health.js";
@@ -187,9 +187,16 @@ function render() {
     populateTeamFilter();
     populateSystemFilter();
 
-    let categories = sortCategories(getCategoryNames());
-    renderTimeline(categories, render);
-    renderCategories(categories, render, showToast);
+    if (state.groupByDay) {
+        renderCategoriesGroupedByDay(render, showToast);
+        // Timeline stays in category mode — hide it in day view to avoid confusion
+        document.getElementById("timeline").style.display = "none";
+    } else {
+        document.getElementById("timeline").style.display = "";
+        let categories = sortCategories(getCategoryNames());
+        renderTimeline(categories, render);
+        renderCategories(categories, render, showToast);
+    }
 }
 
 // ── Runbook loading ────────────────────────────────────────
@@ -464,9 +471,9 @@ function bindEvents() {
     });
 
     // Filter buttons (accessible: button elements with aria-pressed)
-    document.querySelectorAll(".filterBtn").forEach(btn => {
+    document.querySelectorAll(".filterBtn:not([data-no-filter])").forEach(btn => {
         btn.addEventListener("click", () => {
-            document.querySelectorAll(".filterBtn").forEach(b => {
+            document.querySelectorAll(".filterBtn:not([data-no-filter])").forEach(b => {
                 b.classList.remove("active");
                 b.setAttribute("aria-pressed", "false");
             });
@@ -511,6 +518,16 @@ function bindEvents() {
     // Sort
     document.getElementById("sortSelect").addEventListener("change", (e) => {
         state.sortMode = e.target.value;
+        render();
+    });
+
+    // Group by Day toggle
+    document.getElementById("groupByDayBtn").addEventListener("click", () => {
+        state.groupByDay = !state.groupByDay;
+        const btn = document.getElementById("groupByDayBtn");
+        btn.classList.toggle("active", state.groupByDay);
+        btn.textContent = state.groupByDay ? "&#128197; By Day" : "&#128193; By Category";
+        btn.innerHTML   = state.groupByDay ? "&#128197; By Day" : "&#128193; By Category";
         render();
     });
 

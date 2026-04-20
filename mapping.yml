@@ -8,6 +8,9 @@ columns:
   endTime: "Exp end time"
   item: "Item"
   assignee: "Owner"
+  # Each per-task date takes priority over the global runbook_date anchor below.
+  startDate: "Start Date"
+  endDate:   "End Date"
 
 category_column: "Category"
 default_category: "Uncategorized"

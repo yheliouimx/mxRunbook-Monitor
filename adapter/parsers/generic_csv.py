@@ -10,7 +10,11 @@ DEFAULT_MAPPING = {
         "startTime": "startTime",
         "endTime": "endTime",
         "item": "item",
-        "assignee": "assignee"
+        "assignee": "assignee",
+        # Date columns (optional — use when date and time are in separate CSV columns)
+        # e.g. startDate: "Start Date", startTime: "Start Time" → merged to "2026-04-15T09:00:00"
+        "startDate": None,
+        "endDate":   None,
     },
     "category_column": None,  # if None, all tasks go under a single category
     "default_category": "Tasks",
@@ -67,12 +71,16 @@ def parse(source_path: str, mapping: dict | None = None) -> OrderedDict:
         raw_status = (row.get(cols.get("status", ""), "") or "").strip()
         status = status_map.get(raw_status, raw_status) if raw_status else "Not Started"
 
+        # Resolve per-task date strings (override when date and time are separate columns)
+        raw_start_date = (row.get(cols.get("startDate", "") or "", "") or "").strip() or None
+        raw_end_date   = (row.get(cols.get("endDate",   "") or "", "") or "").strip() or None
+
         task = {
             "item": (row.get(cols.get("item", ""), "") or "").strip() or None,
             "task": _clean_text((row.get(cols.get("task", ""), "") or "").strip()),
             "status": status,
-            "startTime": _clean_time(row.get(cols.get("startTime", ""), "")),
-            "endTime": _clean_time(row.get(cols.get("endTime", ""), "")),
+            "startTime": _merge_date_time(raw_start_date, _clean_time(row.get(cols.get("startTime", ""), ""))),
+            "endTime":   _merge_date_time(raw_end_date,   _clean_time(row.get(cols.get("endTime",   ""), ""))),
             "assignee": (row.get(cols.get("assignee", ""), "") or "").strip() or None
         }
 
@@ -102,3 +110,28 @@ def _clean_time(val: str | None) -> str | None:
     if v.lower() in ("nan", "nat", "none", "null", "n/a", ""):
         return None
     return v
+
+
+def _merge_date_time(date_str: str | None, time_str: str | None) -> str | None:
+    """Merge a date string and a time-only string into a full ISO datetime.
+
+    If time_str already contains a date component, it is returned unchanged.
+    If date_str is None/empty the time string is returned as-is (may be time-only).
+    Supports date formats: YYYY-MM-DD, DD/MM/YYYY, MM/DD/YYYY, DD-MM-YYYY.
+    """
+    from datetime import datetime as _dt
+    if not time_str:
+        return None
+    t = time_str.strip()
+    # Already a full ISO datetime — nothing to do
+    if "T" in t or (len(t) >= 10 and t[4:5] == "-" and t[7:8] == "-"):
+        return t
+    if not date_str:
+        return t
+    for fmt in ("%Y-%m-%d", "%d/%m/%Y", "%m/%d/%Y", "%d-%m-%Y", "%Y/%m/%d"):
+        try:
+            d = _dt.strptime(date_str.strip(), fmt).date()
+            return f"{d.isoformat()}T{t}"
+        except ValueError:
+            continue
+    return t  # date unparseable — return time as-is

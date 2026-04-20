@@ -129,13 +129,23 @@ export function updateSentinelBar() {
     const delta = getTimeDelta();
     const progressBlock = document.getElementById('sentinelProgressBlock');
     const deltaEl       = document.getElementById('sentinelDelta');
+    const timeRow       = document.getElementById('sentinelTimeRow');
 
-    if (progressBlock) progressBlock.classList.toggle('hidden', !delta);
+    // Show progress block whenever timer is active (running/paused), even without estimation data.
+    // The Done bar only needs completion %; the Time bar requires estimatedEnd coverage.
+    const showProgress = ts !== 'stopped' || delta !== null;
+    if (progressBlock) progressBlock.classList.toggle('hidden', !showProgress);
 
+    if (showProgress) {
+        const completionPct = delta ? delta.completionPct : getCompletionPct();
+        _setIfChanged('sentinelDoneFill', null, completionPct + '%');
+        _setIfChanged('sentinelDonePct', completionPct + '%');
+    }
+
+    // Time bar: only visible when estimation data is available
+    if (timeRow) timeRow.classList.toggle('hidden', !delta);
     if (delta) {
-        _setIfChanged('sentinelDoneFill', null, delta.completionPct  + '%');
         _setIfChanged('sentinelTimeFill', null, delta.timeProgressPct + '%');
-        _setIfChanged('sentinelDonePct', delta.completionPct  + '%');
         _setIfChanged('sentinelTimePct', delta.timeProgressPct + '%');
     }
 

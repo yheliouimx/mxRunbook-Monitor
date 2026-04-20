@@ -604,6 +604,7 @@
     }
     .sentinel-progress-block.hidden { display: none; }
     .sentinel-bar-row { display: flex; align-items: center; gap: 6px; }
+    .sentinel-bar-row.hidden { display: none; }
     .sentinel-bar-label {
         font-size: var(--text-xs); color: var(--text-muted);
         width: 32px; flex-shrink: 0; text-align: right;
@@ -2003,7 +2004,7 @@
             <div class="sentinel-track"><div class="sentinel-fill done" id="sentinelDoneFill"></div></div>
             <span class="sentinel-bar-pct" id="sentinelDonePct">0%</span>
         </div>
-        <div class="sentinel-bar-row">
+        <div class="sentinel-bar-row" id="sentinelTimeRow">
             <span class="sentinel-bar-label">Time</span>
             <div class="sentinel-track"><div class="sentinel-fill time" id="sentinelTimeFill"></div></div>
             <span class="sentinel-bar-pct" id="sentinelTimePct">0%</span>

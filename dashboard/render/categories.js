@@ -4,6 +4,7 @@ import {
     normalizeStatus, statusClass, computeCategoryStatus,
     formatTime, formatTimeShort, getEarliestTime,
     matchesSearch, matchesTeam, matchesSystem, escapeHtml, getUniqueTeams,
+    sortTasks,
 } from "../selectors.js";
 import { setTaskStatus, completeAllInCategory, setAssignee, setEndTime, setComment, toggleCategory } from "../actions/tasks.js";
 import { updateStatsValues } from "./stats.js";
@@ -281,7 +282,7 @@ export function renderCategories(categories, renderAll, showToast) {
         if (state.filterState !== "all" && state.filterState !== catStatus) return;
 
         const isFiltered = !!(state.searchQuery || state.teamFilter !== "all" || state.systemFilter !== "all");
-        const matchingTasks = tasks.filter(t => matchesSearch(t) && matchesTeam(t) && matchesSystem(t));
+        const matchingTasks = sortTasks(tasks.filter(t => matchesSearch(t) && matchesTeam(t) && matchesSystem(t)));
         if (isFiltered && matchingTasks.length === 0) return;
 
         anyVisible = true;
@@ -298,6 +299,8 @@ export function renderCategories(categories, renderAll, showToast) {
         div.className = "category";
         div.id = "cat-" + cat.replace(/[^a-zA-Z0-9]/g, "_");
 
+        const displayTasks = isFiltered ? matchingTasks : sortTasks(tasks);
+
         div.innerHTML = `
             <div class="category-header" data-cat="${escapeHtml(cat)}">
                 <div class="cat-left">
@@ -313,7 +316,7 @@ export function renderCategories(categories, renderAll, showToast) {
             <div class="cat-progress"><div class="cat-progress-fill" style="width:${pct}%; background:${fillColor}"></div></div>
             <div class="tasks-wrapper ${isOpen ? 'open' : ''}">
             <div class="tasks">
-                ${(isFiltered ? matchingTasks : tasks).map((t, i) => {
+                ${displayTasks.map((t, i) => {
                     const realIdx = tasks.indexOf(t);
                     const ns = normalizeStatus(t.status);
                     const sc = statusClass(ns);

@@ -131,6 +131,10 @@ export function sortCategories(categories) {
     if (state.sortMode === "alpha") {
         return [...categories].sort((a, b) => a.localeCompare(b));
     }
+    if (state.sortMode === "original" || state.sortMode === "taskid") {
+        // Keep categories in their original JSON insertion order
+        return [...categories];
+    }
     // timeline: sort by earliest task start time
     return [...categories].sort((a, b) => {
         const tA = getEarliestTime(state.runbookData[a]);
@@ -140,6 +144,25 @@ export function sortCategories(categories) {
         if (!tB) return -1;
         return tA - tB;
     });
+}
+
+/**
+ * Sort tasks within a category for display. Does not mutate the original array.
+ * - "taskid": alphabetical by taskId (tasks with no taskId go to end)
+ * - all other modes: original array order
+ */
+export function sortTasks(tasks) {
+    if (state.sortMode === "taskid") {
+        return [...tasks].sort((a, b) => {
+            const idA = a.taskId || null;
+            const idB = b.taskId || null;
+            if (!idA && !idB) return 0;
+            if (!idA) return 1;
+            if (!idB) return -1;
+            return idA.localeCompare(idB, undefined, { numeric: true, sensitivity: "base" });
+        });
+    }
+    return tasks;
 }
 
 // ── Utility ──

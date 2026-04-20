@@ -46,7 +46,7 @@ export function renderGlobalStats() {
                 <div class="stats-group">
                     <div class="stat-card total"><div class="stat-value">${total}</div><div class="stat-label">Total</div></div>
                     <div class="stat-card done"><div class="stat-value">${done}</div><div class="stat-label">Done</div></div>
-                    <div class="stat-card inprog"><div class="stat-value">${inProg}</div><div class="stat-label">In Prog</div></div>
+                    <div class="stat-card inprog"><div class="stat-value">${inProg}</div><div class="stat-label">IN PROGRESS</div></div>
                     <div class="stat-card notstarted"><div class="stat-value">${notStarted}</div><div class="stat-label">Not Started</div></div>
                 </div>
             </div>

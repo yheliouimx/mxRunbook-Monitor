@@ -1,15 +1,215 @@
-# Some small enhancements
-- [] keep light/dark theme between home and dashboard
-- [] When a tast is in progress, we can keep track on the time passing and save it as soon as it is completed. This way we can have a more accurate report at the end of the event. If the task is marked as completed, we can ask the user if they want to save the time spent on the task. This can be done by adding a new field in the task object called `actualEnd` which will store the timestamp of when the task was marked as completed. We can then calculate the deviation from the planned end time and include that in the final report. To check if it is more accurate to pause the time on a blocked task or keep it running till it is completed, we can add a new field called `isBlocked` which will be a boolean. If a task is marked as blocked, we can pause the timer and resume it when the task is unblocked. This way we can have a more accurate measure of the time spent on each task and the overall event.
-- [] Add a new field in the task object called `deviationMinutes` which will store the deviation in minutes from the planned end time. This can be calculated as `actualEnd - plannedEnd` and can be included in the final report to show how much time was saved or lost on each task.
-- [] Split the export button into two parts:
-    - "Iphone / Email / Gantt images" in part 1
-    - Json , CSV, Excel in part 2
-    Summary and final report should be completely separate from the export of the runbook data.
-- [] Drag-and-drop folder onto welcome page (can be added later)
-- [] Editing recent client entries (name, logo) from welcome page
-- [] Auto-refresh if client folder contents change on disk (can be added later). To check how the continous read of the client folder affects performance, we can implement a file watcher that monitors the client folder for changes. If any changes are detected, we can trigger a refresh of the dashboard to reflect the updated contents. This way we can ensure that the dashboard always displays the most up-to-date information without requiring manual refreshes from the user. We can also add a setting to enable or disable this auto-refresh feature based on user preference.  
-- [] Adding the ability to reset a given category to its default state. This can be done by adding a "Reset to Default" button in the category settings. When clicked, it will revert all tasks in that category back to their original state as defined in the runbook. This can be useful for users who want to quickly undo any changes they have made to a category and start fresh without having to manually edit each task. We can also add a confirmation dialog before resetting to prevent accidental resets.
-- [] Runbook timer should start automatically if we start a task for and none of the tasks are in progress. This can be implemented by checking the status of all tasks when a task is started. If no other tasks are currently in progress, we can automatically start the runbook timer. This way we can ensure that the timer accurately reflects the time spent on the event without requiring manual intervention from the user. We can also add a setting to enable or disable this automatic timer start feature based on user preference (add it the main dashboard config.json file).
-- [] Think of automatically update the phase timeline between category to dates. just update the number of elements given the number of days in the runbook.
-- [] we should be able to edit the config.json of the dashboard by invoking the config.json directly from the welcome or dashboard screen into an editor. This way we can easily change the configuration of the dashboard without having to manually edit the file on disk. We can add a "Edit Config" button in the settings menu that opens the config.json file in a text editor. After the user makes changes and saves the file, we can automatically reload the dashboard to apply the new configuration. This will make it more convenient for users to customize their dashboard experience without needing to navigate to the file system. Same thing with the client config.json that should be openable from the welcome screen when we select a client folder.
+# Small Enhancements — Refined Implementation Plan
+
+> Refined from raw ideas. Items sorted by **added value first, then effort**.  
+> Legend: 🔴 High value · 🟡 Medium value · 🟢 Nice-to-have | ⚡ Low effort · ⚙️ Medium effort · 🔧 High effort
+
+---
+
+## Priority Matrix
+
+| # | Feature | Value | Effort | Phase |
+|---|---------|-------|--------|-------|
+| E1 | Runbook timer auto-start | 🔴 | ⚡ | A |
+| E2 | Task time tracking (`actualEnd`, `isBlocked`, `deviationMinutes`) | 🔴 | ⚙️ | B |
+| E3 | Reset category to default state | 🔴 | ⚙️ | B |
+| E4 | Theme persistence across pages | 🟡 | ⚡ | A |
+| E5 | Split export button into Visuals / Data / Reports | 🟡 | ⚡ | A |
+| E6 | Edit config.json from dashboard or welcome screen | 🟡 | ⚙️ | B |
+| E7 | Edit recent client entries (name, logo) from welcome page | 🟡 | ⚙️ | B |
+| E8 | Drag-and-drop folder onto welcome page | 🟢 | ⚙️ | C |
+| E9 | Auto-update phase timeline date distribution | 🟢 | 🔧 | C |
+| E10 | Auto-refresh dashboard when client folder changes on disk | 🟢 | 🔧 | C |
+
+---
+
+## Phase A — Quick Wins (Low Effort, High/Medium Value)
+
+### E1 · Runbook Timer Auto-Start
+**Value:** 🔴 · **Effort:** ⚡
+
+**Refined description**  
+When a user marks the first task as "In Progress" and the runbook timer has not yet been started, start it automatically. This removes the manual step of pressing Start during a live event when every second counts. Should be guarded by a `autoStartTimer` boolean flag in `config.json` (default `true`) so teams that prefer manual control can opt out.
+
+**Implementation**
+- `config.json` — add `"autoStartTimer": true`
+- `dashboard/app.js` → `loadConfig()` — read and store the flag in `state`
+- `dashboard/actions/tasks.js` → `setTaskStatus()` — after status update, if new status is `"In Progress"` and `state.timerState === "stopped"` and `config.autoStartTimer`, call `startTimer()`
+- No UI change needed; optionally show a brief toast "Timer started automatically"
+
+---
+
+### E4 · Theme Persistence Across Pages
+**Value:** 🟡 · **Effort:** ⚡
+
+**Refined description**  
+The welcome page stores its theme in `localStorage.welcome_theme`; the dashboard stores it in `localStorage.runbook_theme`. Navigating between pages resets the apparent theme, causing a jarring visual switch. Unify to a single key.
+
+**Implementation**
+- Pick one key: `localStorage.mx_theme` (replaces both existing keys)
+- `welcome.html` — update theme init and toggle logic to read/write `mx_theme`
+- `dashboard/app.js` → `initTheme()` — read `mx_theme` instead of `runbook_theme`; keep `runbook_palette` key unchanged
+- Search for all remaining references to `welcome_theme` / `runbook_theme` and replace
+
+---
+
+### E5 · Split Export Button into Three Groups
+**Value:** 🟡 · **Effort:** ⚡
+
+**Refined description**  
+The current export menu mixes visual exports (Phone, Email, Gantt), data exports (JSON, CSV, Excel), and reports (Summary, Final Report) into one flat list. Splitting them into three clearly labeled groups — or three distinct buttons — reduces cognitive load and avoids accidental data exports when the user only wants to share a screenshot.
+
+**Proposed structure**
+```
+[📸 Visuals ▾]        [📦 Export Data ▾]       [📄 Reports ▾]
+  • Phone / iPhone      • JSON                    • Text Summary
+  • Email format        • CSV                     • Final Report (HTML)
+  • Gantt image         • Excel (.xlsx)
+```
+
+**Implementation**
+- `runbookDashboard.html` — replace the single `#exportMenu` dropdown with three adjacent buttons + dropdowns
+- `dashboard/app.js` — update `exportMenu` selector and wire up click handlers per group
+- CSS — style the three buttons as a button group (shared border radius, matching accent)
+- No changes to the export logic files themselves
+
+---
+
+## Phase B — Core Enhancements (Medium Effort, High/Medium Value)
+
+### E2 · Task Time Tracking (`actualEnd`, `isBlocked`, `deviationMinutes`)
+**Value:** 🔴 · **Effort:** ⚙️
+
+**Refined description**  
+Currently `endTime` is manually entered. This enhancement auto-captures timestamps at key moments and enables an accurate post-event timeline:
+
+- **`actualStart`** — ISO timestamp set automatically when a task first moves to "In Progress"
+- **`actualEnd`** — ISO timestamp set automatically when a task moves to "Completed"
+- **`isBlocked`** — boolean; when `true`, the task elapsed clock pauses. Toggling off resumes. A "blocked minutes" counter accumulates for reporting.
+- **`deviationMinutes`** — persisted integer (`actualEnd - estimatedEnd` in minutes); negative = early, positive = overrun. Replaces the on-the-fly calculation so it survives a page reload.
+
+The existing deviation display in task rows (`+Xm` / `-Xm early`) continues to work but now reads from the persisted field when available.
+
+**Implementation**
+- `dashboard/actions/tasks.js` → `setTaskStatus()`
+  - On transition to `"In Progress"`: set `task.actualStart = new Date().toISOString()` if not already set
+  - On transition to `"Completed"`: set `task.actualEnd = new Date().toISOString()`; calculate and persist `task.deviationMinutes`
+- `dashboard/actions/tasks.js` — add `toggleTaskBlocked(cat, idx)` function that flips `task.isBlocked` and patches the UI badge
+- `dashboard/render/categories.js` — show a ⏸ badge on blocked tasks; update deviation display to prefer `task.deviationMinutes` over live calculation
+- `dashboard/export/shared.js` — include `actualStart`, `actualEnd`, `deviationMinutes`, `isBlocked` in CSV/Excel export rows (feeds roadmap items 1.5 and 1.6)
+- No schema migration needed — fields are additive and undefined-safe
+
+---
+
+### E3 · Reset Category to Default State
+**Value:** 🔴 · **Effort:** ⚙️
+
+**Refined description**  
+During a live event a team might accidentally bulk-complete tasks, or need to re-run a category from scratch. A "Reset Category" action restores all tasks in that category to their original state from the loaded runbook, clearing `status`, `actualStart`, `actualEnd`, `deviationMinutes`, `isBlocked`, and any in-session comments.
+
+A confirmation dialog ("Reset 12 tasks in DB Migration back to Not Started?") prevents accidental resets.
+
+**Implementation**
+- `dashboard/persistence.js` — at load time, deep-clone the original runbook into `state.originalRunbook` (before any draft is applied). This is the source of truth for resets.
+- `dashboard/actions/tasks.js` — add `resetCategory(catKey)` function: copies tasks from `state.originalRunbook[catKey]` back into `state.runbookData[catKey]`, then calls `renderCategory(catKey)`
+- `dashboard/render/categories.js` — add a "Reset" icon button (↺) to each category header, visible on hover. On click, show a `confirm()` dialog before calling `resetCategory()`
+- `dashboard/actions/tasks.js` — hook `saveDraft()` call at the end so the reset is persisted immediately
+
+---
+
+### E6 · Edit Config.json from the UI
+**Value:** 🟡 · **Effort:** ⚙️
+
+**Refined description**  
+Non-technical users currently must open a terminal to change `config.json`. Expose an in-app editor:
+
+- **Dashboard**: Settings menu → "Edit Config" opens a modal with a `<textarea>` pre-filled with the current `config.json` content. On Save, validate JSON, write file via the Electron IPC bridge, and hot-reload the config without a full page refresh.
+- **Welcome screen**: Each client card gets a ⚙ icon that opens the same modal for that client's `config.json`.
+
+**Implementation**
+- `electron-main.js` — add two IPC handlers: `read-config-file(path)` and `write-config-file(path, content)` (validate it's within the app data directory to prevent path traversal)
+- `dashboard/app.js` — add `openConfigEditor()` that calls `read-config-file`, populates a modal textarea, and on confirm calls `write-config-file` then `loadConfig()`
+- `runbookDashboard.html` — add a "Edit Config" item to the settings dropdown; add the modal HTML
+- `welcome.html` — add a ⚙ icon to each recent client card; similar open/save/reload flow
+
+---
+
+### E7 · Edit Recent Client Entries (Name, Logo) from Welcome Page
+**Value:** 🟡 · **Effort:** ⚙️
+
+**Refined description**  
+When a client is renamed or rebranded, users currently have to manually edit files. An "Edit" action on recent client cards should let users update the display name and swap the logo image.
+
+**Implementation**
+- `welcome.html` — add an Edit (✏) icon that appears on hover over each recent client card
+- On click: open a modal with two inputs — a text field for the client name and a file picker for the logo. Pre-fill both from the stored client data.
+- On save: write the updated name and logo path back into the client's `config.json` (via Electron IPC `write-config-file`); update the card DOM inline without full reload
+- `electron-main.js` — reuse the `write-config-file` IPC handler from E6
+
+---
+
+## Phase C — Deferred / Nice-to-Have
+
+### E8 · Drag-and-Drop Folder onto Welcome Page
+**Value:** 🟢 · **Effort:** ⚙️
+
+**Refined description**  
+Allow users to drag a client folder from Finder/Explorer directly onto the welcome page instead of using the folder picker button. Validate that the dropped item is a directory containing a `config.json` before loading it.
+
+**Implementation**
+- `welcome.html` — add `dragover` / `drop` event listeners on the main drop zone
+- In the `drop` handler, use Electron's `webUtils.getPathForFile()` (Electron 26+) to get the folder path, then call the existing `loadClientFolder(path)` flow
+- Show a visual drop target overlay while dragging
+
+---
+
+### E9 · Auto-Update Phase Timeline Date Distribution
+**Value:** 🟢 · **Effort:** 🔧
+
+**Refined description**  
+When a runbook's overall date range is extended or shortened, all category phase dates should scale proportionally rather than requiring manual edits to each category.
+
+**Needs more spec before implementation** — open questions:
+- Triggered manually (button) or automatically on date change?
+- Proportional scaling vs equal distribution?
+- Should it preserve relative gaps between phases?
+
+Defer until the requirement is better defined.
+
+---
+
+### E10 · Auto-Refresh Dashboard When Client Folder Changes on Disk
+**Value:** 🟢 · **Effort:** 🔧
+
+**Refined description**  
+Use a file system watcher (`chokidar` or Node.js `fs.watch`) in the Electron main process to detect changes to the client folder. On change, send an IPC event to the renderer to soft-reload the runbook data.
+
+**Concerns to address before implementing:**
+- Performance: watch granularity (watch individual files vs whole folder)
+- Loop risk: saving from the dashboard triggers a reload which triggers another save
+- Setting: `"autoRefresh": false` in `dashboard-config.json` to opt out
+
+**Implementation sketch** (when ready)
+- `electron-main.js` — start a `chokidar.watch()` on the client folder path when a client is loaded; send `runbook-file-changed` IPC message to renderer on `change` events, debounced to 2 s
+- `dashboard/app.js` — listen for `runbook-file-changed`; call `loadRunbook()` but skip if `state.timerState === "running"` (don't interrupt a live event)
+
+---
+
+## Implementation Order Summary
+
+```
+Phase A — Quick Wins (can be done in a single session)
+  E1  Runbook timer auto-start          🔴 ⚡
+  E4  Theme persistence                 🟡 ⚡
+  E5  Split export button               🟡 ⚡
+
+Phase B — Core Enhancements (one feature per session)
+  E2  Task time tracking                🔴 ⚙️  ← do first; unlocks reporting accuracy
+  E3  Reset category to default         🔴 ⚙️
+  E6  Edit config.json from UI          🟡 ⚙️  ← share IPC work with E7
+  E7  Edit recent client entries        🟡 ⚙️
+
+Phase C — Deferred
+  E8  Drag-and-drop folder              🟢 ⚙️
+  E9  Phase timeline auto-update        🟢 🔧  (needs spec first)
+  E10 Auto-refresh on file change       🟢 🔧  (needs perf analysis first)
+```

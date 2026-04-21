@@ -296,6 +296,33 @@ function exportJSON() {
     showToast("JSON exported (includes issues)");
 }
 
+async function saveRunbookToExcel() {
+    if (!window.electronAPI) return;
+    // Sync reserved keys (_issues, _health, _timer) into runbookData before sending
+    state.runbookData['_issues'] = state.issues;
+    state.runbookData['_health'] = state.healthStatus;
+    showToast("Saving to Excel…");
+    try {
+        const result = await window.electronAPI.writeRunbookToExcel(state.runbookData);
+        if (result && result.success) {
+            const bk = result.backupPath
+                ? result.backupPath.replace(/.*[\\/]/, '')
+                : null;
+            const skipped = result.skippedRows && result.skippedRows.length
+                ? `  (${result.skippedRows.length} unmatched)` : '';
+            showToast(
+                result.mode === 'generate'
+                    ? `Excel created ✓  ${result.updatedRows} rows${skipped}`
+                    : `Saved to Excel ✓  ${result.updatedRows} rows updated${skipped}${bk ? '  — backup: ' + bk : ''}`
+            );
+        } else {
+            showToast("Excel save failed — " + (result && result.error ? result.error : "check the client folder"));
+        }
+    } catch (e) {
+        showToast("Excel save failed — " + (e && e.message ? e.message : "unknown error"));
+    }
+}
+
 async function reloadRunbookJSON() {
     try {
         await loadFromServer();
@@ -552,6 +579,19 @@ function bindEvents() {
         exportMenu.querySelector('[data-action="summary"]').addEventListener("click", () => { exportMenu.classList.remove("open"); generateSummary(); });
         exportMenu.querySelector('[data-action="export-json"]').addEventListener("click", () => { exportMenu.classList.remove("open"); exportJSON(); });
         exportMenu.querySelector('[data-action="final-report"]').addEventListener("click", () => { exportMenu.classList.remove("open"); exportReport(); });
+
+        // Save to Excel — Electron only; hidden in browser/dev mode
+        const saveExcelBtn = exportMenu.querySelector('[data-action="save-excel"]');
+        if (saveExcelBtn) {
+            if (!window.electronAPI) {
+                saveExcelBtn.style.display = 'none';
+            } else {
+                saveExcelBtn.addEventListener("click", async () => {
+                    exportMenu.classList.remove("open");
+                    await saveRunbookToExcel();
+                });
+            }
+        }
     }
 
     document.querySelector('[data-action="expand-all"]').addEventListener("click", expandAll);

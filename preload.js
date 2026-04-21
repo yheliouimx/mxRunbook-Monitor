@@ -60,4 +60,13 @@ contextBridge.exposeInMainWorld('electronAPI', {
     // Navigate the window back to the welcome page.
     openWelcome: () =>
         ipcRenderer.invoke('nav:openWelcome'),
+
+    // ── Dashboard config (theme, background — irrespective of client) ─
+    // Returns the current dashboard-config.json as a plain object.
+    getDashboardConfig: () =>
+        ipcRenderer.invoke('config:getDashboard'),
+
+    // Persists allowed keys (theme, backgroundImage) back to dashboard-config.json.
+    saveDashboardConfig: (updates) =>
+        ipcRenderer.invoke('config:saveDashboard', updates),
 });

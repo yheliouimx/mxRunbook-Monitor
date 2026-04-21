@@ -49,6 +49,23 @@ let serverPort       = null;  // set after HTTP server starts
 const RECENT_FILE = path.join(os.homedir(), '.mxrunbook', 'recent-clients.json');
 const RECENT_MAX  = 10;
 
+// ── Dashboard config (global app settings — irrespective of client) ──
+const DASHBOARD_CONFIG_PATH     = path.join(ROOT, 'dashboard-config.json');
+const DASHBOARD_CONFIG_DEFAULTS = { theme: 'dark', backgroundImage: 'Murex_background6.jpg' };
+
+function loadDashboardConfig() {
+    try {
+        return { ...DASHBOARD_CONFIG_DEFAULTS, ...JSON.parse(fs.readFileSync(DASHBOARD_CONFIG_PATH, 'utf8')) };
+    } catch (_) { return { ...DASHBOARD_CONFIG_DEFAULTS }; }
+}
+function saveDashboardConfig(updates) {
+    try {
+        const merged = { ...loadDashboardConfig(), ...updates };
+        fs.writeFileSync(DASHBOARD_CONFIG_PATH, JSON.stringify(merged, null, 2), 'utf8');
+        return merged;
+    } catch (_) { return null; }
+}
+
 function loadRecentClients() {
     try { return JSON.parse(fs.readFileSync(RECENT_FILE, 'utf8')); }
     catch (_) { return []; }
@@ -318,6 +335,16 @@ function registerIpcHandlers() {
     ipcMain.handle('nav:openWelcome', () => {
         if (!win) return;
         win.loadURL(`http://127.0.0.1:${serverPort}/welcome.html`);
+    });
+
+    // Dashboard-level config (theme, background image — irrespective of client)
+    ipcMain.handle('config:getDashboard', () => loadDashboardConfig());
+    ipcMain.handle('config:saveDashboard', (_, updates) => {
+        if (!updates || typeof updates !== 'object' || Array.isArray(updates)) return null;
+        const safe = {};
+        if (typeof updates.theme === 'string')           safe.theme = updates.theme;
+        if (typeof updates.backgroundImage === 'string') safe.backgroundImage = updates.backgroundImage;
+        return saveDashboardConfig(safe);
     });
 }
 

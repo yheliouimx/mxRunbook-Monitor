@@ -66,6 +66,162 @@ function saveDashboardConfig(updates) {
     } catch (_) { return null; }
 }
 
+// ── Excel save-back helpers ──────────────────────────────────
+// Locate the original .xlsx in the client folder.
+// Checks config.json for an explicit "excelFile" field first,
+// then auto-discovers the first *.xlsx that isn't a backup.
+function resolveExcelFile(clientDir) {
+    try {
+        const cfgPath = findConfigFile(clientDir);
+        if (cfgPath) {
+            const cfg = JSON.parse(fs.readFileSync(cfgPath, 'utf8'));
+            if (cfg.excelFile && typeof cfg.excelFile === 'string') {
+                const explicit = path.resolve(clientDir, cfg.excelFile);
+                if (explicit.startsWith(path.resolve(clientDir)) && fs.existsSync(explicit))
+                    return explicit;
+            }
+        }
+    } catch (_) { /* fall through to discovery */ }
+    try {
+        const files = fs.readdirSync(clientDir);
+        const xlsx = files
+            .filter(f => /\.xlsx$/i.test(f) && !/_backup_\d{12}\.xlsx$/i.test(f))
+            .sort()[0];
+        if (xlsx) return path.join(clientDir, xlsx);
+    } catch (_) { /* unreadable dir */ }
+    return null;
+}
+
+// Parse mapping.yml (yaml subset: only key: "value" lines, no multi-document).
+// Returns { columns, status_mapping, sheet } with sensible defaults.
+function parseSimpleYaml(text) {
+    const result = { columns: {}, status_mapping: {}, sheet: null };
+    let section = null;
+    for (const raw of text.split('\n')) {
+        const line = raw.replace(/#.*$/, '').trimEnd();
+        if (!line.trim()) continue;
+        const indent = line.match(/^(\s*)/)[1].length;
+        const trimmed = line.trim();
+        if (indent === 0) {
+            const m = trimmed.match(/^(\w+)\s*:\s*(.*)$/);
+            if (m) {
+                section = m[1];
+                if (m[2] && m[2] !== '') result[section] = m[2].replace(/^["']|["']$/g, '');
+            }
+        } else {
+            const m = trimmed.match(/^([\w]+)\s*:\s*(.*)$/);
+            if (m && typeof result[section] === 'object') {
+                const val = m[2].trim().replace(/^["']|["']$/g, '');
+                if (val && val.toLowerCase() !== 'null') result[section][m[1]] = val;
+            }
+        }
+    }
+    return result;
+}
+
+// Load column mapping using the 4-level hierarchy described in the plan.
+// Returns { colMap: { task, status, startTime, endTime, item, assignee },
+//           reverseStatus: Map<canonical → excel value>,
+//           sheet: string|null }
+function loadColumnMapping(clientDir) {
+    const defaults = { task: 'task', status: 'status', startTime: 'startTime',
+                       endTime: 'endTime', item: 'item', assignee: 'assignee' };
+    let parsed = null;
+    for (const candidate of [
+        path.join(clientDir, 'mapping.yml'),
+        path.join(ROOT, 'mapping.yml'),
+    ]) {
+        try {
+            parsed = parseSimpleYaml(fs.readFileSync(candidate, 'utf8'));
+            break;
+        } catch (_) { /* try next */ }
+    }
+    // Also check config.json for inline excelMapping
+    try {
+        const cfgPath = findConfigFile(clientDir);
+        if (cfgPath) {
+            const cfg = JSON.parse(fs.readFileSync(cfgPath, 'utf8'));
+            if (cfg.excelMapping && typeof cfg.excelMapping === 'object') {
+                parsed = { columns: cfg.excelMapping, status_mapping: cfg.excelStatusMapping || {}, sheet: null };
+            }
+        }
+    } catch (_) { /* ignore */ }
+
+    const cols  = (parsed && parsed.columns)        || {};
+    const smRaw = (parsed && parsed.status_mapping) || {};
+    const sheet = (parsed && typeof parsed.sheet === 'string') ? parsed.sheet : null;
+
+    const colMap = {
+        task:      cols.task      || defaults.task,
+        status:    cols.status    || defaults.status,
+        startTime: cols.startTime || defaults.startTime,
+        endTime:   cols.endTime   || defaults.endTime,
+        item:      cols.item      || defaults.item,
+        assignee:  cols.assignee  || defaults.assignee,
+    };
+    // Build reverse status map: "Completed" → "Done" (first match wins)
+    const reverseStatus = new Map();
+    for (const [excelVal, canonical] of Object.entries(smRaw)) {
+        if (!reverseStatus.has(canonical)) reverseStatus.set(canonical, excelVal);
+    }
+    return { colMap, reverseStatus, sheet };
+}
+
+// Scan the header row of a worksheet and return a map of
+// column-name → 1-based column index.
+function buildHeaderIndex(ws) {
+    const idx = new Map();
+    const headerRow = ws.getRow(1);
+    headerRow.eachCell((cell, colNum) => {
+        const v = cell.value != null ? String(cell.value).trim() : '';
+        if (v) idx.set(v, colNum);
+    });
+    return idx;
+}
+
+// Find or create a column by header name.
+// Returns the 1-based column number, adding a new header cell if missing.
+function ensureColumn(ws, headerIdx, name) {
+    if (headerIdx.has(name)) return headerIdx.get(name);
+    const newCol = ws.columnCount + 1;
+    ws.getRow(1).getCell(newCol).value = name;
+    headerIdx.set(name, newCol);
+    return newCol;
+}
+
+// Format an ISO datetime / time-only string for writing into Excel as plain text.
+function formatTimeForExcel(iso) {
+    if (!iso) return '';
+    return String(iso).replace('T', ' ').replace(/:\d\d$/, ''); // "2026-04-15 09:00"
+}
+
+// Build task-lookup indexes from the worksheet data rows (rows 2+).
+// Returns { byItem: Map<item→rowNum>, byTask: Map<task→rowNum[]> }
+// byTask uses an array to handle duplicate task texts (consumed FIFO).
+function buildRowIndex(ws, colMap, headerIdx) {
+    const itemCol = headerIdx.get(colMap.item);
+    const taskCol = headerIdx.get(colMap.task);
+    const byItem  = new Map();
+    const byTask  = new Map();
+    ws.eachRow((row, rowNum) => {
+        if (rowNum === 1) return;
+        if (itemCol) {
+            const v = row.getCell(itemCol).value;
+            const s = v != null ? String(v).trim() : '';
+            if (s && !byItem.has(s)) byItem.set(s, rowNum);
+        }
+        if (taskCol) {
+            const v = row.getCell(taskCol).value;
+            const s = v != null ? String(v).trim() : '';
+            if (s) {
+                if (!byTask.has(s)) byTask.set(s, []);
+                byTask.get(s).push(rowNum);
+            }
+        }
+    });
+    return { byItem, byTask };
+}
+
 function loadRecentClients() {
     try { return JSON.parse(fs.readFileSync(RECENT_FILE, 'utf8')); }
     catch (_) { return []; }
@@ -345,6 +501,138 @@ function registerIpcHandlers() {
         if (typeof updates.theme === 'string')           safe.theme = updates.theme;
         if (typeof updates.backgroundImage === 'string') safe.backgroundImage = updates.backgroundImage;
         return saveDashboardConfig(safe);
+    });
+
+    // Write dashboard state back to the original Excel file in the client folder.
+    // Adds parallel "Actual" columns — original planned columns are never modified.
+    // Always creates a timestamped backup before writing.
+    ipcMain.handle('runbook:writeToExcel', async (_, { runbookData }) => {
+        if (!currentClientDir) return { success: false, error: 'No client folder is open.' };
+        if (!runbookData || typeof runbookData !== 'object')
+            return { success: false, error: 'Invalid runbook data.' };
+
+        const ExcelJS = require('exceljs');
+        const { colMap, reverseStatus, sheet: sheetName } = loadColumnMapping(currentClientDir);
+
+        // Flatten categories → tasks (skip reserved _keys)
+        const categories = Object.keys(runbookData).filter(k => !k.startsWith('_'));
+        const allTasks = categories.flatMap(cat =>
+            (runbookData[cat] || []).map(t => ({ ...t, _cat: cat }))
+        );
+        // Check if any task has a comment — drives whether to add that column
+        const hasComments = allTasks.some(t => t.comment && String(t.comment).trim());
+
+        const excelPath = resolveExcelFile(currentClientDir);
+
+        // ── Generate-fresh mode ───────────────────────────────
+        if (!excelPath) {
+            const wb  = new ExcelJS.Workbook();
+            const ws  = wb.addWorksheet('Runbook');
+            const hdr = ['Item', 'Category', 'Task', 'Status', 'Start Time', 'End Time',
+                         'Assignee', 'Status (Actual)', 'Actual Start', 'Actual End'];
+            if (hasComments) hdr.push('Comment');
+            ws.addRow(hdr);
+            ws.getRow(1).font = { bold: true };
+            for (const t of allTasks) {
+                const actualStatus = reverseStatus.get(t.status) || t.status || '';
+                const row = [
+                    t.item || '', t._cat, t.task || '', t.status || '',
+                    formatTimeForExcel(t.startTime), formatTimeForExcel(t.endTime),
+                    t.assignee || '', actualStatus,
+                    formatTimeForExcel(t.startTime), formatTimeForExcel(t.endTime),
+                ];
+                if (hasComments) row.push(t.comment || '');
+                ws.addRow(row);
+            }
+            const cfg = (() => { try { return JSON.parse(fs.readFileSync(findConfigFile(currentClientDir), 'utf8')); } catch (_) { return {}; } })();
+            const safeName = (cfg.projectName || 'runbook').replace(/[^a-z0-9_-]/gi, '_');
+            const ts = new Date().toISOString().slice(0, 10).replace(/-/g, '');
+            const outputPath = path.join(currentClientDir, `${safeName}_export_${ts}.xlsx`);
+            await wb.xlsx.writeFile(outputPath);
+            return { success: true, mode: 'generate', outputPath, backupPath: null,
+                     updatedRows: allTasks.length, skippedRows: [] };
+        }
+
+        // ── Update-in-place mode ──────────────────────────────
+        // 1. Backup first
+        const baseName = path.basename(excelPath, '.xlsx');
+        const ts12 = new Date().toISOString().replace(/[-:T]/g, '').slice(0, 12);
+        const backupPath = path.join(currentClientDir, `${baseName}_backup_${ts12}.xlsx`);
+        try {
+            fs.copyFileSync(excelPath, backupPath);
+        } catch (e) {
+            const msg = (e.code === 'EBUSY' || e.code === 'EPERM')
+                ? 'Close the Excel file before saving.'
+                : `Backup failed: ${e.message}`;
+            return { success: false, error: msg };
+        }
+
+        // 2. Load workbook
+        const wb = new ExcelJS.Workbook();
+        try {
+            await wb.xlsx.readFile(excelPath);
+        } catch (e) {
+            return { success: false, error: `Cannot read Excel file: ${e.message}` };
+        }
+
+        const ws = sheetName ? wb.getWorksheet(sheetName) : wb.worksheets[0];
+        if (!ws) return { success: false, error: 'Worksheet not found in workbook.' };
+
+        // 3. Build header index + ensure Actual columns exist
+        const headerIdx = buildHeaderIndex(ws);
+        const colActualStatus = ensureColumn(ws, headerIdx, 'Status (Actual)');
+        const colActualStart  = ensureColumn(ws, headerIdx, 'Actual Start');
+        const colActualEnd    = ensureColumn(ws, headerIdx, 'Actual End');
+        const colComment      = hasComments ? ensureColumn(ws, headerIdx, 'Comment') : null;
+
+        // 4. Build row-lookup indexes
+        const { byItem, byTask } = buildRowIndex(ws, colMap, headerIdx);
+
+        // 5. Match each task and write Actual columns
+        const updatedRows = [];
+        const skippedRows = [];
+
+        for (const t of allTasks) {
+            const itemKey = t.item != null ? String(t.item).trim() : '';
+            const taskKey = t.task != null ? String(t.task).trim() : '';
+
+            let rowNum = null;
+            if (itemKey && byItem.has(itemKey)) {
+                rowNum = byItem.get(itemKey);
+                byItem.delete(itemKey); // consume so it won't match again
+            } else if (taskKey && byTask.has(taskKey)) {
+                const arr = byTask.get(taskKey);
+                rowNum = arr.shift();
+                if (arr.length === 0) byTask.delete(taskKey);
+            }
+
+            if (rowNum == null) {
+                skippedRows.push(taskKey || itemKey || '(unknown)');
+                continue;
+            }
+
+            const row = ws.getRow(rowNum);
+            const actualStatus = reverseStatus.get(t.status) || t.status || '';
+            row.getCell(colActualStatus).value = actualStatus;
+            row.getCell(colActualStart).value  = formatTimeForExcel(t.startTime);
+            row.getCell(colActualEnd).value    = formatTimeForExcel(t.endTime);
+            if (colComment) row.getCell(colComment).value = t.comment || '';
+            row.commit();
+            updatedRows.push(rowNum);
+        }
+
+        // 6. Save
+        try {
+            await wb.xlsx.writeFile(excelPath);
+        } catch (e) {
+            const msg = (e.code === 'EBUSY' || e.code === 'EPERM')
+                ? 'Close the Excel file before saving.'
+                : `Write failed: ${e.message}`;
+            return { success: false, error: msg };
+        }
+
+        return { success: true, mode: 'update', outputPath: excelPath, backupPath,
+                 updatedRows: updatedRows.length, skippedRows };
     });
 }
 

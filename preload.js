@@ -69,4 +69,12 @@ contextBridge.exposeInMainWorld('electronAPI', {
     // Persists allowed keys (theme, backgroundImage) back to dashboard-config.json.
     saveDashboardConfig: (updates) =>
         ipcRenderer.invoke('config:saveDashboard', updates),
+
+    // ── Excel save-back ──────────────────────────────────────
+    // Write current runbook state back to the original .xlsx in the client folder.
+    // Adds parallel "Actual" columns; original planned columns are never modified.
+    // Creates a timestamped backup before writing.
+    // Returns { success, mode, outputPath, backupPath, updatedRows, skippedRows, error? }.
+    writeRunbookToExcel: (runbookData) =>
+        ipcRenderer.invoke('runbook:writeToExcel', { runbookData }),
 });

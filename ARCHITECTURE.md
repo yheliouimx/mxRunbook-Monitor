@@ -6,6 +6,51 @@ Technical reference for AI models and developers extending this codebase.
 
 ## File Map
 
+### `welcome.html` (Electron app only)
+
+The landing page opened on startup in the Electron app. Shows recent client runbooks as a responsive card grid and provides a folder-picker button to open a new client folder.
+
+| Section | Content |
+|---------|--------|
+| CSS | Full glassmorphism design with dark/light theme, CSS custom properties mirroring `runbookDashboard.html` tokens |
+| HTML | Brand strip, "Open Client Runbook" CTA, recent-runbooks grid, legal footer, toast, loading overlay |
+| JS (inline) | `applyDashboardConfig()`, `toggleTheme()`, recent-card rendering, folder picker via `window.electronAPI` |
+
+Theme preference is stored in `dashboard-config.json` via `electronAPI.saveDashboardConfig()` so it persists across welcome ↔ dashboard navigation.
+
+Displays a "This app requires the Electron shell" overlay when opened in a plain browser.
+
+### `preload.js`
+
+Electron contextBridge — runs in Node context before each renderer page, exposes `window.electronAPI` to the renderer without granting Node access.
+
+| API method | IPC channel | Purpose |
+|-----------|-------------|--------|
+| `openFolder()` | `dialog:openFolder` | Native OS folder picker; resolves to path or null |
+| `readConfig(folderPath)` | `folder:readConfig` | Reads + parses `config.json` / `*_config.json` from folder |
+| `readFileAsDataUrl(folderPath, filename)` | `folder:readFileAsDataUrl` | Reads image → base64 data URL; auto-resizes via `sharp` if > 250 KB |
+| `getRecentClients()` | `store:getRecent` | Returns recent-client list from `~/.mxrunbook/recent-clients.json` |
+| `addRecentClient(entry)` | `store:addRecent` | Upserts a recent entry (max 10, trimmed to 350 KB logo cap) |
+| `removeRecentClient(folderPath)` | `store:removeRecent` | Removes entry by path |
+| `openDashboard(folderPath)` | `nav:openDashboard` | Sets active client dir; navigates to `runbookDashboard.html?clientKey=<slug>` |
+| `openWelcome()` | `nav:openWelcome` | Navigates back to `welcome.html` |
+| `getDashboardConfig()` | `config:getDashboard` | Returns `dashboard-config.json` object |
+| `saveDashboardConfig(updates)` | `config:saveDashboard` | Persists `theme` / `backgroundImage` to `dashboard-config.json` |
+| `writeRunbookToExcel(runbookData)` | `runbook:writeToExcel` | Excel save-back (see below) |
+
+### `dashboard-config.json`
+
+Global Electron app settings — independent of any client folder.
+
+```json
+{
+  "theme": "dark",
+  "backgroundImage": "Murex_background6.jpg"
+}
+```
+
+This file is read/written by `electron-main.js` handlers and exposed via `electronAPI.getDashboardConfig()` / `saveDashboardConfig()`. It keeps the theme choice consistent across the welcome page and the dashboard without polluting per-client `config.json` files.
+
 ### `runbookDashboard.html`
 
 | Section | Content |
@@ -84,7 +129,7 @@ When adding a new visual element, always use CSS variables. Never hardcode hex c
 runbookData      — Object: category → task array. Reserved keys prefixed with _.
 projectConfig    — Object: loaded from config.json. Fields: projectName, subtitle, changeRef,
                    client, environment, release, accentColor, runbookFile, logoFile,
-                   backgroundFile, healthThresholds { ahead, onTrack, atRisk }.
+                   backgroundFile, excelFile, healthThresholds { ahead, onTrack, atRisk }.
 filterState      — String: "all" | "done" | "inprogress" | "notstarted" | "blocked" | "unneeded"
 searchQuery      — String: free-text search filter (matches task, item, taskId, system, comment)
 teamFilter       — String: "all" | <assignee value>
@@ -112,11 +157,11 @@ Timer state is saved to localStorage key `runbook_timer` by `saveTimerState()` i
 #### Entry & Init (`dashboard/app.js`)
 | Function | Purpose |
 |----------|---------|
-| `init()` | Fetches `config.json`, merges into `projectConfig`, calls `applyConfig()`, wires events |
+| `init()` | Fetches `config.json` (or `/client-config` in Electron), merges into `projectConfig`, calls `applyConfig()`, wires events |
 | `applyConfig()` | Updates page title, h1, subtitle from `projectConfig`; applies `--color-primary` from `accentColor` |
 | `loadRunbook()` | Loads from localStorage (if saved) or fetches `runbook.json` (or `projectConfig.runbookFile`) |
 | `render()` | Main loop: renders stats, issues, timeline, all categories + tasks |
-| `detectAssets()` | Loads logo/background: checks `config.json` `logoFile`/`backgroundFile` first; falls back to `assets/` directory scan, then prefix-guessing |
+| `detectAssets()` | Loads logo/background: checks `config.json` `logoFile`/`backgroundFile` first; falls back to `assets/` directory scan, then prefix-guessing; in Electron uses `/client-asset/<name>` route |
 | `initTheme()` | Restores saved dark/light preference from localStorage |
 | `initPalette()` | Restores saved corporate/neon palette preference from localStorage |
 | `toggleTheme()` | Flips dark ⟺ light; persists to localStorage |
@@ -245,13 +290,68 @@ The **Final Report** (`finalReport.js` + `finalReport/`) is a post-event HTML re
 #### Data Persistence (`dashboard/persistence.js`)
 | Function | Purpose |
 |----------|---------|
-| `saveToLocalStorage()` | Saves entire `runbookData` (including `_issues`, `_health`) to localStorage key `runbook_progress` |
+| `saveToLocalStorage()` | Saves entire `runbookData` (including `_issues`, `_health`) to localStorage key `runbook_progress` (namespaced per client via `?clientKey`) |
 | `exportJSON()` | Downloads current state as `.json` file |
 | `loadFromFile()` | Reads uploaded `.json` file and restores state |
 | `saveTimerState()` | Saves `{ runStart, pausedDuration, pauseStart, timerState }` to localStorage key `runbook_timer` |
 | `loadTimerState()` | Restores timer state from localStorage; called during boot before first render |
 
 localStorage is auto-saved on every status change, issue change, health change, and timer state change.
+
+In Electron, `app.js` fetches project config from `/client-config` (served by `electron-main.js` which proxies the active client folder) rather than from a static `config.json`. Client assets (logo, background) are served via `/client-asset/<filename>`. This allows multiple client folders without copying files into the app bundle.
+
+---
+
+## Electron Architecture (`electron-main.js`)
+
+### HTTP Server Routes
+
+| Route | Purpose |
+|-------|---------|
+| `/` | Redirects to `welcome.html` |
+| `/welcome.html` | Welcome screen (served from app root) |
+| `/runbookDashboard.html?clientKey=<slug>` | Dashboard scoped to active client |
+| `/client-config` | Proxies `config.json` / `*_config.json` from `currentClientDir`; auto-injects `runbookFile` if absent |
+| `/client-asset/<filename>` | Serves a file from `currentClientDir` (bare filename only; path-traversal guarded) |
+| `/<path>` | Static file serving from app root with MIME type detection |
+
+### Per-Client localStorage Isolation
+
+When `electronAPI.openDashboard(folderPath)` is called, `electron-main.js` sets `currentClientDir` and navigates the window to `runbookDashboard.html?clientKey=<slug>` where `<slug>` is the folder's basename normalized to `[a-z0-9-]`. The dashboard reads `clientKey` from the URL and prefixes all localStorage keys with it. Switching between clients never overwrites another client's progress.
+
+### Smart File Discovery
+
+`findConfigFile(folderPath)` and `findRunbookFile(folderPath)` allow clients to keep their own naming conventions:
+- Tries `config.json` / `runbook.json` first
+- Falls back to the first file matching `*_config.json` / `*_runbook.json` (sorted alphabetically)
+
+This means a client folder named `mks_config.json` + `mks_runbook.json` works without renaming.
+
+### Recent Clients Store
+
+Persisted at `~/.mxrunbook/recent-clients.json` (survives app reinstalls and temp-dir cleanups). Each entry:
+```
+{ path, clientName, projectName, subtitle, accentColor, logoFile, logoDataUrl, lastOpened }
+```
+- `logoDataUrl` capped at 350 K characters; large images are auto-resized via `sharp` (PNG→JPEG fallback, down to 128×128) before storage
+- Max 10 entries; oldest removed when limit exceeded
+
+### Excel Save-Back
+
+`ipcMain.handle('runbook:writeToExcel', ...)` — writes current dashboard state to the source `.xlsx`:
+
+1. **Locate source file** via `resolveExcelFile()`: checks `config.json` `excelFile` field first, then auto-discovers the first `*.xlsx` in the client folder (excludes `*_backup_*.xlsx`)
+2. **Backup** — copies the source file to `<name>_backup_<YYYYMMDDHHmm>.xlsx` before any write; returns an error if the file is locked (Excel open)
+3. **Update-in-place** (source file found):
+   - Builds a header index from row 1
+   - Ensures `Status (Actual)`, `Actual Start`, `Actual End`, `Comment` columns exist (appended if missing)
+   - Matches each runbook task to a worksheet row by `item` (primary) or `task` text (fallback, FIFO for duplicates)
+   - Writes actual status (reverse-mapped via `status_mapping`), actual end time, and comment
+4. **Generate-fresh** (no source file):
+   - Creates a new workbook with Item / Category / Task / Status / Start / End / Assignee / Status (Actual) / Actual Start / Actual End columns
+   - Outputs to `<projectName>_export_<YYYYMMDD>.xlsx`
+
+Returns `{ success, mode, outputPath, backupPath, updatedRows, skippedRows, error? }`.
 
 ---
 

@@ -18,6 +18,10 @@ Built for short-lived, high-pressure events (releases, migrations, cutovers) whe
   - `▶ Start Run` / `⏸` / `⏹` timer tracking elapsed time since the run began, surviving page refreshes
   - Dual progress bars (Completion % vs Time %) with a delta badge (`+12% ahead` / `−8% at risk`) once ≥ 60% of tasks have `estimatedEnd` data
   - Auto health advisory (`⚠ Auto: Amber [Accept]`) derived from the completion-vs-time delta; thresholds configurable in `config.json`; never applied without operator confirmation
+- **Welcome screen** (Electron app): launcher page with glassmorphism UI showing recent runbooks as cards (client logo, project name, last-opened date); click to reopen instantly or browse for a new client folder; up to 10 entries persisted in `~/.mxrunbook/recent-clients.json`
+- **Per-client localStorage isolation**: each client folder gets its own storage namespace via `?clientKey=<slug>` — switching between projects never overwrites another client's progress
+- **Smart file discovery**: the Electron server auto-detects `*_config.json` / `*_runbook.json` naming variants so clients can keep their canonical file names (e.g. `mks_config.json`) without renaming
+- **Excel save-back** (Electron only): write the current runbook state back to the original `.xlsx` file with `Status (Actual)`, `Actual Start`, `Actual End`, and `Comment` columns added; creates a timestamped backup before writing; falls back to generating a fresh export file if no source xlsx is found
 - **5 export types**:
   - Phone (1080×1920 portrait) — optimized for WhatsApp sharing
   - Email (1920×1080 landscape) — corporate style for email updates
@@ -106,6 +110,7 @@ assets/           (create empty)
   "runbookFile": "runbook.json",
   "logoFile": "clientLogo-acme.png",
   "backgroundFile": "Murex_background6.jpg",
+  "excelFile": "my_runbook.xlsx",
   "healthThresholds": { "ahead": 5, "onTrack": -10, "atRisk": -25 }
 }
 ```
@@ -113,6 +118,7 @@ assets/           (create empty)
 `accentColor` drives the `--color-primary` CSS variable used across the dashboard and in canvas exports. Use the client's brand color.
 `runbookFile` sets the JSON file the dashboard loads. Defaults to `runbook.json` if omitted — useful when managing multiple projects in the same folder.
 `logoFile` / `backgroundFile` load a specific file from `assets/` directly, bypassing the prefix-based auto-detection. Omit to keep auto-detection.
+`excelFile` (Electron only) specifies the source `.xlsx` file to update when using the Excel save-back feature. If omitted, the first `*.xlsx` found in the client folder is used automatically.
 `healthThresholds` tunes the Sentinel Strip health advisory: `ahead` (%) = delta above which the advisory is Green; `onTrack` (%) = above which Amber; `atRisk` (%) = above which Red (below = delayed). Negative = behind schedule.
 
 ### 3. Map your data columns — `mapping.yml`
@@ -238,22 +244,39 @@ npm run dist:zip    # → dist-electron/MXRunbookMonitor-win-x64.zip
 dist-electron/win-x64/
 ├── MX Runbook Monitor.exe
 └── resources/app/
-    ├── config.json        ← blank placeholder — replace with your own
-    ├── runbook.json       ← empty placeholder — replace with your data
+    ├── welcome.html       ← landing page (opens on startup)
+    ├── runbookDashboard.html
+    ├── dashboard-config.json  ← global theme / background settings
     ├── dashboard/
     ├── mapping.yml
     └── assets/
         └── Murex_background6.jpg   ← default background (included)
 ```
 
-**To deploy a client runbook:**
-1. Copy `dist-electron/win-x64/` to the target machine (or distribute the zip)
-2. Edit `resources/app/config.json` with project details (see [Configure](#2-configure-your-project--configjson))
-3. Copy the runbook JSON to `resources/app/` (filename must match `runbookFile` in config)
-4. **Add logo** — copy client logo to `resources/app/assets/` with any filename containing `logo` (e.g. `logo.png`, `acme-logo.svg`, `mylogo.jpg`)
-   - The dashboard auto-detects any file matching `*logo*` in `assets/` — no config change needed
-   - Alternatively: name the file anything and set `"logoFile": "yourfile.png"` in `config.json`
-5. Double-click `MX Runbook Monitor.exe`
+> The Electron app no longer ships a pre-baked `config.json` or `runbook.json`. Instead, the **Welcome screen** lets the operator select any client folder on their machine at runtime.
+
+**Multi-client workflow:**
+1. Double-click `MX Runbook Monitor.exe` — the Welcome screen opens
+2. Click **Open Client Runbook** and select the client folder containing `config.json` (or `*_config.json`) and the runbook JSON
+3. The dashboard opens scoped to that client; progress is stored under a per-client key so multiple clients never share localStorage
+4. Recent folders appear as cards on the Welcome screen — click any card to reopen instantly
+5. To switch clients: click **← Back** in the dashboard header to return to the Welcome screen
+
+**Preparing a client folder:**
+1. Create a folder for the client (e.g. `C:\Runbooks\Acme-Release\`)
+2. Copy `config.json` (or name it `acme_config.json`) with project details
+3. Copy the runbook JSON (or name it `acme_runbook.json`) — filename is auto-detected
+4. Copy the `.xlsx` source file if you want Excel save-back
+5. Add logo — any file containing `logo` in `assets/` sub-folder or in the client folder root
+6. Select the folder from the Welcome screen
+
+**Excel save-back:**
+
+In the Electron app, a **Save to Excel** button in the dashboard writes current task statuses, actual end times, and operator comments back to the original `.xlsx` file:
+- Adds `Status (Actual)`, `Actual Start`, `Actual End`, `Comment` columns alongside the original planned columns
+- Creates a timestamped backup (e.g. `runbook_backup_202604151030.xlsx`) before writing
+- Falls back to generating a fresh export file if no `.xlsx` is found in the client folder
+- Set `"excelFile": "myfile.xlsx"` in `config.json` to pin the source file; otherwise the first `*.xlsx` in the folder is used
 
 > **Why `logo.*` and not `clientLogo-*`?** Files named `clientLogo-*` are a source-repo convention and are deliberately excluded from the distribution (they are project-specific). The deployment convention is `logo.png` — one file per deployment, placed alongside the runbook data.
 
@@ -278,13 +301,16 @@ dist-electron/win-x64/
 
 ```
 runbook-dashboard/
+├── welcome.html             ← Electron landing page (recent runbooks)
 ├── runbookDashboard.html    ← Dashboard HTML + CSS
 ├── _serve.js                ← Dev server (Node.js, port 8090)
 ├── _launcher.js             ← Portable server (bundled into exe)
 ├── _bundle.js               ← Build script → single portable HTML
 ├── _package.js              ← Build script → portable zip release
-├── electron-main.js         ← Electron app entry (native window)
-├── config.json              ← Project-specific metadata
+├── electron-main.js         ← Electron app entry (native window + IPC handlers)
+├── preload.js               ← Electron contextBridge → window.electronAPI
+├── dashboard-config.json    ← Global app settings (theme, backgroundImage)
+├── config.json              ← Project-specific metadata (per client folder)
 ├── mapping.yml              ← Column mapping for source runbook
 ├── runbook.json             ← Task data (generated, never hand-edit)
 ├── dashboard/               ← Modular JS (ES modules)

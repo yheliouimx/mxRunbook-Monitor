@@ -2,11 +2,19 @@
 import json
 import re
 
-# ISO datetime pattern accepted by the dashboard JS (new Date(val))
+# Accepted datetime strings:
+#   Full ISO date (with optional time):  YYYY-MM-DD[THH:MM[:SS]]
+#   Bare time (from time-only columns):  HH:MM[:SS]
+# Bare times are valid because Excel/CSV files often store date and time in
+# separate columns; the parser combines them when runbook_date is set in the
+# mapping.  The quality checker emits a warning when no date is present so
+# users know to set runbook_date if they need full timestamps.
 _ISO_RE = re.compile(
-    r"^\d{4}-\d{2}-\d{2}"          # date part YYYY-MM-DD
-    r"([T ]\d{2}:\d{2}(:\d{2})?)?"  # optional time T/space HH:MM[:SS]
-    r"$"
+    r"^("
+    r"\d{4}-\d{2}-\d{2}([T ]\d{2}:\d{2}(:\d{2})?)?"  # full ISO: YYYY-MM-DD[THH:MM[:SS]]
+    r"|"
+    r"\d{2}:\d{2}(:\d{2})?"                             # bare time: HH:MM[:SS]
+    r")$"
 )
 
 RUNBOOK_SCHEMA = {

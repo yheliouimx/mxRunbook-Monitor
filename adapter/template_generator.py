@@ -51,16 +51,20 @@ CANONICAL_STATUSES = [
 
 PARTY_OPTIONS = ["Client", "Murex", "Joint"]
 
-# Colours
-HEADER_REQUIRED_FILL = PatternFill("solid", fgColor="FFF9C4")   # yellow
-HEADER_OPTIONAL_FILL = PatternFill("solid", fgColor="E8F5E9")   # light green
-HEADER_FONT          = Font(bold=True, size=11)
-EXAMPLE_FONT         = Font(italic=True, color="555555", size=10)
-README_HEADER_FONT   = Font(bold=True, size=12)
-THIN_BORDER          = Border(
-    bottom=Side(style="thin", color="AAAAAA"),
-    right=Side(style="thin",  color="CCCCCC"),
-)
+# Colours — only defined when openpyxl is available
+if HAS_OPENPYXL:
+    HEADER_REQUIRED_FILL = PatternFill("solid", fgColor="FFF9C4")   # yellow
+    HEADER_OPTIONAL_FILL = PatternFill("solid", fgColor="E8F5E9")   # light green
+    HEADER_FONT          = Font(bold=True, size=11)
+    EXAMPLE_FONT         = Font(italic=True, color="555555", size=10)
+    README_HEADER_FONT   = Font(bold=True, size=12)
+    THIN_BORDER          = Border(
+        bottom=Side(style="thin", color="AAAAAA"),
+        right=Side(style="thin",  color="CCCCCC"),
+    )
+else:
+    HEADER_REQUIRED_FILL = HEADER_OPTIONAL_FILL = HEADER_FONT = None
+    EXAMPLE_FONT = README_HEADER_FONT = THIN_BORDER = None
 
 
 # ── Internal helpers ──────────────────────────────────────

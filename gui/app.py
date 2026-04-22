@@ -83,9 +83,15 @@ def index() -> None:
                     else:
                         _placeholder(1, "Import File")
                     with ui.stepper_navigation():
+                        def _to_mapping():
+                            # Trigger Step 2 auto-detect before advancing
+                            if _step2 and hasattr(_step2, "on_enter"):
+                                _step2.on_enter()
+                            stepper.next()
+
                         ui.button(
                             "Next", icon="arrow_forward",
-                            on_click=stepper.next,
+                            on_click=_to_mapping,
                         ).props("unelevated").classes("primary-btn").bind_enabled_from(
                             state, "source_path",
                             backward=lambda v: v is not None,
@@ -104,7 +110,11 @@ def index() -> None:
                             on_click=stepper.next,
                         ).props("unelevated").classes("primary-btn").bind_enabled_from(
                             state, "mapping",
-                            backward=lambda v: bool(v),
+                            backward=lambda v: (
+                                bool(v)
+                                and v.get("columns", {}).get("task") is not None
+                                and v.get("columns", {}).get("status") is not None
+                            ),
                         )
 
                 # ── Step 3 ────────────────────────────────

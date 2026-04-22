@@ -1,7 +1,7 @@
 # clientFolderGUI — Implementation Backlog
 
 > Source spec: `Tasks/clientFolderGUI.md`  
-> Status: **Phase 1 complete — Phase 2 in queue**  
+> Status: **Phases 0–3 complete — Phase 4 in queue**  
 > Last updated: 2026-04-22
 
 ---
@@ -12,16 +12,17 @@ The `clientFolderGUI` feature adds a NiceGUI-based 4-step Python wizard at `gui/
 
 ---
 
-## Pre-flight: Technical Decisions (resolve before Phase 0)
+## ~~Pre-flight: Technical Decisions~~ ✅ RESOLVED
 
-| Decision | Resolution |
-|---|---|
-| NiceGUI version | Pin `nicegui>=2.0,<4` in `requirements.txt`; run P0 spike to confirm `ui.stepper`, `ui.upload`, `ui.table` API surface |
-| `bridge.py` imports `adapter/` | `sys.path.insert(0, str(Path(__file__).parent.parent))` at top of `bridge.py` |
-| AppState instantiation | Module-level singleton `state = AppState()` imported by all pages |
-| Merge logic for existing `runbook.json` | Preserve existing `comment`, `status`, `endTime` when `taskId` matches; overwrite structure from new import |
-| NiceGUI native mode | Defer to post-MVP; use browser mode (`native=False`) for MVP |
-| Temp file for uploads | Write uploaded bytes to `tempfile.NamedTemporaryFile`; store path in `AppState.temp_path`; clean up on "Start over" |
+| Decision | Resolution | Status |
+|---|---|---|
+| NiceGUI version | `nicegui>=2.0,<4` — resolves to 3.10.0; all required APIs confirmed | ✅ |
+| `bridge.py` imports `adapter/` | `sys.path.insert(0, _REPO_ROOT / "adapter")` at top of `bridge.py` | ✅ |
+| `app.py` import path when run as script | `sys.path.insert(0, _REPO_ROOT)` at top of `app.py` | ✅ |
+| AppState instantiation | Module-level singleton `state = AppState()` imported by all pages | ✅ |
+| Merge logic for `runbook.json` | `merge_preserved_keys` preserves `_`-prefixed metadata only; per-task merge deferred to Phase 5 | ✅ |
+| NiceGUI native mode | Deferred to post-MVP; browser mode used | ✅ |
+| Temp file for uploads | `bridge.bytes_to_temp_file()` helper; `AppState.temp_path` cleaned on reset | ✅ |
 
 ---
 
@@ -65,39 +66,43 @@ The `clientFolderGUI` feature adds a NiceGUI-based 4-step Python wizard at `gui/
 
 ---
 
-## Phase 2 — Step 1: Import File
+## ~~Phase 2 — Step 1: Import File~~ ✅ DONE
 
 **Goal:** User uploads a CSV or Excel file; detected format badge and row count appear; "Next" activates only on success.  
 **Entry criteria:** Phase 1 complete.  
 **Deliverable:** `AppState.source_path`, `detected_format`, `raw_headers` populated after successful upload.
 
-| # | Item | Size | Depends on |
+| # | Item | Size | Status |
 |---|---|---|---|
-| 2.1 | `gui/pages/step1_import.py` — glass card with dashed border, `ui.upload(accepted_types='.csv,.xlsx,.xls', on_upload=handle_upload)`, format badge placeholder, row count placeholder, "Next" button disabled by default | M | 1 |
-| 2.2 | `handle_upload` callback — write bytes to `tempfile.NamedTemporaryFile`, call `bridge.detect_format()` + `bridge.read_headers()`, write to `state`, update badge + row count | M | 1.3, 2.1 |
-| 2.3 | Render format badge + header info on success — "CSV" or "Excel" pill via `status_badge`, `{N} columns detected`, estimated row count | S | 2.2 |
-| 2.4 | Error toast on corrupt file or zero headers — catch `RuntimeError` from `bridge.read_headers()`, `ui.notify(msg, type='negative')`, keep "Next" disabled | S | 2.2 |
+| 2.1 | `gui/pages/step1_import.py` — glass card + `ui.upload` (auto-upload, max 1 file, .csv/.xlsx/.xls) + `@ui.refreshable` file-status panel | M | ✅ |
+| 2.2 | `process_upload(name, content)` — pure logic function; writes temp file, detects format, reads headers; returns state-update dict or error string | M | ✅ |
+| 2.3 | `@ui.refreshable` file-status: format badge (CSV=info / Excel=success), column count, row count | S | ✅ |
+| 2.4 | Error toast + state cleared on corrupt file / unsupported type / no headers; "Next" stays disabled | S | ✅ |
+| 2.5 | Downstream state (`mapping`, `parsed_data`, `schema_errors`, `quality_report`) reset whenever a new file is loaded | S | ✅ |
 
-**Verification:** Upload a valid `.csv` → badge shows "CSV", column count correct, "Next" enabled. Upload a corrupt file → negative toast fires, "Next" stays disabled. Upload `.xlsx` → badge shows "Excel".
+**Tests:** `pytest gui/tests/test_phase2_step1.py -v` → **12/12 passed**  
+**Verified:** `process_upload` handles CSV, Excel, unsupported types, empty files, corrupt Excel, whitespace headers.
 
 ---
 
-## Phase 3 — Step 2: Column Mapping
+## ~~Phase 3 — Step 2: Column Mapping~~ ✅ DONE
 
 **Goal:** Auto-detect fires on step entry and pre-fills all dropdowns; user can edit and re-run; required-field warnings block "Next"; status value mapping is collapsible.  
 **Entry criteria:** Phase 2 complete; `state.raw_headers` populated.  
 **Deliverable:** `AppState.mapping` dict in the exact shape `mapping.yml` uses.
 
-| # | Item | Size | Depends on |
+| # | Item | Size | Status |
 |---|---|---|---|
-| 3.1 | `gui/pages/step2_mapping.py` — on-enter hook calls `bridge.autodetect(state.raw_headers)`, writes to `state.mapping`, renders the mapping table | M | 1.3 |
-| 3.2 | Two-column mapping table — for each runbook field, a row with field label + `ui.select(options=[None]+raw_headers)`; required fields (`task`, `status`) labeled with red "Required" badge | M | 3.1 |
-| 3.3 | Category column selector — separate `ui.select` for `category_column` | S | 3.2 |
-| 3.4 | "Auto-detect again" button — re-calls `bridge.autodetect(state.raw_headers)`, refreshes table without page navigation | S | 3.1 |
-| 3.5 | Required-field warning badges — if `task` or `status` mapping is `None`, show amber inline warning; disable "Next" until both are set | S | 3.2 |
-| 3.6 | Collapsible status value mapping editor — `ui.expansion('Status value mapping')` with key-value grid: source value → canonical status `ui.select` | M | 3.2 |
+| 3.1 | `gui/pages/step2_mapping.py` — `on_enter()` hook runs auto-detect + refreshes UI; called by `app.py` Step 1 "Next" button | M | ✅ |
+| 3.2 | `@ui.refreshable` mapping UI — 3-column grid: field label + required badge \| `ui.select` dropdown \| status icon (✓ / ⚠) | M | ✅ |
+| 3.3 | Category column selector with `ui.select` and optional label | S | ✅ |
+| 3.4 | "Auto-detect again" toolbar button — calls `apply_autodetect()` + `mapping_ui.refresh()` | S | ✅ |
+| 3.5 | Required-field amber warning banner (task + status); Step 2 "Next" `bind_enabled_from` checks both fields | S | ✅ |
+| 3.6 | Collapsible `ui.expansion` status mapping editor — source value → `ui.select` canonical target | M | ✅ |
 
-**Verification:** Enter Step 2 with sample CSV headers → auto-detect populates correct columns. Clear the `task` dropdown → warning badge + disabled Next. "Auto-detect again" → table resets. Status editor collapses/expands.
+**Tests:** `pytest gui/tests/test_phase3_step2.py -v` → **23/23 passed**  
+**Verified:** `apply_autodetect`, `update_column`, `update_category`, `update_status_mapping`, `is_ready`, `on_enter` — full coverage.  
+**Note:** `_do_refresh` is a module-level callable (single-user desktop tool). For multi-user deployments use per-client storage.
 
 ---
 

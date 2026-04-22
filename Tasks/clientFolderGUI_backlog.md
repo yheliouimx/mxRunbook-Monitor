@@ -1,7 +1,7 @@
 # clientFolderGUI — Implementation Backlog
 
 > Source spec: `Tasks/clientFolderGUI.md`  
-> Status: **Phase 0 complete — Phase 1 in queue**  
+> Status: **Phase 1 complete — Phase 2 in queue**  
 > Last updated: 2026-04-22
 
 ---
@@ -43,23 +43,25 @@ The `clientFolderGUI` feature adds a NiceGUI-based 4-step Python wizard at `gui/
 
 ---
 
-## Phase 1 — Foundation Layer
+## ~~Phase 1 — Foundation Layer~~ ✅ DONE
 
 **Goal:** All six foundation modules exist and are importable. `python gui/app.py` opens a dark glass-themed 4-step stepper shell in the browser with no crashes.  
 **Entry criteria:** Phase 0 complete.  
 **Deliverable:** Running app on `http://localhost:8080` showing the stepper with four named but empty steps.
 
-| # | Item | Size | Depends on |
+| # | Item | Size | Status |
 |---|---|---|---|
-| 1.1 | `gui/state.py` — `AppState` dataclass with 16 fields (step 1: `source_path`, `detected_format`, `raw_headers`, `temp_path`; step 2: `mapping`; step 3: `parsed_data`, `schema_errors`, `quality_report`; nav: `current_step`), module-level singleton `state = AppState()`, `reset()` method | S | 0 |
-| 1.2 | `gui/theme.py` — `apply_theme()` injects: Google Fonts `<link>`, `:root` CSS variable block (copy exact token values from `runbookDashboard.html`), `.glass-card` rule, dark body background (`#0a0a0f`) | S | 0 |
-| 1.3 | `gui/bridge.py` — thin wrappers with `sys.path` fix: `detect_format()`, `read_headers()`, `autodetect()`, `run_convert()`, `run_validate()`, `run_quality()`, `write_runbook()`. Catch `PermissionError`/`ValueError`/`ImportError` and re-raise as `RuntimeError`. | M | 0.1 |
-| 1.4 | `gui/components/glass_card.py` — context manager `glass_card(title=None)` yielding a `ui.card().classes('glass-card')` with optional heading | S | 1.2 |
-| 1.5 | `gui/components/status_badge.py` — `status_badge(text, color_var)` renders a `ui.badge` using CSS variable for color | S | 1.2 |
-| 1.6 | `gui/components/step_header.py` — `step_header(n, title, subtitle)` renders step number pill + title + subtitle | S | 1.2 |
-| 1.7 | `gui/app.py` — NiceGUI entry point: `apply_theme()`, `ui.stepper` with 4 named placeholder steps driven by `state.current_step`, `ui.run(port=8080, title='Runbook Converter', reload=False)` | M | 1.1–1.6 |
+| 1.1 | `gui/state.py` — `AppState` dataclass (16 fields), module-level singleton, `reset()` cleans temp file | S | ✅ |
+| 1.2 | `gui/theme.py` — `apply_theme()` injects full CSS token set + glass-card + Quasar overrides via `ui.add_css()` | S | ✅ |
+| 1.3 | `gui/bridge.py` — 7 adapter wrappers with `sys.path` fix; errors re-raised as `RuntimeError`; `bytes_to_temp_file()` helper | M | ✅ |
+| 1.4 | `gui/components/glass_card.py` — `glass_card(title, elevated)` context manager | S | ✅ |
+| 1.5 | `gui/components/status_badge.py` — `status_badge(text, variant)` with status→class + variant→class maps | S | ✅ |
+| 1.6 | `gui/components/step_header.py` — `step_header(n, title, subtitle)` with numbered pill | S | ✅ |
+| 1.7 | `gui/app.py` — NiceGUI entry point; lazy page imports; 4-step stepper shell with placeholder fallback; `Next` bound to `state` fields | M | ✅ |
 
-**Verification:** `python gui/app.py` opens a dark page with a 4-step stepper. All modules import cleanly: `python -c "from gui import app, state, theme, bridge"`.
+**Tests:** `pytest gui/tests/ -v` → **26/26 passed** (Phase 0: 3, Phase 1: 23)  
+**Note:** `merge_preserved_keys` preserves only `_`-prefixed metadata (`_issues`, `_health`); per-task field merge (comment/status by taskId) is deferred to Phase 5.  
+**Verified:** All modules import cleanly. App shell boots; `Next` buttons respond correctly to state.
 
 ---
 

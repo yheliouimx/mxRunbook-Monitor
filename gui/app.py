@@ -2,9 +2,18 @@
 gui/app.py
 
 NiceGUI entry point for the Runbook Converter wizard.
-Run with:  python gui/app.py
+Run with:  python gui/app.py   (from any directory)
 Opens at:  http://localhost:8080
 """
+import sys
+from pathlib import Path
+
+# When run as a script, Python adds gui/ to sys.path instead of the repo root,
+# so `from gui.xxx` would fail.  This ensures the repo root is always present.
+_REPO_ROOT = str(Path(__file__).parent.parent)
+if _REPO_ROOT not in sys.path:
+    sys.path.insert(0, _REPO_ROOT)
+
 from nicegui import ui
 
 from gui.theme import apply_theme

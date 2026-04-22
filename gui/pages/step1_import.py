@@ -4,9 +4,15 @@ gui/pages/step1_import.py
 Phase 2 — Step 1: Import File
 User uploads a CSV or Excel file; format is detected, headers are read,
 and AppState is populated so Step 2 can run auto-detect.
+
+NiceGUI 3.x upload API:
+  e.file.name        — original filename (str)
+  await e.file.save(path) — write content to disk (async)
+  await e.file.read()     — read content as bytes (async)
 """
 import os
 import sys
+import tempfile
 from pathlib import Path
 
 _REPO_ROOT = str(Path(__file__).parent.parent.parent)
@@ -24,13 +30,14 @@ _ACCEPTED = {".csv", ".xlsx", ".xls"}
 
 # ── Pure logic (no NiceGUI dependency — fully testable) ───
 
-def process_upload(name: str, content: bytes) -> dict | str:
+def process_upload(name: str, tmp_path: str) -> dict | str:
     """
-    Validate and parse an uploaded file.
+    Validate and parse an already-saved upload file.
 
-    Returns a dict of state fields on success, or an error string on failure.
-    The caller is responsible for writing these fields to AppState and cleaning
-    up any previous temp file.
+    :param name:     Original filename (used for extension check and display).
+    :param tmp_path: Path to the file already written to disk.
+    :returns: State-update dict on success, error string on failure.
+              Caller owns the temp file; on error the caller should remove it.
     """
     suffix = Path(name).suffix.lower()
     if suffix not in _ACCEPTED:
@@ -39,18 +46,17 @@ def process_upload(name: str, content: bytes) -> dict | str:
             "Please upload a .csv, .xlsx, or .xls file."
         )
     try:
-        tmp_path = bridge.bytes_to_temp_file(content, suffix)
         fmt = bridge.detect_format(tmp_path)
         headers, row_count = bridge.read_headers(tmp_path, fmt)
         if not headers:
             return "File has no header row or all header cells are empty."
         return {
-            "source_path": tmp_path,
-            "temp_path":   tmp_path,
+            "source_path":     tmp_path,
+            "temp_path":       tmp_path,
             "detected_format": fmt,
-            "raw_headers": headers,
-            "row_count":   row_count,
-            "file_name":   name,
+            "raw_headers":     headers,
+            "row_count":       row_count,
+            "file_name":       name,
         }
     except RuntimeError as err:
         return str(err)
@@ -93,8 +99,21 @@ def render(stepper) -> None:  # noqa: ARG001 — stepper reserved for future use
                     ui.label("·").style("color: var(--color-text-dim);")
                     ui.label(f"{state.row_count} data rows")
 
-        # ── Upload handler (closure over file_status) ─
-        def handle_upload(e) -> None:
+        # ── Upload handler — NiceGUI 3.x async API ────
+        # e.file is a FileUpload with: .name (str), async .save(path), async .read()
+        async def handle_upload(e) -> None:
+            name = e.file.name
+            suffix = Path(name).suffix.lower()
+
+            # Validate extension before writing to disk
+            if suffix not in _ACCEPTED:
+                msg = (
+                    f"Unsupported file type '{suffix}'. "
+                    "Please upload a .csv, .xlsx, or .xls file."
+                )
+                ui.notify(msg, type="negative", position="top")
+                return
+
             # Remove previous temp file
             if state.temp_path:
                 try:
@@ -102,10 +121,28 @@ def render(stepper) -> None:  # noqa: ARG001 — stepper reserved for future use
                 except OSError:
                     pass
 
-            content = e.content.read() if hasattr(e.content, "read") else e.content
-            result = process_upload(e.name, content)
+            # Write upload bytes directly to a named temp file
+            tmp = tempfile.NamedTemporaryFile(suffix=suffix, delete=False)
+            tmp_path = tmp.name
+            tmp.close()
+
+            try:
+                await e.file.save(tmp_path)
+            except Exception as exc:
+                try:
+                    os.remove(tmp_path)
+                except OSError:
+                    pass
+                ui.notify(f"Upload failed: {exc}", type="negative", position="top")
+                return
+
+            result = process_upload(name, tmp_path)
 
             if isinstance(result, str):
+                try:
+                    os.remove(tmp_path)
+                except OSError:
+                    pass
                 state.source_path = None
                 state.file_name = None
                 state.upload_error = result
@@ -113,7 +150,7 @@ def render(stepper) -> None:  # noqa: ARG001 — stepper reserved for future use
                 file_status.refresh()
                 return
 
-            # Apply state update and reset all downstream state
+            # Apply state and reset all downstream state
             for key, val in result.items():
                 setattr(state, key, val)
             state.upload_error = None
@@ -122,7 +159,7 @@ def render(stepper) -> None:  # noqa: ARG001 — stepper reserved for future use
             state.schema_errors = []
             state.quality_report = {}
 
-            ui.notify(f"Loaded: {e.name}", type="positive", position="top")
+            ui.notify(f"Loaded: {name}", type="positive", position="top")
             file_status.refresh()
 
         # ── Render ─────────────────────────────────────
@@ -131,7 +168,6 @@ def render(stepper) -> None:  # noqa: ARG001 — stepper reserved for future use
         ui.upload(
             on_upload=handle_upload,
             auto_upload=True,
-            max_files=1,
         ).props(
             'accept=".csv,.xlsx,.xls" flat label="Browse or drop file" color="primary"'
         ).classes("w-full q-mt-md upload-zone")

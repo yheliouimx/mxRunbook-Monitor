@@ -74,6 +74,16 @@ def update_status_mapping(source: str, canonical: str) -> None:
     state.mapping = m
 
 
+def update_runbook_date(value: str | None) -> None:
+    """Set (or clear) the anchor date used to complete bare HH:MM[:SS] time cells."""
+    m = state.mapping
+    if value and value.strip():
+        m["runbook_date"] = value.strip()
+    else:
+        m.pop("runbook_date", None)
+    state.mapping = m
+
+
 def is_ready() -> bool:
     """True when both required fields (task, status) have a column assigned."""
     cols = state.mapping.get("columns", {})
@@ -187,6 +197,30 @@ def render(stepper) -> None:  # noqa: ARG001
                 ui.label("Optional — groups tasks into collapsible sections").style(
                     "color: var(--color-text-dim); font-size: 0.8rem;"
                 )
+
+            # ── Runbook date (anchor for time-only cells) ─
+            with ui.row().classes("items-center").style("gap: 12px; margin-top: 6px;"):
+                ui.label("Runbook date").style(
+                    "color: var(--color-text-primary); font-size: 0.9rem; min-width: 160px;"
+                )
+                date_val = state.mapping.get("runbook_date", "")
+
+                def _on_date(e):
+                    update_runbook_date(e.value)
+
+                ui.input(
+                    value=date_val or "",
+                    placeholder="YYYY-MM-DD  (e.g. 2026-04-15)",
+                    on_change=_on_date,
+                ).props("dense clearable").style("min-width: 200px;")
+
+                with ui.row().classes("items-center").style("gap: 4px;"):
+                    ui.icon("info_outline").style(
+                        "color: var(--color-text-dim); font-size: 1rem;"
+                    )
+                    ui.label(
+                        "Optional — fills the date part when time cells contain only HH:MM:SS"
+                    ).style("color: var(--color-text-dim); font-size: 0.8rem;")
 
             # ── Required-field warning banner ───────────
             missing = [

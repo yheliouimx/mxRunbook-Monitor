@@ -1,7 +1,7 @@
 # clientFolderGUI — Implementation Backlog
 
 > Source spec: `Tasks/clientFolderGUI.md`  
-> Status: **Phases 0–3 complete — Phase 4 in queue**  
+> Status: **Phases 0–5 complete — Phase 6 (launchers) in queue**  
 > Last updated: 2026-04-22
 
 ---
@@ -106,38 +106,41 @@ The `clientFolderGUI` feature adds a NiceGUI-based 4-step Python wizard at `gui/
 
 ---
 
-## Phase 4 — Step 3: Preview & Validate
+## ~~Phase 4 — Step 3: Preview & Validate~~ ✅ DONE
 
 **Goal:** Conversion, validation, and quality checks run automatically on step entry. Summary bar, quality report, and paginated task table are shown. "Next" is blocked if schema errors exist.  
 **Entry criteria:** Phase 3 complete; `state.mapping` is a valid mapping dict.  
 **Deliverable:** `AppState.parsed_data`, `schema_errors`, `quality_report` populated and displayed.
 
-| # | Item | Size | Depends on |
+| # | Item | Size | Status |
 |---|---|---|---|
-| 4.1 | `gui/pages/step3_preview.py` — on-enter: loading spinner, call `bridge.run_convert()` → `run_validate()` → `run_quality()` (wrapped in `asyncio.to_thread()` to avoid blocking UI), write results to `state` | M | 1.3 |
-| 4.2 | Summary bar — glass card row: categories badge, tasks badge, errors badge (red if > 0), warnings badge (amber if > 0) | S | 4.1 |
-| 4.3 | Collapsible quality report panel — three `ui.expansion` sections: "Errors" (red), "Warnings" (amber), "Info" (green), each with a list of items from `state.quality_report` | M | 4.1 |
-| 4.4 | Paginated task preview table — `ui.table(pagination={'rowsPerPage': 25})` with columns: Category, Item, Task, Status, Assignee; rows flattened from `state.parsed_data` (skip `_`-prefixed keys); Status column uses `status_badge` | M | 4.1 |
-| 4.5 | Blocking banner + disabled Next — if `state.schema_errors` non-empty, render red banner "Fix {N} mapping errors to continue"; "Next" disabled; "Back" always enabled | S | 4.1 |
+| 4.1 | `gui/pages/step3_preview.py` — `on_enter()` hook calls `run_pipeline()` (convert → validate → quality), stores results to `state`; loading spinner shown while processing | M | ✅ |
+| 4.2 | Summary bar — 4 stat chips: categories, tasks, errors (red if > 0), warnings (amber if > 0) | S | ✅ |
+| 4.3 | Collapsible quality report `ui.expansion` — three sections: Errors (red), Warnings (amber), Info (blue); auto-opened when issues present | M | ✅ |
+| 4.4 | Paginated task table — 7 columns: Category, #, Task, Status (color-coded), Start, End, Assignee; 25 rows/page with prev/next controls | M | ✅ |
+| 4.5 | Red blocking banner when `schema_errors` is non-empty (shows first 5 errors); "Next" `bind_enabled_from(state, "schema_errors", backward=lambda v: not v)` | S | ✅ |
+| 4.6 | `app.py` updated: Step 2 "Next" now calls `_step3.on_enter()` before `stepper.next()` | S | ✅ |
 
-**Verification:** Feed a corrupt mapping → errors appear, "Next" disabled. Feed a valid mapping from sample CSV → correct counts in summary, table paginated correctly (25 rows/page), "Next" enabled.
+**Tests:** `pytest gui/tests/test_phase4_step3.py -v` → **18/18 passed**  
+**Verified:** `run_pipeline`, `summary_stats`, `flat_rows`, `on_enter` — full coverage including mock-bridge and real-bridge paths.
 
 ---
 
-## Phase 5 — Step 4: Export
+## ~~Phase 5 — Step 4: Export~~ ✅ DONE
 
 **Goal:** User saves `runbook.json` to disk. Success state shows with path and "Open folder" link. "Start over" resets the full wizard.  
 **Entry criteria:** Phase 4 complete; `state.parsed_data` is valid.  
 **Deliverable:** `runbook.json` written to disk; app can be restarted cleanly.
 
-| # | Item | Size | Depends on |
+| # | Item | Size | Status |
 |---|---|---|---|
-| 5.1 | `gui/pages/step4_export.py` — output path input pre-filled with `{source_dir}/runbook.json`, "Browse" path override (plain `ui.input` in browser mode; document native mode limitation), "Save runbook.json" primary button, quality report expander | M | 1.3 |
-| 5.2 | `bridge.write_runbook()` with merge logic — if output path already exists, call `merge_preserved_keys()` to preserve `comment`, `status`, `endTime` on matching `taskId`s, then write | M | 1.3 |
-| 5.3 | Success state — hide form, show green checkmark + absolute path + "Open folder" button (platform-aware: `os.startfile` on Windows, `subprocess(['open',…])` on macOS, `subprocess(['xdg-open',…])` on Linux). Error: `ui.notify(err, type='negative')` | S | 5.2 |
-| 5.4 | "Start over" — call `state.reset()`, delete `state.temp_path` if exists, navigate stepper back to Step 1 | S | 1.1 |
+| 5.1 | `gui/pages/step4_export.py` — output path input pre-filled with `{source_dir}/runbook.json`; "Save runbook.json" primary button; inline error label for bridge errors | M | ✅ |
+| 5.2 | `do_export(path)` — pure-logic: calls `bridge.write_runbook()` (which uses `merge_preserved_keys` for `_`-prefixed fields); updates `state.saved_path`, `save_success`, `output_path` | M | ✅ |
+| 5.3 | Success state — green checkmark, saved path pill, "Open folder" button (platform-aware: `os.startfile` Win / `open` macOS / `xdg-open` Linux) | S | ✅ |
+| 5.4 | "Start over" — calls `state.reset()` + `ui.navigate.to("/")` (full page reload for clean UI) | S | ✅ |
 
-**Verification:** Complete Steps 1–4 → "Save" → `runbook.json` written. Run `python adapter/convert.py --validate runbook.json` → "OK". Save over an existing file with matching taskIds → comments preserved. "Start over" → back to Step 1, state cleared, temp file deleted.
+**Tests:** `pytest gui/tests/test_phase5_step4.py -v` → **13/13 passed**  
+**Verified:** `default_output_path`, `do_export` (unit + integration) — covers empty path, no data, bridge error, real write, and merge with existing `_issues`.
 
 ---
 

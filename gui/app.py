@@ -105,9 +105,16 @@ def index() -> None:
                         _placeholder(2, "Column Mapping")
                     with ui.stepper_navigation():
                         ui.button("Back", icon="arrow_back", on_click=stepper.previous).props("flat")
+
+                        def _to_preview():
+                            # Trigger Step 3 pipeline before advancing
+                            if _step3 and hasattr(_step3, "on_enter"):
+                                _step3.on_enter()
+                            stepper.next()
+
                         ui.button(
                             "Next", icon="arrow_forward",
-                            on_click=stepper.next,
+                            on_click=_to_preview,
                         ).props("unelevated").classes("primary-btn").bind_enabled_from(
                             state, "mapping",
                             backward=lambda v: (

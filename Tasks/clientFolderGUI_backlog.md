@@ -1,7 +1,7 @@
 # clientFolderGUI — Implementation Backlog
 
 > Source spec: `Tasks/clientFolderGUI.md`  
-> Status: **Ready for implementation**  
+> Status: **Phase 0 complete — Phase 1 in queue**  
 > Last updated: 2026-04-22
 
 ---
@@ -25,20 +25,21 @@ The `clientFolderGUI` feature adds a NiceGUI-based 4-step Python wizard at `gui/
 
 ---
 
-## Phase 0 — Pre-flight & Repository Hygiene
+## ~~Phase 0 — Pre-flight & Repository Hygiene~~ ✅ DONE
 
 **Goal:** Fix the one pre-existing import blocker in `adapter/`, scaffold the `gui/` directory tree, confirm the NiceGUI API surface, write the dependency manifest.  
 **Entry criteria:** None — greenfield.  
 **Deliverable:** `python3 -c "from adapter.convert import convert"` passes from the repo root. `gui/` folder structure exists.
 
-| # | Item | Size | Depends on |
+| # | Item | Size | Status |
 |---|---|---|---|
-| 0.1 | Fix `adapter/template_generator.py`: wrap module-level `PatternFill(...)` constant assignments inside `if HAS_OPENPYXL:` guard so `convert.py` can be imported without `openpyxl` installed | S | — |
-| 0.2 | Create `gui/` folder structure: `gui/pages/`, `gui/components/`, `gui/tests/` | S | — |
-| 0.3 | Write `gui/requirements.txt`: `nicegui>=2.0,<4`, `openpyxl>=3.1`, `pyyaml>=6` | S | Pre-flight decision 1 |
-| 0.4 | Write `gui/_spike.py` (10-line sanity check): import NiceGUI, confirm `ui.stepper`, `ui.upload`, `ui.table` are available; delete after confirming | S | 0.3 |
+| 0.1 | Fix `adapter/template_generator.py`: wrap module-level `PatternFill(...)` constant assignments inside `if HAS_OPENPYXL:` guard | S | ✅ |
+| 0.2 | Create `gui/` folder structure: `gui/pages/`, `gui/components/`, `gui/tests/`, `__init__.py` stubs | S | ✅ |
+| 0.3 | Write `gui/requirements.txt`: `nicegui>=2.0,<4`, `openpyxl>=3.1`, `pyyaml>=6` | S | ✅ |
+| 0.4 | Confirm NiceGUI 3.10.0 API surface; spike converted to `gui/tests/test_phase0_preflight.py` (3 tests, all pass) | S | ✅ |
 
-**Verification:** `pip install -r gui/requirements.txt && python gui/_spike.py` runs without errors. `python3 -c "from adapter.convert import convert"` passes.
+**Tests:** `pytest gui/tests/test_phase0_preflight.py -v` → **3/3 passed**  
+**Verified:** `python3 -c "from adapter.convert import convert; print('OK')"` passes. NiceGUI 3.10.0 confirmed with `nicegui>=2.0,<4` constraint.
 
 ---
 

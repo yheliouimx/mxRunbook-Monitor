@@ -36,10 +36,21 @@ FIELD_ALIASES: dict[str, list[str]] = {
         "scheduled start", "planned start", "exp start", "expected start",
         "debut",
     ],
+    # Date-only columns — paired with startTime/endTime when date and time are separate
+    # Processed AFTER startTime/endTime so "Start Time" is claimed first.
+    # Note: bare "date" is intentionally omitted — it would match "End Date" as a substring.
+    # A column named exactly "Date" can be mapped manually in the GUI for both fields.
+    "startDate": [
+        "start date", "startdate", "runbook date",
+        "activity date", "task date", "event date",
+    ],
     "endTime": [
         "end time", "endtime", "end", "finish", "finishes",
         "scheduled end", "planned end", "exp end", "expected end",
         "fin",
+    ],
+    "endDate": [
+        "end date", "enddate", "finish date", "completion date",
     ],
     "assignee": [
         "assignee", "owner", "responsible", "resource", "who",

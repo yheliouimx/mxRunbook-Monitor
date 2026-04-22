@@ -25,7 +25,9 @@ RUNBOOK_FIELDS = [
     ("task",         True,  "Task Description"),
     ("status",       True,  "Status"),
     ("startTime",    False, "Start Time"),
+    ("startDate",    False, "Start Date ↑"),   # date column paired with Start Time
     ("endTime",      False, "End Time"),
+    ("endDate",      False, "End Date ↑"),     # date column paired with End Time
     ("assignee",     False, "Assignee"),
     ("item",         False, "Item / Reference"),
     ("system",       False, "System"),
@@ -162,7 +164,7 @@ def render(stepper) -> None:  # noqa: ARG001
                         on_change=_on_change,
                     ).props("dense options-dense clearable").style("min-width: 200px;")
 
-                    # Col 3 — status indicator
+                    # Col 3 — status indicator / hint
                     if required and current is None:
                         with ui.row().classes("items-center").style("gap: 4px;"):
                             ui.icon("warning_amber").style("color: var(--color-warning); font-size: 1rem;")
@@ -172,6 +174,10 @@ def render(stepper) -> None:  # noqa: ARG001
                     elif current is not None:
                         ui.icon("check_circle").style(
                             "color: var(--color-success); font-size: 1rem;"
+                        )
+                    elif field in ("startDate", "endDate"):
+                        ui.label("date column — combined with time above").style(
+                            "color: var(--color-text-dim); font-size: 0.76rem; font-style: italic;"
                         )
                     else:
                         ui.label("")   # empty cell keeps grid aligned

@@ -6,7 +6,7 @@
   "environment": "PROD",
   "release": "",
   "accentColor": "#003a2d",
-  "logoFile": "clientLogo-mks.png",
+  "logoFile": "clientLogo-mks.jpg",
   "backgroundFile": "Murex_background6.jpg",
   "runbookFile": "mks_runbook.json",
   "healthThresholds": {

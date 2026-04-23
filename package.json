@@ -11,6 +11,7 @@
     "build:exe": "nexe _launcher.js --output dist/RunbookDashboard.exe --target windows-x64-14.15.3 --name RunbookDashboard",
     "build:package": "node _package.js",
     "build:package:zip": "node _package.js --skip-exe",
+    "build:client": "node _client-zip.js --client",
     "electron": "electron electron-main.js",
     "create-icon": "node _create-icon.js",
     "dist": "node _create-icon.js && node _electron-dist.js",

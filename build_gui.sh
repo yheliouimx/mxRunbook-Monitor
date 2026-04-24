@@ -36,8 +36,7 @@ echo "Installing PyInstaller..."
 
 # ── Build ─────────────────────────────────────────────────
 echo "Building RunbookConverter..."
-# --clean wipes the build cache so stale files never inflate the exe
-"$PYTHON" -m PyInstaller runbook_converter.spec --noconfirm --clean
+"$PYTHON" -m PyInstaller runbook_converter.spec --noconfirm
 
 echo ""
 echo "Build complete.  Executable: dist/RunbookConverter"

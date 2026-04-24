@@ -22,36 +22,10 @@ from nicegui import ui
 
 from gui.theme import apply_theme
 from gui.state import state
-
-# ── Step page imports (added phase by phase) ──────────────
-# Each module exposes a render(stepper) function that fills
-# the step's content area.  Import lazily so missing modules
-# don't break the shell during early phases.
-
-def _try_import(module_name: str):
-    try:
-        import importlib
-        return importlib.import_module(module_name)
-    except ImportError:
-        return None
-
-
-_step1 = _try_import("gui.pages.step1_import")
-_step2 = _try_import("gui.pages.step2_mapping")
-_step3 = _try_import("gui.pages.step3_preview")
-_step4 = _try_import("gui.pages.step4_export")
-
-
-# ── Placeholder shown when a page module is not yet built ─
-
-def _placeholder(n: int, label: str) -> None:
-    with ui.column().classes("items-center q-pa-xl").style("gap: 16px; width: 100%;"):
-        ui.label(f"Step {n} — {label}").style(
-            "font-size: 1.4rem; font-weight: 600; color: var(--color-text-primary);"
-        )
-        ui.label("Coming in a future phase.").style(
-            "color: var(--color-text-secondary); font-size: 0.95rem;"
-        )
+from gui.pages import step1_import as _step1
+from gui.pages import step2_mapping as _step2
+from gui.pages import step3_preview as _step3
+from gui.pages import step4_export as _step4
 
 
 # ── Page builder ──────────────────────────────────────────
@@ -82,14 +56,10 @@ def index() -> None:
 
                 # ── Step 1 ────────────────────────────────
                 with ui.step("Import File"):
-                    if _step1:
-                        _step1.render(stepper)
-                    else:
-                        _placeholder(1, "Import File")
+                    _step1.render(stepper)
                     with ui.stepper_navigation():
                         def _to_mapping():
-                            # Trigger Step 2 auto-detect before advancing
-                            if _step2 and hasattr(_step2, "on_enter"):
+                            if hasattr(_step2, "on_enter"):
                                 _step2.on_enter()
                             stepper.next()
 
@@ -103,16 +73,12 @@ def index() -> None:
 
                 # ── Step 2 ────────────────────────────────
                 with ui.step("Column Mapping"):
-                    if _step2:
-                        _step2.render(stepper)
-                    else:
-                        _placeholder(2, "Column Mapping")
+                    _step2.render(stepper)
                     with ui.stepper_navigation():
                         ui.button("Back", icon="arrow_back", on_click=stepper.previous).props("flat")
 
                         def _to_preview():
-                            # Trigger Step 3 pipeline before advancing
-                            if _step3 and hasattr(_step3, "on_enter"):
+                            if hasattr(_step3, "on_enter"):
                                 _step3.on_enter()
                             stepper.next()
 
@@ -130,10 +96,7 @@ def index() -> None:
 
                 # ── Step 3 ────────────────────────────────
                 with ui.step("Preview & Validate"):
-                    if _step3:
-                        _step3.render(stepper)
-                    else:
-                        _placeholder(3, "Preview & Validate")
+                    _step3.render(stepper)
                     with ui.stepper_navigation():
                         ui.button("Back", icon="arrow_back", on_click=stepper.previous).props("flat")
                         ui.button(
@@ -146,10 +109,7 @@ def index() -> None:
 
                 # ── Step 4 ────────────────────────────────
                 with ui.step("Export"):
-                    if _step4:
-                        _step4.render(stepper)
-                    else:
-                        _placeholder(4, "Export")
+                    _step4.render(stepper)
                     with ui.stepper_navigation():
                         ui.button("Back", icon="arrow_back", on_click=stepper.previous).props("flat")
 

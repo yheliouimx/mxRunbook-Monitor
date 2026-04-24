@@ -28,6 +28,20 @@ datas = [
 # ── Hidden imports ────────────────────────────────────────
 # Static analysis misses dynamically-loaded modules.
 hiddenimports = [
+    # gui package — all page and component modules
+    "gui",
+    "gui.state",
+    "gui.bridge",
+    "gui.theme",
+    "gui.pages",
+    "gui.pages.step1_import",
+    "gui.pages.step2_mapping",
+    "gui.pages.step3_preview",
+    "gui.pages.step4_export",
+    "gui.components",
+    "gui.components.glass_card",
+    "gui.components.status_badge",
+    "gui.components.step_header",
     # adapter package (imported at runtime via sys.path in bridge.py)
     "adapter",
     "adapter.convert",
@@ -60,6 +74,7 @@ hiddenimports = [
     "multiprocessing.freeze_support",
 ]
 hiddenimports += collect_submodules("nicegui")
+hiddenimports += collect_submodules("adapter")
 
 # ── Analysis ──────────────────────────────────────────────
 a = Analysis(

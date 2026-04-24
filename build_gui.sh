@@ -1,6 +1,11 @@
 #!/usr/bin/env bash
 # build_gui.sh — Mac/Linux build script for RunbookConverter
-# Requires Python 3.8+.  Run from the repo root.
+#
+# Usage:
+#   ./build_gui.sh           # fast build, standard size (~60-80 MB)
+#   UPX=1 ./build_gui.sh    # slower build, ~20% smaller (needs upx in PATH)
+#
+# Output: dist/RunbookConverter
 set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
@@ -31,7 +36,9 @@ echo "Installing PyInstaller..."
 
 # ── Build ─────────────────────────────────────────────────
 echo "Building RunbookConverter..."
-"$PYTHON" -m PyInstaller runbook_converter.spec --noconfirm
+# --clean wipes the build cache so stale files never inflate the exe
+"$PYTHON" -m PyInstaller runbook_converter.spec --noconfirm --clean
 
 echo ""
 echo "Build complete.  Executable: dist/RunbookConverter"
+echo "Size: $(du -sh dist/RunbookConverter 2>/dev/null | cut -f1)"

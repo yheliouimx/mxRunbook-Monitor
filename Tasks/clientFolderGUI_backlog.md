@@ -1,8 +1,8 @@
 # clientFolderGUI — Implementation Backlog
 
 > Source spec: `Tasks/clientFolderGUI.md`  
-> Status: **Phases 0–7 complete — Phase 8 (usability polish) in queue**  
-> Last updated: 2026-04-22
+> Status: **Phases 0–8 complete ✅**  
+> Last updated: 2026-04-24
 
 ---
 
@@ -179,18 +179,22 @@ The `clientFolderGUI` feature adds a NiceGUI-based 4-step Python wizard at `gui/
 
 ---
 
-## Phase 8 — Usability Polish
+## Phase 8 — Usability Polish ✅ DONE
 
-**Goal:** One real non-technical user completes the full wizard unaided; friction points addressed.  
+**Goal:** Package wizard as a self-contained native desktop executable (no browser, no terminal).  
 **Entry criteria:** Phase 7 complete and all tests passing.  
-**Deliverable:** Iteration notes captured; any UX fixes shipped.
+**Deliverable:** Single `RunbookConverter.exe` (Windows) / `RunbookConverter` (Mac/Linux) built via PyInstaller.
 
-| # | Item | Size | Depends on |
+| # | Item | Size | Status |
 |---|---|---|---|
-| 8.1 | Conduct walk-through session — provide launcher + real client file; observe without prompting; note hesitation points | S | Phase 7 |
-| 8.2 | Iterate on mapping step UX — likely fixes: column value preview (first 3 rows), improved "Required" label copy, simplified status mapping editor | M | 8.1 |
+| 8.1 | Switch `ui.run()` to `native=True, window_size=(1280,900)` — opens pywebview desktop window instead of browser | S | ✅ |
+| 8.2 | Add `multiprocessing.freeze_support()` at top of `app.py` for PyInstaller + Windows compatibility | S | ✅ |
+| 8.3 | Add `pywebview>=4.0` to `gui/requirements.txt` | S | ✅ |
+| 8.4 | Create `gui/requirements-build.txt` (`pyinstaller>=6.0`) | S | ✅ |
+| 8.5 | Create `runbook_converter.spec` — bundles NiceGUI static assets, adapter hidden imports, `console=False`, `icon=assets/icon.ico` | M | ✅ |
+| 8.6 | Create `build_gui.sh` / `build_gui.bat` — one-command build scripts | S | ✅ |
 
-**Verification:** User completes wizard without verbal guidance and produces a valid `runbook.json` that loads in the dashboard.
+**Verification:** `./build_gui.sh` (or `build_gui.bat`) produces `dist/RunbookConverter`; double-click opens native window; completes full wizard; writes valid `runbook.json`.
 
 ---
 

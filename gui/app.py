@@ -3,10 +3,14 @@ gui/app.py
 
 NiceGUI entry point for the Runbook Converter wizard.
 Run with:  python gui/app.py   (from any directory)
-Opens at:  http://localhost:8080
 """
+import multiprocessing
 import sys
 from pathlib import Path
+
+# Required for PyInstaller + NiceGUI on Windows (must be called before any
+# multiprocessing code runs).
+multiprocessing.freeze_support()
 
 # When run as a script, Python adds gui/ to sys.path instead of the repo root,
 # so `from gui.xxx` would fail.  This ensures the repo root is always present.
@@ -154,8 +158,9 @@ def index() -> None:
 
 if __name__ in ("__main__", "__mp_main__"):
     ui.run(
-        port=8080,
         title="Runbook Converter",
+        native=True,
+        window_size=(1280, 900),
         reload=False,
         dark=True,
         favicon="🗂️",

@@ -33,7 +33,7 @@ if errorlevel 1 ( echo ERROR: pip install (build) failed. & pause & exit /b 1 )
 
 REM ── Build ──────────────────────────────────────────────
 echo Building RunbookConverter.exe ...
-python -m PyInstaller runbook_converter.spec --noconfirm --clean
+python -m PyInstaller runbook_converter.spec --noconfirm
 if errorlevel 1 ( echo ERROR: PyInstaller failed. & pause & exit /b 1 )
 
 echo.

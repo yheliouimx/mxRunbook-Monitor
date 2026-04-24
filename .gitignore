@@ -5,6 +5,7 @@ graphify-out/
 node_modules/
 
 # Build outputs — regenerate with npm run build:*
+build/
 dist/
 dist-electron/
 

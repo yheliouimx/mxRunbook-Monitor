@@ -11,6 +11,8 @@ columns:
   # Each per-task date takes priority over the global runbook_date anchor below.
   startDate: "Start Date"
   endDate:   "End Date"
+  # Enhancement 1: operator-entered actual start time (optional; written to Actual Start on save)
+  # actualStartTime: "Actual Start"
 
 category_column: "Category"
 default_category: "Uncategorized"

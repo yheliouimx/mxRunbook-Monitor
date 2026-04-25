@@ -2,6 +2,21 @@ import { state } from "../state.js";
 import { STATUS } from "../constants.js";
 import { normalizeStatus } from "../selectors.js";
 
+export function setActualStartTime(cat, idx, time) {
+    state.runbookData[cat][idx].actualStartTime = time || undefined;
+}
+
+export function setTaskText(cat, idx, text) {
+    const t = state.runbookData[cat][idx];
+    // Capture original on first edit — Excel row-matching uses _origTask as fallback key
+    if (!t._origTask) t._origTask = t.task;
+    t.task = text || t._origTask;
+}
+
+export function setItemLabel(cat, idx, item) {
+    state.runbookData[cat][idx].item = item || undefined;
+}
+
 /**
  * Set a single task's status by category name and task index.
  * @param {string} cat — category key

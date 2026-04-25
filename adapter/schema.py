@@ -28,18 +28,20 @@ RUNBOOK_SCHEMA = {
                 "required": ["task", "status"],
                 # additionalProperties: true — forward-compat with new fields (taskId, system, etc.)
                 "properties": {
-                    "item":         {"type": ["string", "null"]},
-                    "task":         {"type": "string"},
-                    "status":       {"type": "string"},
-                    "startTime":    {"type": ["string", "null"]},
-                    "endTime":      {"type": ["string", "null"]},
-                    "assignee":     {"type": ["string", "null"]},
+                    "item":            {"type": ["string", "null"]},
+                    "task":            {"type": "string"},
+                    "status":          {"type": "string"},
+                    "startTime":       {"type": ["string", "null"]},
+                    "endTime":         {"type": ["string", "null"]},
+                    "assignee":        {"type": ["string", "null"]},
                     # v2 fields (all optional)
-                    "taskId":       {"type": ["string", "null"]},
-                    "estimatedEnd": {"type": ["string", "null"]},
-                    "system":       {"type": ["string", "null"]},
-                    "party":        {"type": ["string", "null"]},
-                    "comment":      {"type": ["string", "null"]},
+                    "taskId":          {"type": ["string", "null"]},
+                    "estimatedEnd":    {"type": ["string", "null"]},
+                    "system":          {"type": ["string", "null"]},
+                    "party":           {"type": ["string", "null"]},
+                    "comment":         {"type": ["string", "null"]},
+                    # Enhancement 1 fields
+                    "actualStartTime": {"type": ["string", "null"]},
                 }
             }
         }
@@ -73,7 +75,7 @@ def validate(data: dict) -> list[str]:
             if "status" not in task:
                 errors.append(f"'{key}[{i}]' missing required field 'status'")
             # Time format validation: non-null time strings must be ISO-parseable
-            for tf in ("startTime", "endTime", "estimatedEnd"):
+            for tf in ("startTime", "endTime", "estimatedEnd", "actualStartTime"):
                 v = task.get(tf)
                 if v and isinstance(v, str) and not _ISO_RE.match(v.strip()):
                     errors.append(

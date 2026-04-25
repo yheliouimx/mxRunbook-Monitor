@@ -52,7 +52,7 @@ export function normalize(data) {
             if (t.assignee == null)  t.assignee = "";
             // Time fields: coerce null→"" and guard against non-ISO strings
             // that would cause new Date(val) to return Invalid Date and crash renders
-            for (const tf of ["startTime", "endTime", "estimatedEnd"]) {
+            for (const tf of ["startTime", "endTime", "estimatedEnd", "actualStartTime"]) {
                 if (t[tf] == null) {
                     t[tf] = "";
                 } else if (t[tf] !== "" && isNaN(new Date(t[tf]))) {

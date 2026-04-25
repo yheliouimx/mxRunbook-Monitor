@@ -127,6 +127,24 @@ describe('normalize()', () => {
     expect(data.Deploy[0].actualStartTime).toBe('');
   });
 
+  it('normalizes description null to empty string', () => {
+    const data = { Deploy: [{ task: 'X', status: 'Y', description: null }] };
+    normalize(data);
+    expect(data.Deploy[0].description).toBe('');
+  });
+
+  it('preserves existing description value', () => {
+    const data = { Deploy: [{ task: 'X', status: 'Y', description: 'Step 1\nStep 2' }] };
+    normalize(data);
+    expect(data.Deploy[0].description).toBe('Step 1\nStep 2');
+  });
+
+  it('fills missing description with empty string', () => {
+    const data = { Deploy: [{ task: 'X', status: 'Y' }] };
+    normalize(data);
+    expect(data.Deploy[0].description).toBe('');
+  });
+
   it('preserves existing optional field values', () => {
     const data = {
       Deploy: [{

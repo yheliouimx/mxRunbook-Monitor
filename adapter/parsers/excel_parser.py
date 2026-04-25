@@ -27,6 +27,8 @@ DEFAULT_MAPPING = {
         "taskId":       None,  # e.g. "Task ID"
         "system":       None,  # e.g. "Impacted System"
         "party":        None,  # e.g. "Responsible Party" — expected: Client/Murex/Joint
+        # Enhancement 2: pre-authored procedure text (read-only in dashboard)
+        "description":  None,  # e.g. "Procedure / Notes"
     },
     "category_column": None,
     "default_category": "Tasks",
@@ -134,6 +136,10 @@ def parse(source_path: str, mapping: dict | None = None) -> OrderedDict:
         task_end_anchor   = _resolve_date(get_raw("endDate"))   or anchor
 
         end_time = _resolve_time(get_raw("endTime"), task_end_anchor)
+        # description preserves newlines (pre-wrap display in dashboard)
+        desc_raw = cols.get("description") and get_raw("description")
+        desc_text = str(desc_raw).strip() if desc_raw is not None else ""
+
         task = {
             "item":         (get_val("item") or "").replace("\n", " ").strip() or None,
             "task":         task_text,
@@ -144,9 +150,11 @@ def parse(source_path: str, mapping: dict | None = None) -> OrderedDict:
             "estimatedEnd": end_time,
             "assignee":     (get_val("assignee") or "").replace("\n", " ").strip() or None,
             # v2 fields — only written when column is mapped
-            "taskId":  (get_val("taskId") or "").replace("\n", " ").strip() or None,
-            "system":  (get_val("system") or "").replace("\n", " ").strip() or None,
-            "party":   (get_val("party") or "").replace("\n", " ").strip() or None,
+            "taskId":       (get_val("taskId") or "").replace("\n", " ").strip() or None,
+            "system":       (get_val("system") or "").replace("\n", " ").strip() or None,
+            "party":        (get_val("party") or "").replace("\n", " ").strip() or None,
+            # Enhancement 2: pre-authored procedure text (read-only, not written to Excel on save)
+            "description":  desc_text or None,
         }
 
         result.setdefault(category, []).append(task)

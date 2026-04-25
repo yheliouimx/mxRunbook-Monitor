@@ -529,7 +529,8 @@ function registerIpcHandlers() {
             const wb  = new ExcelJS.Workbook();
             const ws  = wb.addWorksheet('Runbook');
             const hdr = ['Item', 'Category', 'Task', 'Status', 'Start Time', 'End Time',
-                         'Assignee', 'Status (Actual)', 'Actual Start', 'Actual End'];
+                         'Assignee', 'Status (Actual)', 'Actual Start', 'Actual End',
+                         'Assignee (Actual)'];
             if (hasComments) hdr.push('Comment');
             ws.addRow(hdr);
             ws.getRow(1).font = { bold: true };
@@ -539,7 +540,8 @@ function registerIpcHandlers() {
                     t.item || '', t._cat, t.task || '', t.status || '',
                     formatTimeForExcel(t.startTime), formatTimeForExcel(t.endTime),
                     t.assignee || '', actualStatus,
-                    formatTimeForExcel(t.startTime), formatTimeForExcel(t.endTime),
+                    formatTimeForExcel(t.actualStartTime), formatTimeForExcel(t.endTime),
+                    t.assignee || '',
                 ];
                 if (hasComments) row.push(t.comment || '');
                 ws.addRow(row);
@@ -583,6 +585,7 @@ function registerIpcHandlers() {
         const colActualStatus = ensureColumn(ws, headerIdx, 'Status (Actual)');
         const colActualStart  = ensureColumn(ws, headerIdx, 'Actual Start');
         const colActualEnd    = ensureColumn(ws, headerIdx, 'Actual End');
+        const colAssignee     = ensureColumn(ws, headerIdx, 'Assignee (Actual)');
         const colComment      = hasComments ? ensureColumn(ws, headerIdx, 'Comment') : null;
 
         // 4. Build row-lookup indexes
@@ -594,7 +597,9 @@ function registerIpcHandlers() {
 
         for (const t of allTasks) {
             const itemKey = t.item != null ? String(t.item).trim() : '';
-            const taskKey = t.task != null ? String(t.task).trim() : '';
+            // Use _origTask if task text was edited in the dashboard — preserves Excel row match
+            const origTask = t._origTask || t.task;
+            const taskKey = origTask != null ? String(origTask).trim() : '';
 
             let rowNum = null;
             if (itemKey && byItem.has(itemKey)) {
@@ -614,8 +619,9 @@ function registerIpcHandlers() {
             const row = ws.getRow(rowNum);
             const actualStatus = reverseStatus.get(t.status) || t.status || '';
             row.getCell(colActualStatus).value = actualStatus;
-            row.getCell(colActualStart).value  = formatTimeForExcel(t.startTime);
+            row.getCell(colActualStart).value  = formatTimeForExcel(t.actualStartTime);
             row.getCell(colActualEnd).value    = formatTimeForExcel(t.endTime);
+            row.getCell(colAssignee).value     = t.assignee || '';
             if (colComment) row.getCell(colComment).value = t.comment || '';
             row.commit();
             updatedRows.push(rowNum);

@@ -106,6 +106,25 @@ describe('normalize()', () => {
     expect(t.assignee).toBe('');
     expect(t.startTime).toBe('');
     expect(t.endTime).toBe('');
+    expect(t.actualStartTime).toBe('');
+  });
+
+  it('normalizes actualStartTime null to empty string', () => {
+    const data = { Deploy: [{ task: 'X', status: 'Y', actualStartTime: null }] };
+    normalize(data);
+    expect(data.Deploy[0].actualStartTime).toBe('');
+  });
+
+  it('preserves valid actualStartTime value', () => {
+    const data = { Deploy: [{ task: 'X', status: 'Y', actualStartTime: '2026-04-25T09:00' }] };
+    normalize(data);
+    expect(data.Deploy[0].actualStartTime).toBe('2026-04-25T09:00');
+  });
+
+  it('clears invalid actualStartTime and logs warning', () => {
+    const data = { Deploy: [{ task: 'X', status: 'Y', actualStartTime: 'not-a-date' }] };
+    normalize(data);
+    expect(data.Deploy[0].actualStartTime).toBe('');
   });
 
   it('preserves existing optional field values', () => {

@@ -6,7 +6,7 @@ import {
     matchesSearch, matchesTeam, matchesSystem, escapeHtml, getUniqueTeams,
     sortTasks, getTasksGroupedByDay,
 } from "../selectors.js";
-import { setTaskStatus, completeAllInCategory, setAssignee, setEndTime, setComment, toggleCategory } from "../actions/tasks.js";
+import { setTaskStatus, completeAllInCategory, setAssignee, setEndTime, setComment, toggleCategory, setActualStartTime, setTaskText, setItemLabel } from "../actions/tasks.js";
 import { updateStatsValues } from "./stats.js";
 
 /* ── Helpers for local DOM patching ───────────────────────── */
@@ -264,6 +264,127 @@ function attachCommentEdit(btn, c, idx) {
 }
 
 /**
+ * Attach click-to-edit on the actual-start-time span (same pattern as attachEndTimeEdit).
+ */
+function attachActualStartTimeEdit(span, c, idx) {
+    span.addEventListener("click", (e) => {
+        e.stopPropagation();
+        const current = state.runbookData[c][idx].actualStartTime || "";
+        const localVal = current ? current.slice(0, 16) : "";
+        const input = document.createElement("input");
+        input.type = "datetime-local";
+        input.className = "task-time-edit";
+        input.value = localVal;
+        span.replaceWith(input);
+        input.focus();
+        const commit = () => {
+            if (input._committed) return;
+            input._committed = true;
+            const val = input.value;
+            const newStart = val ? val.slice(0, 16) : "";
+            setActualStartTime(c, idx, newStart);
+            const newSpan = document.createElement("span");
+            newSpan.className = span.className;
+            Object.assign(newSpan.dataset, { cat: c, idx: String(idx) });
+            newSpan.title = span.title;
+            if (newStart) {
+                newSpan.textContent = formatTimeShort(newStart);
+            } else {
+                newSpan.innerHTML = "<span style='opacity:0.35'>+start</span>";
+            }
+            attachActualStartTimeEdit(newSpan, c, idx);
+            input.replaceWith(newSpan);
+        };
+        input.addEventListener("blur", commit);
+        input.addEventListener("keydown", (ev) => {
+            if (ev.key === "Enter") { ev.preventDefault(); input.blur(); }
+            if (ev.key === "Escape") { input.value = localVal; input.blur(); }
+        });
+    });
+}
+
+/**
+ * Attach click-to-edit on the task text span (pencil button → inline textarea).
+ */
+function attachTaskTextEdit(btn, c, idx) {
+    btn.addEventListener("click", (e) => {
+        e.stopPropagation();
+        const content = btn.closest(".task-content");
+        if (!content || content.querySelector(".task-text-edit")) return;
+        const current = state.runbookData[c][idx].task || "";
+        const textSpan = content.querySelector(".task-text");
+        const textarea = document.createElement("textarea");
+        textarea.className = "task-text-edit";
+        textarea.value = current;
+        textarea.placeholder = "Task label…";
+        textarea.rows = 2;
+        if (textSpan) textSpan.replaceWith(textarea);
+        else btn.insertAdjacentElement("beforebegin", textarea);
+        btn.style.display = "none";
+        textarea.focus();
+        textarea.select();
+        const commit = () => {
+            if (textarea._committed) return;
+            textarea._committed = true;
+            const val = textarea.value.trim();
+            setTaskText(c, idx, val);
+            const newSpan = document.createElement("span");
+            newSpan.className = "task-text";
+            newSpan.dataset.cat = c;
+            newSpan.dataset.idx = String(idx);
+            newSpan.textContent = state.runbookData[c][idx].task;
+            textarea.replaceWith(newSpan);
+            btn.style.display = "";
+        };
+        textarea.addEventListener("blur", commit);
+        textarea.addEventListener("keydown", (ev) => {
+            if (ev.key === "Escape") { textarea.value = current; textarea.blur(); }
+            if ((ev.ctrlKey || ev.metaKey) && ev.key === "Enter") { ev.preventDefault(); textarea.blur(); }
+        });
+    });
+}
+
+/**
+ * Attach click-to-edit on the item label badge (primary Excel key — shows warning toast).
+ */
+function attachItemEdit(badge, c, idx, showToast) {
+    badge.addEventListener("click", (e) => {
+        e.stopPropagation();
+        const current = state.runbookData[c][idx].item || "";
+        showToast("⚠ Item is the primary Excel match key — edit with care");
+
+        const input = document.createElement("input");
+        input.type = "text";
+        input.className = "task-item-edit";
+        input.value = current;
+        input.placeholder = "Item label…";
+        badge.replaceWith(input);
+        input.focus();
+        input.select();
+
+        const commit = () => {
+            if (input._committed) return;
+            input._committed = true;
+            const val = input.value.trim();
+            setItemLabel(c, idx, val);
+            const newBadge = document.createElement("span");
+            newBadge.className = "task-item-label task-item-editable";
+            newBadge.dataset.cat = c;
+            newBadge.dataset.idx = String(idx);
+            newBadge.title = "Click to edit item label (primary Excel key)";
+            newBadge.textContent = val || current;
+            attachItemEdit(newBadge, c, idx, showToast);
+            input.replaceWith(newBadge);
+        };
+        input.addEventListener("blur", commit);
+        input.addEventListener("keydown", (ev) => {
+            if (ev.key === "Enter") { ev.preventDefault(); input.blur(); }
+            if (ev.key === "Escape") { input.value = current; input.blur(); }
+        });
+    });
+}
+
+/**
  * Render all category cards into the container.
  * @param {string[]} categories — sorted category names
  * @param {function} renderAll — top-level render coordinator (for re-render after state change)
@@ -321,9 +442,10 @@ export function renderCategories(categories, renderAll, showToast) {
                     const ns = normalizeStatus(t.status);
                     const sc = statusClass(ns);
                     const startTStr = t.startTime ? `<span class="task-time">${formatTimeShort(t.startTime)}</span> — ` : "";
+                    const actualStartStr = `<span class="task-time-actual-start" data-cat="${escapeHtml(cat)}" data-idx="${realIdx}" title="Click to set actual start time">${t.actualStartTime ? formatTimeShort(t.actualStartTime) : "<span style='opacity:0.35'>+start</span>"}</span>`;
                     const endTStr = `<span class="task-time-end" data-cat="${escapeHtml(cat)}" data-idx="${realIdx}" title="Click to edit actual end time">${t.endTime ? formatTimeShort(t.endTime) : "<span style='opacity:0.35'>+end</span>"}</span>`;
                     const deltaStr = endDelta(t);
-                    const timePart = (t.startTime || t.endTime) ? (startTStr + endTStr + deltaStr) : "";
+                    const timePart = startTStr + actualStartStr + " " + endTStr + deltaStr;
                     return `
                     <div class="task-row ${ns === STATUS.COMPLETED ? 'completed' : ns === STATUS.BLOCKING ? 'blocked' : ns === STATUS.UNNEEDED ? 'unneeded' : ''}">
                         <div class="task-status-btn s-${sc}" title="Click to cycle status"
@@ -332,8 +454,9 @@ export function renderCategories(categories, renderAll, showToast) {
                         </div>
                         <div class="task-content">
                             ${t.taskId ? '<span class="task-id-badge">#' + escapeHtml(t.taskId) + '</span>' : ''}
-                            ${(t.item && t.item !== t.task) ? '<span class="task-item-label">' + escapeHtml(t.item) + '</span>' : ''}
-                            <span class="task-text">${escapeHtml(t.task || t.item || '')}</span>
+                            ${(t.item && t.item !== t.task) ? '<span class="task-item-label task-item-editable" data-cat="' + escapeHtml(cat) + '" data-idx="' + realIdx + '" title="Click to edit item label (primary Excel key)">' + escapeHtml(t.item) + '</span>' : ''}
+                            <span class="task-text" data-cat="${escapeHtml(cat)}" data-idx="${realIdx}">${escapeHtml(t.task || t.item || '')}</span>
+                            <button class="task-text-edit-btn" data-cat="${escapeHtml(cat)}" data-idx="${realIdx}" title="Edit task label">✏</button>
                             ${t.system ? '<span class="task-system-tag">' + escapeHtml(t.system) + '</span>' : ''}
                             ${t.assignee ? '<span class="task-assignee" title="Click to edit assignee" data-cat="' + escapeHtml(cat) + '" data-idx="' + realIdx + '">' + escapeHtml(t.assignee) + '</span>' : '<span class="task-assignee" title="Click to assign" data-cat="' + escapeHtml(cat) + '" data-idx="' + realIdx + '" style="opacity:0.4;border:1px dashed var(--input-border)">+ assign</span>'}
                             ${partyBadge(t.party)}
@@ -456,6 +579,27 @@ export function renderCategories(categories, renderAll, showToast) {
             const idx = parseInt(btn.dataset.idx);
             if (c && !isNaN(idx)) attachCommentEdit(btn, c, idx);
         });
+
+        // Attach actual start time click-to-edit (Enh. 1)
+        div.querySelectorAll(".task-time-actual-start").forEach(span => {
+            const c = span.dataset.cat;
+            const idx = parseInt(span.dataset.idx);
+            if (c && !isNaN(idx)) attachActualStartTimeEdit(span, c, idx);
+        });
+
+        // Attach task text edit (Enh. 1)
+        div.querySelectorAll(".task-text-edit-btn").forEach(btn => {
+            const c = btn.dataset.cat;
+            const idx = parseInt(btn.dataset.idx);
+            if (c && !isNaN(idx)) attachTaskTextEdit(btn, c, idx);
+        });
+
+        // Attach item label edit (Enh. 1)
+        div.querySelectorAll(".task-item-editable").forEach(badge => {
+            const c = badge.dataset.cat;
+            const idx = parseInt(badge.dataset.idx);
+            if (c && !isNaN(idx)) attachItemEdit(badge, c, idx, showToast);
+        });
     });
 
     if (!anyVisible) {
@@ -560,9 +704,10 @@ export function renderCategoriesGroupedByDay(renderAll, showToast) {
                     const idx    = t._origIdx;
                     const ns     = normalizeStatus(t.status);
                     const sc     = statusClass(ns);
-                    const startTStr = t.startTime ? `<span class="task-time">${formatTimeShort(t.startTime)}</span> — ` : "";
-                    const endTStr   = `<span class="task-time-end" data-cat="${escapeHtml(cat)}" data-idx="${idx}" title="Click to edit actual end time">${t.endTime ? formatTimeShort(t.endTime) : "<span style='opacity:0.35'>+end</span>"}</span>`;
-                    const timePart  = (t.startTime || t.endTime) ? (startTStr + endTStr + endDelta(t)) : "";
+                    const startTStr    = t.startTime ? `<span class="task-time">${formatTimeShort(t.startTime)}</span> — ` : "";
+                    const actualStartStr = `<span class="task-time-actual-start" data-cat="${escapeHtml(cat)}" data-idx="${idx}" title="Click to set actual start time">${t.actualStartTime ? formatTimeShort(t.actualStartTime) : "<span style='opacity:0.35'>+start</span>"}</span>`;
+                    const endTStr      = `<span class="task-time-end" data-cat="${escapeHtml(cat)}" data-idx="${idx}" title="Click to edit actual end time">${t.endTime ? formatTimeShort(t.endTime) : "<span style='opacity:0.35'>+end</span>"}</span>`;
+                    const timePart     = startTStr + actualStartStr + " " + endTStr + endDelta(t);
                     // Category breadcrumb badge
                     const catBadge  = `<span class="task-system-tag" style="opacity:0.7">${escapeHtml(cat)}</span>`;
                     return `
@@ -572,8 +717,9 @@ export function renderCategoriesGroupedByDay(renderAll, showToast) {
                         </div>
                         <div class="task-content">
                             ${t.taskId ? '<span class="task-id-badge">#' + escapeHtml(t.taskId) + '</span>' : ''}
-                            ${(t.item && t.item !== t.task) ? '<span class="task-item-label">' + escapeHtml(t.item) + '</span>' : ''}
-                            <span class="task-text">${escapeHtml(t.task || t.item || '')}</span>
+                            ${(t.item && t.item !== t.task) ? '<span class="task-item-label task-item-editable" data-cat="' + escapeHtml(cat) + '" data-idx="' + idx + '" title="Click to edit item label (primary Excel key)">' + escapeHtml(t.item) + '</span>' : ''}
+                            <span class="task-text" data-cat="${escapeHtml(cat)}" data-idx="${idx}">${escapeHtml(t.task || t.item || '')}</span>
+                            <button class="task-text-edit-btn" data-cat="${escapeHtml(cat)}" data-idx="${idx}" title="Edit task label">✏</button>
                             ${catBadge}
                             ${t.system ? '<span class="task-system-tag">' + escapeHtml(t.system) + '</span>' : ''}
                             ${t.assignee ? '<span class="task-assignee" title="Click to edit assignee" data-cat="' + escapeHtml(cat) + '" data-idx="' + idx + '">' + escapeHtml(t.assignee) + '</span>' : '<span class="task-assignee" title="Click to assign" data-cat="' + escapeHtml(cat) + '" data-idx="' + idx + '" style="opacity:0.4;border:1px dashed var(--input-border)">+ assign</span>'}
@@ -634,7 +780,7 @@ export function renderCategoriesGroupedByDay(renderAll, showToast) {
             });
         });
 
-        // Assignee / end-time / comment editors — same helpers, same data refs
+        // Assignee / end-time / comment / actual-start / task-text / item editors
         div.querySelectorAll(".task-assignee").forEach(badge => {
             const c = badge.dataset.cat; const idx = parseInt(badge.dataset.idx);
             attachAssigneeEdit(badge, c, idx);
@@ -646,6 +792,18 @@ export function renderCategoriesGroupedByDay(renderAll, showToast) {
         div.querySelectorAll(".task-comment-btn").forEach(btn => {
             const c = btn.dataset.cat; const idx = parseInt(btn.dataset.idx);
             if (c && !isNaN(idx)) attachCommentEdit(btn, c, idx);
+        });
+        div.querySelectorAll(".task-time-actual-start").forEach(span => {
+            const c = span.dataset.cat; const idx = parseInt(span.dataset.idx);
+            if (c && !isNaN(idx)) attachActualStartTimeEdit(span, c, idx);
+        });
+        div.querySelectorAll(".task-text-edit-btn").forEach(btn => {
+            const c = btn.dataset.cat; const idx = parseInt(btn.dataset.idx);
+            if (c && !isNaN(idx)) attachTaskTextEdit(btn, c, idx);
+        });
+        div.querySelectorAll(".task-item-editable").forEach(badge => {
+            const c = badge.dataset.cat; const idx = parseInt(badge.dataset.idx);
+            if (c && !isNaN(idx)) attachItemEdit(badge, c, idx, showToast);
         });
     });
 

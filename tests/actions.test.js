@@ -7,6 +7,7 @@ import { STATUS, ISSUE_STATUS } from '../dashboard/constants.js';
 import {
   setTaskStatus, completeAllInCategory, setAssignee,
   expandAll, collapseAll, toggleCategory,
+  setActualStartTime, setTaskText, setItemLabel,
 } from '../dashboard/actions/tasks.js';
 
 function seedTasks() {
@@ -121,6 +122,68 @@ describe('toggleCategory()', () => {
     state.openCategories.add('Phase1');
     toggleCategory('Phase1');
     expect(state.openCategories.has('Phase1')).toBe(false);
+  });
+});
+
+describe('setActualStartTime()', () => {
+  beforeEach(seedTasks);
+
+  it('sets actualStartTime on a task', () => {
+    setActualStartTime('Phase1', 0, '2026-04-25T09:00');
+    expect(state.runbookData.Phase1[0].actualStartTime).toBe('2026-04-25T09:00');
+  });
+
+  it('clears actualStartTime with empty string', () => {
+    state.runbookData.Phase1[0].actualStartTime = '2026-04-25T09:00';
+    setActualStartTime('Phase1', 0, '');
+    expect(state.runbookData.Phase1[0].actualStartTime).toBeUndefined();
+  });
+
+  it('does not affect other tasks', () => {
+    setActualStartTime('Phase1', 0, '2026-04-25T09:00');
+    expect(state.runbookData.Phase1[1].actualStartTime).toBeUndefined();
+  });
+});
+
+describe('setTaskText()', () => {
+  beforeEach(seedTasks);
+
+  it('updates task text', () => {
+    setTaskText('Phase1', 0, 'Updated Label');
+    expect(state.runbookData.Phase1[0].task).toBe('Updated Label');
+  });
+
+  it('captures _origTask on first edit', () => {
+    setTaskText('Phase1', 0, 'Updated Label');
+    expect(state.runbookData.Phase1[0]._origTask).toBe('A');
+  });
+
+  it('preserves _origTask on subsequent edits', () => {
+    setTaskText('Phase1', 0, 'First Edit');
+    setTaskText('Phase1', 0, 'Second Edit');
+    expect(state.runbookData.Phase1[0]._origTask).toBe('A');
+    expect(state.runbookData.Phase1[0].task).toBe('Second Edit');
+  });
+
+  it('falls back to _origTask when text is cleared', () => {
+    setTaskText('Phase1', 0, 'Edited');
+    setTaskText('Phase1', 0, '');
+    expect(state.runbookData.Phase1[0].task).toBe('A');
+  });
+});
+
+describe('setItemLabel()', () => {
+  beforeEach(seedTasks);
+
+  it('sets item label on a task', () => {
+    setItemLabel('Phase1', 0, 'SRV-99');
+    expect(state.runbookData.Phase1[0].item).toBe('SRV-99');
+  });
+
+  it('clears item label with empty string', () => {
+    state.runbookData.Phase1[0].item = 'SRV-01';
+    setItemLabel('Phase1', 0, '');
+    expect(state.runbookData.Phase1[0].item).toBeUndefined();
   });
 });
 

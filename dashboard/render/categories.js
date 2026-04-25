@@ -9,6 +9,9 @@ import {
 import { setTaskStatus, completeAllInCategory, setAssignee, setEndTime, setComment, toggleCategory, setActualStartTime, setTaskText, setItemLabel } from "../actions/tasks.js";
 import { updateStatsValues } from "./stats.js";
 
+/* ── Ephemeral description-panel expansion state (per-task, reset on full re-render) ── */
+const expandedDescriptions = new Set(); // keys: "cat\x00idx"
+
 /* ── Helpers for local DOM patching ───────────────────────── */
 
 const STATUS_ICONS = {
@@ -385,6 +388,25 @@ function attachItemEdit(badge, c, idx, showToast) {
 }
 
 /**
+ * Attach the ▶/▼ Details toggle to a task description panel (Enh. 2).
+ * State is ephemeral: stored only in expandedDescriptions Set and the .open CSS class.
+ */
+function attachDescToggle(btn, panel, taskKey) {
+    if (expandedDescriptions.has(taskKey)) {
+        panel.classList.add("open");
+        btn.textContent = "▼ Details";
+    }
+    btn.addEventListener("click", (e) => {
+        e.stopPropagation();
+        const isOpen = panel.classList.contains("open");
+        panel.classList.toggle("open", !isOpen);
+        btn.textContent = isOpen ? "▶ Details" : "▼ Details";
+        if (isOpen) expandedDescriptions.delete(taskKey);
+        else expandedDescriptions.add(taskKey);
+    });
+}
+
+/**
  * Render all category cards into the container.
  * @param {string[]} categories — sorted category names
  * @param {function} renderAll — top-level render coordinator (for re-render after state change)
@@ -462,6 +484,7 @@ export function renderCategories(categories, renderAll, showToast) {
                             ${partyBadge(t.party)}
                             <span class="task-comment-btn" data-cat="${escapeHtml(cat)}" data-idx="${realIdx}" title="${t.comment ? 'Edit note' : 'Add note'}">💬 ${t.comment ? 'edit' : 'note'}</span>
                             ${t.comment ? '<div class="task-comment">' + escapeHtml(t.comment) + '</div>' : ''}
+                            ${t.description ? `<button class="task-desc-toggle" data-cat="${escapeHtml(cat)}" data-idx="${realIdx}">▶ Details</button><div class="task-description"><div class="task-description-content">${escapeHtml(t.description)}</div></div>` : ''}
                         </div>
                         <div class="task-meta">
                             ${timePart}
@@ -600,6 +623,16 @@ export function renderCategories(categories, renderAll, showToast) {
             const idx = parseInt(badge.dataset.idx);
             if (c && !isNaN(idx)) attachItemEdit(badge, c, idx, showToast);
         });
+
+        // Attach description toggles (Enh. 2)
+        div.querySelectorAll(".task-desc-toggle").forEach(btn => {
+            const c = btn.dataset.cat;
+            const idx = parseInt(btn.dataset.idx);
+            if (!c || isNaN(idx)) return;
+            const panel = btn.nextElementSibling;
+            if (panel && panel.classList.contains("task-description"))
+                attachDescToggle(btn, panel, c + "\x00" + idx);
+        });
     });
 
     if (!anyVisible) {
@@ -726,6 +759,7 @@ export function renderCategoriesGroupedByDay(renderAll, showToast) {
                             ${partyBadge(t.party)}
                             <span class="task-comment-btn" data-cat="${escapeHtml(cat)}" data-idx="${idx}" title="${t.comment ? 'Edit note' : 'Add note'}">&#128172; ${t.comment ? 'edit' : 'note'}</span>
                             ${t.comment ? '<div class="task-comment">' + escapeHtml(t.comment) + '</div>' : ''}
+                            ${t.description ? `<button class="task-desc-toggle" data-cat="${escapeHtml(cat)}" data-idx="${idx}">▶ Details</button><div class="task-description"><div class="task-description-content">${escapeHtml(t.description)}</div></div>` : ''}
                         </div>
                         <div class="task-meta">${timePart}<span class="task-status-dot dot-${sc}"></span></div>
                     </div>`;
@@ -804,6 +838,13 @@ export function renderCategoriesGroupedByDay(renderAll, showToast) {
         div.querySelectorAll(".task-item-editable").forEach(badge => {
             const c = badge.dataset.cat; const idx = parseInt(badge.dataset.idx);
             if (c && !isNaN(idx)) attachItemEdit(badge, c, idx, showToast);
+        });
+        div.querySelectorAll(".task-desc-toggle").forEach(btn => {
+            const c = btn.dataset.cat; const idx = parseInt(btn.dataset.idx);
+            if (!c || isNaN(idx)) return;
+            const panel = btn.nextElementSibling;
+            if (panel && panel.classList.contains("task-description"))
+                attachDescToggle(btn, panel, c + "\x00" + idx);
         });
     });
 

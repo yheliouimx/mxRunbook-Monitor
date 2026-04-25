@@ -42,6 +42,8 @@ RUNBOOK_SCHEMA = {
                     "comment":         {"type": ["string", "null"]},
                     # Enhancement 1 fields
                     "actualStartTime": {"type": ["string", "null"]},
+                    # Enhancement 2 fields
+                    "description":     {"type": ["string", "null"]},
                 }
             }
         }

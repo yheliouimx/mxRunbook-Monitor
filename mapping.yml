@@ -13,6 +13,8 @@ columns:
   endDate:   "End Date"
   # Enhancement 1: operator-entered actual start time (optional; written to Actual Start on save)
   # actualStartTime: "Actual Start"
+  # Enhancement 2: pre-authored procedure text (optional; read-only in dashboard, not written to Excel)
+  # description: "Procedure / Notes"
 
 category_column: "Category"
 default_category: "Uncategorized"

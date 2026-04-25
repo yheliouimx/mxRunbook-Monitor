@@ -65,6 +65,8 @@ export function normalize(data) {
             if (t.system    == null) t.system    = "";
             if (t.party     == null) t.party     = "";
             if (t.comment   == null) t.comment   = "";
+            // Enhancement 2: pre-authored description (read-only in dashboard)
+            if (t.description == null) t.description = "";
         }
     }
     return data;

@@ -1214,21 +1214,21 @@
         border: 1px solid var(--color-primary); border-radius: 4px; padding: 4px 8px; display: block;
     }
 
-    /* Enhancement 1 — task text edit button & inline input styles */
-    .task-text-edit-btn {
-        display: inline-flex; align-items: center;
-        font-size: 0.65em; cursor: pointer; margin-left: 4px;
-        color: var(--text-dim); background: transparent; border: none; padding: 1px 4px;
-        border-radius: 4px; opacity: 0.35; transition: opacity 0.15s;
-        vertical-align: middle; user-select: none;
+    /* Enhancement 1 — double-click edit hints and inline input styles */
+    .task-text {
+        cursor: text;
     }
-    .task-text-edit-btn:hover { opacity: 0.85; }
+    .task-text:hover {
+        text-decoration: underline dashed 1px;
+        text-underline-offset: 3px;
+        text-decoration-color: var(--text-dim);
+    }
     .task-text-edit {
         font-size: 0.88em; width: calc(100% - 18px); min-height: 40px; margin-top: 2px;
         resize: vertical; background: var(--input-bg); color: var(--text);
         border: 1px solid var(--color-primary); border-radius: 4px; padding: 3px 8px; display: block;
     }
-    .task-item-editable { cursor: pointer; }
+    .task-item-editable { cursor: text; }
     .task-item-editable:hover { outline: 1px dashed var(--input-border); }
     .task-item-edit {
         font-size: 0.78em; width: 120px; background: var(--input-bg); color: var(--text);

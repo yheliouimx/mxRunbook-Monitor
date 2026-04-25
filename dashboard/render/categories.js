@@ -307,23 +307,21 @@ function attachActualStartTimeEdit(span, c, idx) {
 }
 
 /**
- * Attach click-to-edit on the task text span (pencil button → inline textarea).
+ * Attach double-click-to-edit on the task text span.
+ * Ctrl+Enter or blur commits; Escape cancels.
  */
-function attachTaskTextEdit(btn, c, idx) {
-    btn.addEventListener("click", (e) => {
+function attachTaskTextEdit(span, c, idx) {
+    span.addEventListener("dblclick", (e) => {
         e.stopPropagation();
-        const content = btn.closest(".task-content");
+        const content = span.closest(".task-content");
         if (!content || content.querySelector(".task-text-edit")) return;
         const current = state.runbookData[c][idx].task || "";
-        const textSpan = content.querySelector(".task-text");
         const textarea = document.createElement("textarea");
         textarea.className = "task-text-edit";
         textarea.value = current;
         textarea.placeholder = "Task label…";
         textarea.rows = 2;
-        if (textSpan) textSpan.replaceWith(textarea);
-        else btn.insertAdjacentElement("beforebegin", textarea);
-        btn.style.display = "none";
+        span.replaceWith(textarea);
         textarea.focus();
         textarea.select();
         const commit = () => {
@@ -337,7 +335,7 @@ function attachTaskTextEdit(btn, c, idx) {
             newSpan.dataset.idx = String(idx);
             newSpan.textContent = state.runbookData[c][idx].task;
             textarea.replaceWith(newSpan);
-            btn.style.display = "";
+            attachTaskTextEdit(newSpan, c, idx);
         };
         textarea.addEventListener("blur", commit);
         textarea.addEventListener("keydown", (ev) => {
@@ -348,10 +346,10 @@ function attachTaskTextEdit(btn, c, idx) {
 }
 
 /**
- * Attach click-to-edit on the item label badge (primary Excel key — shows warning toast).
+ * Attach double-click-to-edit on the item label badge (primary Excel key — shows warning toast).
  */
 function attachItemEdit(badge, c, idx, showToast) {
-    badge.addEventListener("click", (e) => {
+    badge.addEventListener("dblclick", (e) => {
         e.stopPropagation();
         const current = state.runbookData[c][idx].item || "";
         showToast("⚠ Item is the primary Excel match key — edit with care");
@@ -374,7 +372,7 @@ function attachItemEdit(badge, c, idx, showToast) {
             newBadge.className = "task-item-label task-item-editable";
             newBadge.dataset.cat = c;
             newBadge.dataset.idx = String(idx);
-            newBadge.title = "Click to edit item label (primary Excel key)";
+            newBadge.title = "Double-click to edit item label (primary Excel key)";
             newBadge.textContent = val || current;
             attachItemEdit(newBadge, c, idx, showToast);
             input.replaceWith(newBadge);
@@ -476,9 +474,8 @@ export function renderCategories(categories, renderAll, showToast) {
                         </div>
                         <div class="task-content">
                             ${t.taskId ? '<span class="task-id-badge">#' + escapeHtml(t.taskId) + '</span>' : ''}
-                            ${(t.item && t.item !== t.task) ? '<span class="task-item-label task-item-editable" data-cat="' + escapeHtml(cat) + '" data-idx="' + realIdx + '" title="Click to edit item label (primary Excel key)">' + escapeHtml(t.item) + '</span>' : ''}
-                            <span class="task-text" data-cat="${escapeHtml(cat)}" data-idx="${realIdx}">${escapeHtml(t.task || t.item || '')}</span>
-                            <button class="task-text-edit-btn" data-cat="${escapeHtml(cat)}" data-idx="${realIdx}" title="Edit task label">✏</button>
+                            ${(t.item && t.item !== t.task) ? '<span class="task-item-label task-item-editable" data-cat="' + escapeHtml(cat) + '" data-idx="' + realIdx + '" title="Double-click to edit item label (primary Excel key)">' + escapeHtml(t.item) + '</span>' : ''}
+                            <span class="task-text" data-cat="${escapeHtml(cat)}" data-idx="${realIdx}" title="Double-click to edit task label">${escapeHtml(t.task || t.item || '')}</span>
                             ${t.system ? '<span class="task-system-tag">' + escapeHtml(t.system) + '</span>' : ''}
                             ${t.assignee ? '<span class="task-assignee" title="Click to edit assignee" data-cat="' + escapeHtml(cat) + '" data-idx="' + realIdx + '">' + escapeHtml(t.assignee) + '</span>' : '<span class="task-assignee" title="Click to assign" data-cat="' + escapeHtml(cat) + '" data-idx="' + realIdx + '" style="opacity:0.4;border:1px dashed var(--input-border)">+ assign</span>'}
                             ${partyBadge(t.party)}
@@ -610,14 +607,14 @@ export function renderCategories(categories, renderAll, showToast) {
             if (c && !isNaN(idx)) attachActualStartTimeEdit(span, c, idx);
         });
 
-        // Attach task text edit (Enh. 1)
-        div.querySelectorAll(".task-text-edit-btn").forEach(btn => {
-            const c = btn.dataset.cat;
-            const idx = parseInt(btn.dataset.idx);
-            if (c && !isNaN(idx)) attachTaskTextEdit(btn, c, idx);
+        // Attach task text double-click edit (Enh. 1)
+        div.querySelectorAll(".task-text").forEach(span => {
+            const c = span.dataset.cat;
+            const idx = parseInt(span.dataset.idx);
+            if (c && !isNaN(idx)) attachTaskTextEdit(span, c, idx);
         });
 
-        // Attach item label edit (Enh. 1)
+        // Attach item label double-click edit (Enh. 1)
         div.querySelectorAll(".task-item-editable").forEach(badge => {
             const c = badge.dataset.cat;
             const idx = parseInt(badge.dataset.idx);
@@ -750,9 +747,8 @@ export function renderCategoriesGroupedByDay(renderAll, showToast) {
                         </div>
                         <div class="task-content">
                             ${t.taskId ? '<span class="task-id-badge">#' + escapeHtml(t.taskId) + '</span>' : ''}
-                            ${(t.item && t.item !== t.task) ? '<span class="task-item-label task-item-editable" data-cat="' + escapeHtml(cat) + '" data-idx="' + idx + '" title="Click to edit item label (primary Excel key)">' + escapeHtml(t.item) + '</span>' : ''}
-                            <span class="task-text" data-cat="${escapeHtml(cat)}" data-idx="${idx}">${escapeHtml(t.task || t.item || '')}</span>
-                            <button class="task-text-edit-btn" data-cat="${escapeHtml(cat)}" data-idx="${idx}" title="Edit task label">✏</button>
+                            ${(t.item && t.item !== t.task) ? '<span class="task-item-label task-item-editable" data-cat="' + escapeHtml(cat) + '" data-idx="' + idx + '" title="Double-click to edit item label (primary Excel key)">' + escapeHtml(t.item) + '</span>' : ''}
+                            <span class="task-text" data-cat="${escapeHtml(cat)}" data-idx="${idx}" title="Double-click to edit task label">${escapeHtml(t.task || t.item || '')}</span>
                             ${catBadge}
                             ${t.system ? '<span class="task-system-tag">' + escapeHtml(t.system) + '</span>' : ''}
                             ${t.assignee ? '<span class="task-assignee" title="Click to edit assignee" data-cat="' + escapeHtml(cat) + '" data-idx="' + idx + '">' + escapeHtml(t.assignee) + '</span>' : '<span class="task-assignee" title="Click to assign" data-cat="' + escapeHtml(cat) + '" data-idx="' + idx + '" style="opacity:0.4;border:1px dashed var(--input-border)">+ assign</span>'}
@@ -831,9 +827,9 @@ export function renderCategoriesGroupedByDay(renderAll, showToast) {
             const c = span.dataset.cat; const idx = parseInt(span.dataset.idx);
             if (c && !isNaN(idx)) attachActualStartTimeEdit(span, c, idx);
         });
-        div.querySelectorAll(".task-text-edit-btn").forEach(btn => {
-            const c = btn.dataset.cat; const idx = parseInt(btn.dataset.idx);
-            if (c && !isNaN(idx)) attachTaskTextEdit(btn, c, idx);
+        div.querySelectorAll(".task-text").forEach(span => {
+            const c = span.dataset.cat; const idx = parseInt(span.dataset.idx);
+            if (c && !isNaN(idx)) attachTaskTextEdit(span, c, idx);
         });
         div.querySelectorAll(".task-item-editable").forEach(badge => {
             const c = badge.dataset.cat; const idx = parseInt(badge.dataset.idx);

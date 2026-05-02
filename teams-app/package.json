@@ -1,0 +1,23 @@
+{
+  "name": "mxrunbook-teams-app",
+  "version": "1.0.0",
+  "description": "Microsoft Teams tab for MX Runbook Monitor",
+  "type": "module",
+  "scripts": {
+    "dev":   "npx serve . --cors --port 3001",
+    "build": "node build-teams.js",
+    "pack":  "node pack-manifest.js"
+  },
+  "dependencies": {
+    "xlsx": "^0.18.5"
+  },
+  "devDependencies": {
+    "serve": "^14.2.0"
+  },
+  "notes": {
+    "teams-js":  "Loaded from CDN in index.html — no npm install needed for the tab itself",
+    "msal":      "Loaded from CDN in auth.js — no npm install needed for the tab itself",
+    "sheetjs":   "Loaded from CDN in index.html OR via the xlsx npm package above",
+    "azure-swa": "Deploy to Azure Static Web Apps (free tier) for HTTPS hosting — see README.md"
+  }
+}

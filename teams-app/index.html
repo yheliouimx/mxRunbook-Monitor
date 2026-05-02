@@ -1,0 +1,280 @@
+<!DOCTYPE html>
+<!--
+  teams-app/index.html — Teams Tab Shell
+  ────────────────────────────────────────
+  This file is the Teams tab entry point. It:
+    1. Loads the Teams JS SDK and SheetJS from CDN
+    2. Initializes Teams context + theme
+    3. Defines window.teamsAPI — a shim that mirrors window.electronAPI so the
+       shared dashboard/app.js works without any modifications
+    4. Loads the runbook dashboard as a normal ES module (reuses all of dashboard/)
+
+  All task logic, rendering, state, and CSS comes from the shared dashboard/ folder.
+  Only file I/O and the loading sequence differ from the standalone HTML distribution.
+
+  Placeholders to replace before deploying:
+    {{YOUR_APP_DOMAIN}}    — e.g. mxrunbook.azurestaticapps.net
+    {{AAD_APP_CLIENT_ID}}  — Azure AD app client ID (GUID)
+    {{TENANT_ID}}          — Azure AD tenant ID or "common"
+-->
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>MX Runbook Monitor — Teams</title>
+
+<!-- ── Teams JS SDK (loaded before any module code) ── -->
+<script src="https://res.cdn.office.net/teams-js/2.22.0/js/MicrosoftTeams.min.js"></script>
+
+<!-- ── SheetJS (client-side Excel parser, replaces Python openpyxl) ── -->
+<script src="https://cdn.sheetjs.com/xlsx-latest/package/dist/xlsx.full.min.js"></script>
+
+<!-- ── Shared dashboard stylesheet (same CSS as standalone HTML) ── -->
+<!-- The shared CSS is inlined in runbookDashboard.html; here we reference it externally.
+     During the build step (T8), copy or symlink the <style> block into a separate
+     dashboard.css file, or inline it here. -->
+<style>
+    /*
+     * TODO (T1): Extract the <style> block from runbookDashboard.html into
+     * dashboard/dashboard.css and reference it here:
+     *   @import url("../runbookDashboard.html") won't work.
+     * Recommended build step: node build-teams.js extracts the CSS into
+     * teams-app/dashboard.css at build time.
+     *
+     * For now, a minimal stub so the page isn't unstyled during development:
+     */
+    body { background: #0a0a0f; color: #e0e0e0; font-family: system-ui, sans-serif; margin: 0; }
+    #teams-loading {
+        display: flex; align-items: center; justify-content: center;
+        height: 100vh; flex-direction: column; gap: 12px;
+        color: #888; font-size: 0.9em;
+    }
+    #teams-loading .spinner {
+        width: 32px; height: 32px; border: 3px solid #333;
+        border-top-color: #10b981; border-radius: 50%;
+        animation: spin 0.7s linear infinite;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    #teams-open-bar {
+        display: none; /* shown once Teams + auth are ready but no file is loaded */
+        padding: 12px 16px; background: #111118; border-bottom: 1px solid #222;
+        align-items: center; gap: 12px;
+    }
+    #teams-open-bar button {
+        padding: 6px 14px; border-radius: 6px; border: none; cursor: pointer;
+        background: #10b981; color: #000; font-weight: 600; font-size: 0.85em;
+    }
+    #teams-open-bar .file-name {
+        font-size: 0.82em; color: #888; font-family: monospace;
+    }
+</style>
+</head>
+<body>
+
+<!-- Loading indicator — hidden once the dashboard finishes mounting -->
+<div id="teams-loading">
+    <div class="spinner"></div>
+    <span>Initialising Teams context…</span>
+</div>
+
+<!-- File picker bar — shown after auth, before a runbook is loaded -->
+<div id="teams-open-bar">
+    <button id="teams-open-btn">📂 Open runbook from OneDrive</button>
+    <span class="file-name" id="teams-file-name"></span>
+    <button id="teams-reload-btn" style="background:#1a1a22;color:#888;display:none">↺ Reload</button>
+</div>
+
+<!-- Dashboard root — same #container / #app structure as runbookDashboard.html -->
+<div id="app" style="display:none"></div>
+
+<script type="module">
+/**
+ * Teams tab boot sequence:
+ *   1. Init Teams SDK → get context + theme
+ *   2. Auth (silent if possible)
+ *   3. Check for saved file ref (session) or channel tab config
+ *   4. Load Excel → parse → boot dashboard
+ *   5. Define window.teamsAPI shim (mirrors electronAPI interface)
+ */
+
+import { initTeams, isRunningInTeams, getCurrentUserShortName,
+         saveFileRef, loadFileRef, clearFileRef, getTabConfig } from "./src/teams-bridge.js";
+import { pickFile, readExcelBytes, writeExcelBytes, getCurrentUser } from "./src/graph.js";
+import { getAccessToken } from "./src/auth.js";
+import { parseExcel } from "./src/sheetjs-parser.js";
+
+// ── Teams API shim ─────────────────────────────────────────────────────────────
+// Mirrors the window.electronAPI contract expected by dashboard/app.js so the
+// shared module works without modification.
+
+window.teamsAPI = {
+    isElectron: false,
+    isTeams:    true,
+
+    writeRunbookToExcel: async (runbookData) => {
+        const ref = loadFileRef();
+        if (!ref) return { ok: false, message: "No file loaded — open a runbook first" };
+        try {
+            // 1. Fetch current workbook bytes
+            const originalBytes = await readExcelBytes(ref.driveId, ref.itemId);
+            // 2. Apply runbook state changes using SheetJS
+            const updatedBytes = _applyRunbookChanges(originalBytes, runbookData);
+            // 3. Upload back to OneDrive
+            await writeExcelBytes(ref.driveId, ref.itemId, updatedBytes);
+            return { ok: true, message: "Saved to OneDrive: " + ref.name };
+        } catch (err) {
+            return { ok: false, message: err.message };
+        }
+    },
+
+    openFile: async () => {
+        const ref = await pickFile();
+        if (!ref) return null;
+        saveFileRef(ref);
+        return ref;
+    },
+};
+
+// ── Boot ───────────────────────────────────────────────────────────────────────
+
+async function boot() {
+    const loading = document.getElementById("teams-loading");
+    const openBar = document.getElementById("teams-open-bar");
+    const app     = document.getElementById("app");
+
+    // Step 1: Teams SDK init (no-op if not in Teams)
+    const teamsCtx = await initTeams();
+
+    // Step 2: Acquire access token (silently where possible)
+    let token;
+    try {
+        token = await getAccessToken();
+    } catch (err) {
+        loading.querySelector("span").textContent = "Sign-in required — check popup blocker";
+        console.error("[boot] Auth failed:", err);
+        return;
+    }
+
+    loading.style.display = "none";
+
+    // Step 3: Determine which file to load
+    //   Priority: channel tab config > session file ref > manual pick
+    let fileRef = await getTabConfig() || loadFileRef();
+
+    if (!fileRef) {
+        // No file configured — show the open-runbook bar
+        openBar.style.display = "flex";
+        app.style.display = "block";
+        _loadDashboardApp(null);  // boot dashboard in "no data" state
+        return;
+    }
+
+    _showFileBar(fileRef);
+    await _loadRunbook(fileRef);
+}
+
+async function _loadRunbook(ref) {
+    const loading = document.getElementById("teams-loading");
+    loading.style.display = "flex";
+    loading.querySelector("span").textContent = `Loading ${ref.name}…`;
+
+    try {
+        const buffer  = await readExcelBytes(ref.driveId, ref.itemId);
+        // Read mapping config (assumes config.json is deployed alongside index.html)
+        const mapping = await _loadMapping();
+        const runbook = parseExcel(buffer, mapping);
+        _loadDashboardApp(runbook);
+    } catch (err) {
+        loading.querySelector("span").textContent = "Failed to load: " + err.message;
+        console.error("[boot] Load runbook failed:", err);
+    } finally {
+        loading.style.display = "none";
+    }
+}
+
+function _showFileBar(ref) {
+    const bar = document.getElementById("teams-open-bar");
+    bar.style.display = "flex";
+    document.getElementById("teams-file-name").textContent = ref.name || "";
+    document.getElementById("teams-reload-btn").style.display = "inline-block";
+}
+
+async function _loadMapping() {
+    try {
+        const resp = await fetch("../mapping.yml");
+        if (!resp.ok) return {};
+        const yaml = await resp.text();
+        // Minimal YAML parser for the mapping.yml subset used here.
+        // For full YAML support, add js-yaml: https://cdn.jsdelivr.net/npm/js-yaml
+        return _parseSimpleYaml(yaml);
+    } catch {
+        return {};
+    }
+}
+
+function _loadDashboardApp(initialData) {
+    document.getElementById("app").style.display = "block";
+    // The shared dashboard/app.js expects a <div id="container"> and other DOM nodes
+    // defined in runbookDashboard.html. Those need to be present before app.js runs.
+    //
+    // TODO (T1): Copy the <body> markup (excluding the <script> tags) from
+    // runbookDashboard.html into the #app div here, then import app.js.
+    //
+    // import("../dashboard/app.js").then(mod => mod.boot(initialData));
+    //
+    // This is left as a TODO because the inner HTML depends on the full CSS extraction
+    // also being complete (see the CSS TODO in the <style> block above).
+    console.log("[teams] Dashboard app boot — runbook data:", initialData);
+    document.getElementById("app").innerHTML =
+        "<p style='padding:20px;color:#888'>Dashboard mount TODO: " +
+        "copy body markup from runbookDashboard.html and wire dashboard/app.js (see T1 in Tasks/teams_deployment.md)</p>";
+}
+
+function _applyRunbookChanges(originalBytes, runbookData) {
+    // TODO (T6): Use SheetJS to read the original workbook, apply the status/time/assignee
+    // changes from runbookData, and return updated bytes.
+    // Skeleton:
+    //   const XLSX = window.XLSX;
+    //   const wb = XLSX.read(new Uint8Array(originalBytes), { type: "array", cellDates: true });
+    //   const ws = wb.Sheets[wb.SheetNames[0]];
+    //   ... apply changes row by row (match by item or task text) ...
+    //   return XLSX.write(wb, { type: "arraybuffer", bookType: "xlsx" });
+    console.warn("[teams] write-back not yet implemented (T6)");
+    return originalBytes;
+}
+
+function _parseSimpleYaml(yaml) {
+    // Minimal parser: handles the flat key: "value" pairs in mapping.yml columns section.
+    // Replace with js-yaml for full support.
+    const result = {};
+    for (const line of yaml.split("\n")) {
+        const m = line.match(/^\s{2,4}(\w+):\s+"([^"]+)"/);
+        if (m) {
+            result.columns = result.columns || {};
+            result.columns[m[1]] = m[2];
+        }
+    }
+    return result;
+}
+
+// ── File picker button handlers ────────────────────────────────────────────────
+
+document.getElementById("teams-open-btn").addEventListener("click", async () => {
+    const ref = await pickFile();
+    if (!ref) return;
+    saveFileRef(ref);
+    _showFileBar(ref);
+    await _loadRunbook(ref);
+});
+
+document.getElementById("teams-reload-btn").addEventListener("click", async () => {
+    const ref = loadFileRef();
+    if (ref) await _loadRunbook(ref);
+});
+
+// ── Start ──────────────────────────────────────────────────────────────────────
+boot().catch(err => console.error("[teams] boot error:", err));
+</script>
+</body>
+</html>

@@ -1,0 +1,23 @@
+<!DOCTYPE html>
+<!--
+  auth-end.html — MSAL / Teams auth popup callback page.
+  This page is the redirect URI registered in your Azure AD app.
+  It must be deployed at: https://{{YOUR_APP_DOMAIN}}/teams-app/auth-end.html
+
+  When MSAL completes the login popup it redirects here.
+  The three lines below hand control back to the MSAL library in the opener window.
+-->
+<html><head><meta charset="UTF-8"></head>
+<body>
+<script src="https://alcdn.msauth.net/browser/2.38.3/js/msal-browser.min.js"></script>
+<script>
+    // Notify the MSAL instance in the parent window that auth is complete.
+    // MSAL reads the hash/query params from this URL and resolves the token promise.
+    window.msal && new window.msal.PublicClientApplication({
+        auth: { clientId: "{{AAD_APP_CLIENT_ID}}" }
+    }).initialize().then(() => {
+        // handleRedirectPromise resolves the pending token request in the opener
+    });
+</script>
+</body>
+</html>

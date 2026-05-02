@@ -1,0 +1,83 @@
+<!DOCTYPE html>
+<!--
+  teams-app/config.html — Configurable Tab Setup Page
+  ─────────────────────────────────────────────────────
+  Shown when a channel owner adds the MX Runbook tab to a Teams channel.
+  Lets them pick a OneDrive/SharePoint Excel file to pin to the channel tab.
+  All channel members will see the same runbook without having to pick a file.
+
+  This page is referenced in manifest.json under configurableTabs.configurationUrl.
+-->
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Configure MX Runbook Tab</title>
+<script src="https://res.cdn.office.net/teams-js/2.22.0/js/MicrosoftTeams.min.js"></script>
+<style>
+    body {
+        font-family: system-ui, sans-serif;
+        background: #0a0a0f;
+        color: #e0e0e0;
+        padding: 24px;
+        max-width: 540px;
+        margin: 0 auto;
+    }
+    h2 { font-size: 1.1em; font-weight: 600; margin-bottom: 6px; color: #fff; }
+    p  { color: #888; font-size: 0.85em; margin-bottom: 20px; }
+    button {
+        padding: 8px 18px; border-radius: 6px; border: none; cursor: pointer;
+        background: #10b981; color: #000; font-weight: 600; font-size: 0.9em;
+    }
+    button:hover { background: #0ea573; }
+    .file-selected {
+        display: none;
+        margin-top: 16px; padding: 10px 14px;
+        background: #1a2a22; border: 1px solid #10b981;
+        border-radius: 8px; font-size: 0.85em;
+    }
+    .file-name { font-weight: 600; color: #10b981; }
+    .status { margin-top: 12px; font-size: 0.82em; color: #888; }
+</style>
+</head>
+<body>
+
+<h2>Select your runbook file</h2>
+<p>Choose an Excel runbook file from OneDrive or SharePoint. All team members who open
+   this tab will see the same live runbook.</p>
+
+<button id="pick-btn">📂 Browse OneDrive / SharePoint…</button>
+
+<div class="file-selected" id="file-selected">
+    Selected: <span class="file-name" id="file-name-label"></span>
+    <div class="status">Tab will load this file automatically for all channel members.</div>
+</div>
+
+<script type="module">
+import { initTeams, saveTabConfig }   from "./src/teams-bridge.js";
+import { pickFile }                   from "./src/graph.js";
+import { getAccessToken }             from "./src/auth.js";
+
+let selectedRef = null;
+
+await initTeams();
+await getAccessToken(); // ensure auth before the user interacts
+
+document.getElementById("pick-btn").addEventListener("click", async () => {
+    const ref = await pickFile();
+    if (!ref) return;
+    selectedRef = ref;
+
+    document.getElementById("file-name-label").textContent = ref.name;
+    document.getElementById("file-selected").style.display = "block";
+
+    // Tell Teams the configuration is valid and save it
+    try {
+        await saveTabConfig(ref);
+    } catch (err) {
+        console.error("[config] saveTabConfig failed:", err);
+    }
+});
+</script>
+</body>
+</html>

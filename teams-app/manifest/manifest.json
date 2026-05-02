@@ -1,0 +1,52 @@
+{
+  "$schema": "https://developer.microsoft.com/en-us/json-schemas/teams/v1.16/MicrosoftTeams.schema.json",
+  "manifestVersion": "1.16",
+  "version": "1.0.0",
+  "id": "{{AAD_APP_CLIENT_ID}}",
+  "packageName": "com.murex.mxrunbook",
+  "developer": {
+    "name": "Murex",
+    "websiteUrl": "https://{{YOUR_APP_DOMAIN}}",
+    "privacyUrl": "https://{{YOUR_APP_DOMAIN}}/privacy",
+    "termsOfUseUrl": "https://{{YOUR_APP_DOMAIN}}/terms"
+  },
+  "icons": {
+    "color": "color.png",
+    "outline": "outline.png"
+  },
+  "name": {
+    "short": "MX Runbook",
+    "full": "MX Runbook Monitor"
+  },
+  "description": {
+    "short": "Live go-live runbook dashboard",
+    "full": "Track task progress, manage parallel execution groups, and coordinate live production events directly in Microsoft Teams."
+  },
+  "accentColor": "#10b981",
+  "staticTabs": [
+    {
+      "entityId": "runbook-dashboard",
+      "name": "Runbook",
+      "contentUrl": "https://{{YOUR_APP_DOMAIN}}/teams-app/index.html",
+      "websiteUrl": "https://{{YOUR_APP_DOMAIN}}/teams-app/index.html",
+      "scopes": ["personal"]
+    }
+  ],
+  "configurableTabs": [
+    {
+      "configurationUrl": "https://{{YOUR_APP_DOMAIN}}/teams-app/config.html",
+      "canUpdateConfiguration": true,
+      "scopes": ["team", "groupchat"]
+    }
+  ],
+  "permissions": ["identity", "messageTeamMembers"],
+  "validDomains": [
+    "{{YOUR_APP_DOMAIN}}",
+    "login.microsoftonline.com",
+    "graph.microsoft.com"
+  ],
+  "webApplicationInfo": {
+    "id": "{{AAD_APP_CLIENT_ID}}",
+    "resource": "api://{{YOUR_APP_DOMAIN}}/{{AAD_APP_CLIENT_ID}}"
+  }
+}
